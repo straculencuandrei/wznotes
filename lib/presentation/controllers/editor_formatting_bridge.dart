@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'rich_span_editing_controller.dart';
 
 class EditorFormattingBridge extends ChangeNotifier {
-  TextEditingController? bodyController;
+  RichSpanEditingController? bodyController;
   FocusNode? bodyFocusNode;
   VoidCallback? onTextUpdated;
 
-  bool isBold = false;
-  bool isItalic = false;
-  bool isStrike = false;
-
   void bind({
-    required TextEditingController controller,
+    required RichSpanEditingController controller,
     required FocusNode focusNode,
     required VoidCallback onUpdate,
   }) {
@@ -28,79 +25,42 @@ class EditorFormattingBridge extends ChangeNotifier {
     onTextUpdated = null;
   }
 
+  bool get isBold => bodyController?.activeBold ?? false;
+  bool get isItalic => bodyController?.activeItalic ?? false;
+  bool get isStrike => bodyController?.activeStrike ?? false;
+
   void _syncActiveStyles() {
-    if (bodyController == null) return;
-    final text = bodyController!.text;
-    final selection = bodyController!.selection;
-    if (selection.isValid && !selection.isCollapsed) {
-      final selected = selection.textInside(text);
-      isBold = selected.startsWith('**') && selected.endsWith('**');
-      isItalic = selected.startsWith('*') && selected.endsWith('*');
-      isStrike = selected.startsWith('~~') && selected.endsWith('~~');
-      notifyListeners();
-    }
+    notifyListeners();
   }
 
-  /// Toggles Bold formatting (**text**)
+  /// Toggles Bold formatting in-place
   void toggleBold() {
-    isBold = !isBold;
-    _applyWrapper('**', '**');
-    notifyListeners();
-  }
-
-  /// Toggles Italic formatting (*text*)
-  void toggleItalic() {
-    isItalic = !isItalic;
-    _applyWrapper('*', '*');
-    notifyListeners();
-  }
-
-  /// Toggles Strikethrough (~~text~~)
-  void toggleStrike() {
-    isStrike = !isStrike;
-    _applyWrapper('~~', '~~');
-    notifyListeners();
-  }
-
-  void _applyWrapper(String prefix, String suffix) {
     if (bodyController == null) return;
-    final controller = bodyController!;
-    final text = controller.text;
-    final selection = controller.selection;
-
-    // Ensure focus is kept on editor
     bodyFocusNode?.requestFocus();
-
-    if (!selection.isValid || selection.isCollapsed) {
-      final int pos = selection.isValid && selection.baseOffset >= 0 ? selection.baseOffset : text.length;
-      final newText = text.replaceRange(pos, pos, '$prefix$suffix');
-      controller.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(offset: pos + prefix.length),
-      );
-    } else {
-      final selectedText = selection.textInside(text);
-      if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
-        final unwrapped = selectedText.substring(prefix.length, selectedText.length - suffix.length);
-        final newText = text.replaceRange(selection.start, selection.end, unwrapped);
-        controller.value = TextEditingValue(
-          text: newText,
-          selection: TextSelection(baseOffset: selection.start, extentOffset: selection.start + unwrapped.length),
-        );
-      } else {
-        final wrapped = '$prefix$selectedText$suffix';
-        final newText = text.replaceRange(selection.start, selection.end, wrapped);
-        controller.value = TextEditingValue(
-          text: newText,
-          selection: TextSelection(baseOffset: selection.start, extentOffset: selection.start + wrapped.length),
-        );
-      }
-    }
-
+    bodyController!.toggleBold();
     onTextUpdated?.call();
+    notifyListeners();
   }
 
-  /// Toggles line prefix at current cursor line (e.g. "- ", "[ ] ", "> ")
+  /// Toggles Italic formatting in-place
+  void toggleItalic() {
+    if (bodyController == null) return;
+    bodyFocusNode?.requestFocus();
+    bodyController!.toggleItalic();
+    onTextUpdated?.call();
+    notifyListeners();
+  }
+
+  /// Toggles Strikethrough in-place
+  void toggleStrike() {
+    if (bodyController == null) return;
+    bodyFocusNode?.requestFocus();
+    bodyController!.toggleStrike();
+    onTextUpdated?.call();
+    notifyListeners();
+  }
+
+  /// Toggles line prefix at current cursor line (e.g. "• ", "☐ ", "> ")
   void toggleLinePrefix(String prefix) {
     if (bodyController == null) return;
     final controller = bodyController!;
@@ -141,6 +101,7 @@ class EditorFormattingBridge extends ChangeNotifier {
     }
 
     onTextUpdated?.call();
+    notifyListeners();
   }
 }
 

@@ -67,7 +67,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
     setState(() {});
   }
 
-  Offset _calculateCaretOffset(double maxWidth) {
+  Offset _calculateCaretOffset(BuildContext context, double maxWidth) {
     if (maxWidth <= 0) return Offset.zero;
 
     final text = widget.controller.text;
@@ -75,8 +75,16 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
     final int cursorIndex = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
     final fontSize = widget.style.fontSize ?? 17.0;
 
+    final TextSpan span = text.isEmpty
+        ? TextSpan(text: 'A', style: widget.style)
+        : widget.controller.buildTextSpan(
+            context: context,
+            style: widget.style,
+            withComposing: false,
+          );
+
     final textPainter = TextPainter(
-      text: TextSpan(text: text.isEmpty ? 'A' : text, style: widget.style),
+      text: span,
       textDirection: TextDirection.ltr,
       maxLines: null,
     );
@@ -99,7 +107,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final targetOffset = _calculateCaretOffset(constraints.maxWidth);
+        final targetOffset = _calculateCaretOffset(context, constraints.maxWidth);
 
         // Snap immediately on first calculation without animating from (0, 0)
         _currentCaretOffset ??= targetOffset;

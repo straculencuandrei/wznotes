@@ -6,7 +6,7 @@ import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/editor_formatting_bridge.dart';
-import '../controllers/markdown_rich_text_controller.dart';
+import '../controllers/rich_span_editing_controller.dart';
 import 'vscode_smooth_text_field.dart';
 
 /// Ultra-Fast Seamless AMOLED Note Writing Layer with Real WYSIWYG Bold/Italic and VSCode Smooth Caret
@@ -24,7 +24,7 @@ class InfiniteRichTextLayer extends ConsumerStatefulWidget {
 
 class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   late TextEditingController _titleController;
-  late MarkdownRichTextController _bodyController;
+  late RichSpanEditingController _bodyController;
   late FocusNode _titleFocusNode;
   late FocusNode _bodyFocusNode;
   Timer? _debounceTimer;
@@ -47,8 +47,8 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       letterSpacing: 0.2,
     );
 
-    // WYSIWYG In-Place Markdown Controller (Direct Bold, Italic, Strikethrough, and Bullets)
-    _bodyController = MarkdownRichTextController(
+    // True WYSIWYG Span-Based Rich Text Controller
+    _bodyController = RichSpanEditingController(
       text: initialBody,
       baseStyle: bodyStyle,
     );
@@ -103,7 +103,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   }
 
   void _flushSync() {
-    final text = _bodyController.text;
+    final text = _bodyController.exportMarkdown();
     final lines = text.split('\n');
     final List<TextBlock> updatedBlocks = [];
 
@@ -216,7 +216,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
             const SizedBox(height: 14),
 
-            // 2. Infinite Body Text Editor with WYSIWYG In-Place Formatting & VSCode Smooth Caret
+            // 2. Infinite Body Text Editor with True WYSIWYG Span-Based Bold/Italic
             if (settings.smoothCaretEnabled)
               VSCodeSmoothTextField(
                 controller: _bodyController,
