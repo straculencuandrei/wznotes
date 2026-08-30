@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../../domain/models/note_document.dart';
+import '../../infrastructure/sync/models/sync_models.dart';
 
 class NotesLibraryState {
   final List<NoteDocument> notes;
@@ -53,6 +54,7 @@ class NotesLibraryState {
 
 class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
   Directory? _notesDir;
+  final Map<String, int> _tombstones = {}; // noteId -> deletion timestamp epoch ms
 
   NotesLibraryNotifier() : super(const NotesLibraryState(notes: [], isLoading: true)) {
     _initStorage();
@@ -65,10 +67,35 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
       if (!_notesDir!.existsSync()) {
         _notesDir!.createSync(recursive: true);
       }
+      _loadTombstones();
       await _loadNotesFromDisk();
     } catch (_) {
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  void _loadTombstones() {
+    if (_notesDir == null) return;
+    try {
+      final file = File(p.join(_notesDir!.path, 'tombstones.json'));
+      if (file.existsSync()) {
+        final content = file.readAsStringSync();
+        final Map<String, dynamic> jsonMap = json.decode(content) as Map<String, dynamic>;
+        for (final entry in jsonMap.entries) {
+          if (entry.value is int) {
+            _tombstones[entry.key] = entry.value as int;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _persistTombstones() {
+    if (_notesDir == null) return;
+    try {
+      final file = File(p.join(_notesDir!.path, 'tombstones.json'));
+      file.writeAsStringSync(json.encode(_tombstones));
+    } catch (_) {}
   }
 
   Future<void> _loadNotesFromDisk() async {
@@ -81,7 +108,7 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     final files = _notesDir!.listSync();
 
     for (final f in files) {
-      if (f is File && f.path.endsWith('.json')) {
+      if (f is File && f.path.endsWith('.json') && !p.basename(f.path).startsWith('tombstones')) {
         try {
           final content = await f.readAsString();
           final Map<String, dynamic> jsonMap = json.decode(content) as Map<String, dynamic>;
@@ -129,6 +156,10 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
 
     final docToSave = updatedDoc.recalculateStats();
 
+    // Clear tombstone if re-created
+    _tombstones.remove(docToSave.metadata.id);
+    _persistTombstones();
+
     if (existingIndex >= 0) {
       final updatedList = List<NoteDocument>.from(state.notes);
       updatedList[existingIndex] = docToSave;
@@ -153,6 +184,11 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     state = state.copyWith(
       notes: state.notes.where((n) => n.metadata.id != noteId).toList(),
     );
+
+    // Record tombstone
+    _tombstones[noteId] = DateTime.now().millisecondsSinceEpoch;
+    _persistTombstones();
+
     if (_notesDir != null) {
       try {
         final file = File(p.join(_notesDir!.path, '$noteId.json'));
@@ -163,6 +199,12 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     }
   }
 
+  void batchDeleteNotes(List<String> noteIds) {
+    for (final id in noteIds) {
+      deleteNote(id);
+    }
+  }
+
   void toggleFavorite(String noteId) {
     final noteIndex = state.notes.indexWhere((n) => n.metadata.id == noteId);
     if (noteIndex < 0) return;
@@ -170,7 +212,10 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     final note = state.notes[noteIndex];
     final isFav = note.metadata.folderId == 'favorites';
     final updated = note.copyWith(
-      metadata: note.metadata.copyWith(folderId: isFav ? 'root' : 'favorites'),
+      metadata: note.metadata.copyWith(
+        folderId: isFav ? 'root' : 'favorites',
+        modifiedAt: DateTime.now(),
+      ),
     );
 
     final updatedList = List<NoteDocument>.from(state.notes);
@@ -178,6 +223,75 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     state = state.copyWith(notes: updatedList);
 
     _persistNoteToDisk(updated);
+  }
+
+  // --- SYNC ENGINE INTEGRATION ---
+
+  SyncManifest getSyncManifest({String deviceId = '', String deviceName = 'Device'}) {
+    final List<SyncNoteHeader> headers = [];
+
+    // Active notes
+    for (final note in state.notes) {
+      headers.add(SyncNoteHeader(
+        id: note.metadata.id,
+        modifiedAt: note.metadata.modifiedAt.millisecondsSinceEpoch,
+        isDeleted: false,
+        title: note.metadata.title,
+      ));
+    }
+
+    // Tombstones
+    for (final entry in _tombstones.entries) {
+      headers.add(SyncNoteHeader(
+        id: entry.key,
+        modifiedAt: entry.value,
+        isDeleted: true,
+      ));
+    }
+
+    return SyncManifest(
+      deviceId: deviceId,
+      deviceName: deviceName,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      notes: headers,
+    );
+  }
+
+  List<NoteDocument> getNotesByIds(List<String> ids) {
+    final idSet = ids.toSet();
+    return state.notes.where((n) => idSet.contains(n.metadata.id)).toList();
+  }
+
+  void importSyncedNotes(List<NoteDocument> incoming) {
+    if (incoming.isEmpty) return;
+
+    final Map<String, NoteDocument> currentNotesMap = {
+      for (final n in state.notes) n.metadata.id: n,
+    };
+
+    for (final doc in incoming) {
+      final local = currentNotesMap[doc.metadata.id];
+      if (local == null) {
+        // Brand new note from peer
+        currentNotesMap[doc.metadata.id] = doc;
+        _tombstones.remove(doc.metadata.id);
+        _persistNoteToDisk(doc);
+      } else {
+        // Existing note: only update if incoming is newer or equal
+        if (doc.metadata.modifiedAt.isAfter(local.metadata.modifiedAt) ||
+            doc.metadata.modifiedAt.isAtSameMomentAs(local.metadata.modifiedAt)) {
+          currentNotesMap[doc.metadata.id] = doc;
+          _persistNoteToDisk(doc);
+        }
+      }
+    }
+
+    _persistTombstones();
+
+    final updatedList = currentNotesMap.values.toList();
+    updatedList.sort((a, b) => b.metadata.modifiedAt.compareTo(a.metadata.modifiedAt));
+
+    state = state.copyWith(notes: updatedList);
   }
 }
 

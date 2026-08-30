@@ -1,21 +1,21 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:opennotes/core/constants/app_colors.dart';
-import 'package:opennotes/core/math/bezier_spline.dart';
-import 'package:opennotes/core/math/pressure_filter.dart';
-import 'package:opennotes/core/math/shape_recognizer.dart';
-import 'package:opennotes/core/math/polygon_utils.dart';
-import 'package:opennotes/domain/models/stroke_point.dart';
-import 'package:opennotes/domain/models/vector_stroke.dart';
-import 'package:opennotes/domain/models/pen_tool.dart';
-import 'package:opennotes/domain/models/text_block.dart';
-import 'package:opennotes/domain/models/note_document.dart';
-import 'package:opennotes/domain/serialization/stroke_binary_codec.dart';
-import 'package:opennotes/domain/serialization/note_json_codec.dart';
-import 'package:opennotes/domain/serialization/note_archive_manager.dart';
-import 'package:opennotes/infrastructure/export/markdown_exporter.dart';
-import 'package:opennotes/infrastructure/export/svg_exporter.dart';
+import 'package:wznotes/core/constants/app_colors.dart';
+import 'package:wznotes/core/math/bezier_spline.dart';
+import 'package:wznotes/core/math/pressure_filter.dart';
+import 'package:wznotes/core/math/shape_recognizer.dart';
+import 'package:wznotes/core/math/polygon_utils.dart';
+import 'package:wznotes/domain/models/stroke_point.dart';
+import 'package:wznotes/domain/models/vector_stroke.dart';
+import 'package:wznotes/domain/models/pen_tool.dart';
+import 'package:wznotes/domain/models/text_block.dart';
+import 'package:wznotes/domain/models/note_document.dart';
+import 'package:wznotes/domain/serialization/stroke_binary_codec.dart';
+import 'package:wznotes/domain/serialization/note_json_codec.dart';
+import 'package:wznotes/domain/serialization/note_archive_manager.dart';
+import 'package:wznotes/infrastructure/export/markdown_exporter.dart';
+import 'package:wznotes/infrastructure/export/svg_exporter.dart';
 
 void main() {
   group('1. Binary & JSON Serialization Tests', () {

@@ -1,0 +1,10 @@
+{
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.2/wznotes-android-v0.7.2.apk",
+    "release_notes":  "Added dedicated 4-digit PIN setup and management, JSON settings persistence, and PIN prompt on note locking.",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.2/wznotes-windows-v0.7.2.zip",
+    "title":  "wznotes v0.7.2 Update",
+    "published_at":  "2026-08-31T02:21:41Z",
+    "is_mandatory":  false,
+    "build_number":  9,
+    "version":  "0.7.2"
+}

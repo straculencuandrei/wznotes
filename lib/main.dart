@@ -8,20 +8,20 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     const ProviderScope(
-      child: OpenNotesApp(),
+      child: WzNotesApp(),
     ),
   );
 }
 
-class OpenNotesApp extends ConsumerWidget {
-  const OpenNotesApp({super.key});
+class WzNotesApp extends ConsumerWidget {
+  const WzNotesApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
-      title: 'OpenNotes',
+      title: 'wznotes',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

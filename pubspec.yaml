@@ -1,7 +1,7 @@
-name: opennotes
-description: "OpenNotes: Open-source high-performance cross-platform vector inking & infinite note-taking engine."
+name: wznotes
+description: "wznotes: High-performance cross-platform vector inking & keyboard-first note-taking engine."
 publish_to: 'none'
-version: 0.7.0+7
+version: 0.7.2+9
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -17,10 +17,15 @@ dependencies:
   path: ^1.9.0
   uuid: ^4.4.0
   pdf: ^3.11.1
-  audioplayers: ^6.0.0
   intl: ^0.19.0
   google_fonts: ^6.2.1
   local_auth: ^2.3.0
+  sqlite3_flutter_libs: ^0.5.24
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.2.3
+  http: ^1.2.1
+  url_launcher: ^6.3.0
+  open_filex: ^4.5.0
 
 dev_dependencies:
   flutter_test:
@@ -29,3 +34,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+
+
