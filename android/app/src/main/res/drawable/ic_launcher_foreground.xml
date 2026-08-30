@@ -4,7 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Centered Minimalist White Pen -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M34,74 L40,74 L68,46 L62,40 L34,68 L34,74 Z M70,38 L65,33 L62,36 L67,41 L70,38 Z" />
+        android:pathData="M37.5,67.5 L40.5,70.5 L67.2,43.8 C68.8,42.2 68.8,39.6 67.2,38.0 L66.0,36.8 C64.4,35.2 61.8,35.2 60.2,36.8 L33.5,63.5 L36.5,66.5 Z M31.5,73.5 L36.0,72.0 L33.0,69.0 L31.5,73.5 Z" />
 </vector>

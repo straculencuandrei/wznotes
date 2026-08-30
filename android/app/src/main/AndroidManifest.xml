@@ -16,7 +16,7 @@
     <application
         android:label="OpenNotes"
         android:name="${applicationName}"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
         android:largeHeap="true">
         
