@@ -38,7 +38,7 @@ class FormattingSpan {
 }
 
 /// Native WYSIWYG Span-Based Rich Text Controller
-/// Maintains plain text with zero markdown asterisks/delimiters, applying real visual bold/italic/strike
+/// Maintains clean plain text and renders rich styling in real-time
 class RichSpanEditingController extends TextEditingController {
   TextStyle baseStyle;
   final List<FormattingSpan> _spans = [];
@@ -59,7 +59,6 @@ class RichSpanEditingController extends TextEditingController {
 
   void _parseInitialMarkdownSpans(String raw) {
     if (raw.isEmpty) return;
-    // Strip and convert legacy markdown syntax if present into pure plain text + spans
     final buffer = StringBuffer();
     int i = 0;
     while (i < raw.length) {
@@ -113,23 +112,23 @@ class RichSpanEditingController extends TextEditingController {
 
   @override
   set value(TextEditingValue newValue) {
-    _handleTextChange(_lastText, newValue.text);
+    _handleTextChange(_lastText, newValue.text, newValue.selection);
     _lastText = newValue.text;
     super.value = newValue;
   }
 
-  void _handleTextChange(String oldText, String newText) {
+  void _handleTextChange(String oldText, String newText, TextSelection newSelection) {
     if (oldText == newText) return;
 
     final diff = newText.length - oldText.length;
-    final int changePos = selection.baseOffset >= 0 ? selection.baseOffset : newText.length;
+    final int changePos = newSelection.baseOffset >= 0 ? newSelection.baseOffset : newText.length;
 
     if (diff > 0) {
-      // Characters inserted
+      // Characters inserted at [insertStart, insertEnd)
       final int insertStart = math.max(0, changePos - diff);
       final int insertEnd = changePos;
 
-      // Shift existing spans
+      // Shift spans that appear after the insert point
       for (final span in _spans) {
         if (span.start >= insertStart) {
           span.start += diff;
@@ -139,7 +138,7 @@ class RichSpanEditingController extends TextEditingController {
         }
       }
 
-      // If active styling is enabled, create/extend span for newly typed text
+      // If active styling is active, format the newly typed character(s)
       if (activeBold || activeItalic || activeStrike) {
         _spans.add(FormattingSpan(
           start: insertStart,
@@ -206,7 +205,6 @@ class RichSpanEditingController extends TextEditingController {
   }
 
   void _toggleFormatForRange(int start, int end, {bool? bold, bool? italic, bool? strike}) {
-    // Check if range is already formatted
     bool isAlreadyFormatted = false;
     for (final s in _spans) {
       if (s.start <= start && s.end >= end) {
@@ -217,7 +215,6 @@ class RichSpanEditingController extends TextEditingController {
     }
 
     if (isAlreadyFormatted) {
-      // Remove format
       for (final s in _spans) {
         if (s.start <= start && s.end >= end) {
           if (bold == true) s.isBold = false;
@@ -226,7 +223,6 @@ class RichSpanEditingController extends TextEditingController {
         }
       }
     } else {
-      // Apply format
       _spans.add(FormattingSpan(
         start: start,
         end: end,
@@ -237,14 +233,13 @@ class RichSpanEditingController extends TextEditingController {
     }
   }
 
-  /// Exports current text with markdown tags for persistent saving
+  /// Exports current text with markdown tags for saving
   String exportMarkdown() {
     final raw = text;
     if (raw.isEmpty || _spans.isEmpty) return raw;
 
     final buffer = StringBuffer();
     for (int i = 0; i < raw.length; i++) {
-      // Check start of spans
       for (final s in _spans) {
         if (s.start == i) {
           if (s.isBold) buffer.write('**');
@@ -255,7 +250,6 @@ class RichSpanEditingController extends TextEditingController {
 
       buffer.write(raw[i]);
 
-      // Check end of spans
       for (final s in _spans) {
         if (s.end == i + 1) {
           if (s.isStrike) buffer.write('~~');
@@ -284,12 +278,10 @@ class RichSpanEditingController extends TextEditingController {
       return TextSpan(style: effectiveStyle, text: currentText);
     }
 
-    // Build character-level or segment-level styled TextSpans
     final List<TextSpan> children = [];
     int cursor = 0;
 
     while (cursor < currentText.length) {
-      // Find all active formatting styles for character at index 'cursor'
       bool isB = false;
       bool isI = false;
       bool isS = false;
@@ -302,7 +294,6 @@ class RichSpanEditingController extends TextEditingController {
         }
       }
 
-      // Find run of characters with identical styling
       int runEnd = cursor + 1;
       while (runEnd < currentText.length) {
         bool runB = false;
