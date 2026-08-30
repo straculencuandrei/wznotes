@@ -23,9 +23,15 @@ class FormattingSpan {
   }
 }
 
+class ParsedMarkdownResult {
+  final String cleanText;
+  final List<FormattingSpan> spans;
+
+  const ParsedMarkdownResult(this.cleanText, this.spans);
+}
+
 /// High-Performance Deterministic Span-Based Rich Text Controller
-/// Uses prefix/suffix diffing and automatic span normalization to handle thousands of characters
-/// and massive copy-pastes with zero cursor desync or styling corruption.
+/// Converts raw markdown into plain text + style spans on load, and exports back to markdown on save
 class RichSpanEditingController extends TextEditingController {
   TextStyle baseStyle;
   final List<FormattingSpan> _spans = [];
@@ -37,17 +43,22 @@ class RichSpanEditingController extends TextEditingController {
   String _lastText = '';
 
   RichSpanEditingController({
-    super.text,
+    String? rawMarkdown,
     required this.baseStyle,
-  }) {
-    _lastText = text;
-    _parseInitialMarkdown(text);
+  }) : super(text: _parseRawMarkdown(rawMarkdown ?? '').cleanText) {
+    final parsed = _parseRawMarkdown(rawMarkdown ?? '');
+    _lastText = parsed.cleanText;
+    _spans.addAll(parsed.spans);
+    _normalizeSpans(_lastText.length);
   }
 
-  void _parseInitialMarkdown(String raw) {
-    if (raw.isEmpty) return;
+  static ParsedMarkdownResult _parseRawMarkdown(String raw) {
+    if (raw.isEmpty) return const ParsedMarkdownResult('', []);
+
     final buffer = StringBuffer();
+    final List<FormattingSpan> spans = [];
     int i = 0;
+
     while (i < raw.length) {
       if (raw.startsWith('**', i)) {
         final endIdx = raw.indexOf('**', i + 2);
@@ -57,7 +68,7 @@ class RichSpanEditingController extends TextEditingController {
           buffer.write(content);
           final endPos = buffer.length;
           if (endPos > startPos) {
-            _spans.add(FormattingSpan(start: startPos, end: endPos, isBold: true));
+            spans.add(FormattingSpan(start: startPos, end: endPos, isBold: true));
           }
           i = endIdx + 2;
           continue;
@@ -70,7 +81,7 @@ class RichSpanEditingController extends TextEditingController {
           buffer.write(content);
           final endPos = buffer.length;
           if (endPos > startPos) {
-            _spans.add(FormattingSpan(start: startPos, end: endPos, isStrike: true));
+            spans.add(FormattingSpan(start: startPos, end: endPos, isStrike: true));
           }
           i = endIdx + 2;
           continue;
@@ -83,7 +94,7 @@ class RichSpanEditingController extends TextEditingController {
           buffer.write(content);
           final endPos = buffer.length;
           if (endPos > startPos) {
-            _spans.add(FormattingSpan(start: startPos, end: endPos, isItalic: true));
+            spans.add(FormattingSpan(start: startPos, end: endPos, isItalic: true));
           }
           i = endIdx + 1;
           continue;
@@ -93,15 +104,7 @@ class RichSpanEditingController extends TextEditingController {
       i++;
     }
 
-    final clean = buffer.toString();
-    if (clean != raw) {
-      value = TextEditingValue(
-        text: clean,
-        selection: TextSelection.collapsed(offset: clean.length),
-      );
-      _lastText = clean;
-    }
-    _normalizeSpans(clean.length);
+    return ParsedMarkdownResult(buffer.toString(), spans);
   }
 
   @override
@@ -111,20 +114,17 @@ class RichSpanEditingController extends TextEditingController {
     super.value = newValue;
   }
 
-  /// Exact prefix/suffix diffing that never fails regardless of copy-paste size or IME composition
   void _handleDeterministicDiff(String oldText, String newText) {
     if (oldText == newText) return;
 
     final oldLen = oldText.length;
     final newLen = newText.length;
 
-    // 1. Find common prefix
     int prefix = 0;
     while (prefix < oldLen && prefix < newLen && oldText[prefix] == newText[prefix]) {
       prefix++;
     }
 
-    // 2. Find common suffix
     int suffix = 0;
     while (suffix < (oldLen - prefix) && suffix < (newLen - prefix) &&
            oldText[oldLen - 1 - suffix] == newText[newLen - 1 - suffix]) {
@@ -137,20 +137,16 @@ class RichSpanEditingController extends TextEditingController {
     final int deleteEnd = prefix + deletedCount;
     final int insertEnd = prefix + insertedCount;
 
-    // 3. Update existing spans across the diff
     final List<FormattingSpan> updated = [];
     for (final span in _spans) {
       if (span.end <= deleteStart) {
-        // Completely before edit
         updated.add(span);
       } else if (span.start >= deleteEnd) {
-        // Completely after edit -> shift by net delta
         final delta = insertedCount - deletedCount;
         span.start += delta;
         span.end += delta;
         updated.add(span);
       } else {
-        // Overlaps deleted region -> trim span boundaries
         final newSpanStart = math.min(span.start, deleteStart);
         final newSpanEnd = span.end > deleteEnd ? span.end - deletedCount + insertedCount : deleteStart;
         if (newSpanEnd > newSpanStart) {
@@ -164,7 +160,6 @@ class RichSpanEditingController extends TextEditingController {
     _spans.clear();
     _spans.addAll(updated);
 
-    // 4. If active typing formatting is enabled and a single character or typed word was inserted
     if ((activeBold || activeItalic || activeStrike) && insertedCount > 0 && insertedCount <= 3) {
       _spans.add(FormattingSpan(
         start: prefix,
@@ -181,7 +176,6 @@ class RichSpanEditingController extends TextEditingController {
   void _normalizeSpans(int textLength) {
     if (_spans.isEmpty) return;
 
-    // 1. Clamp bounds and remove empties
     _spans.removeWhere((s) {
       s.start = s.start.clamp(0, textLength);
       s.end = s.end.clamp(0, textLength);
@@ -190,10 +184,8 @@ class RichSpanEditingController extends TextEditingController {
 
     if (_spans.length <= 1) return;
 
-    // 2. Sort by start index
     _spans.sort((a, b) => a.start.compareTo(b.start));
 
-    // 3. Merge adjacent or overlapping spans with identical styles
     final List<FormattingSpan> merged = [];
     FormattingSpan current = _spans.first;
 
@@ -248,7 +240,6 @@ class RichSpanEditingController extends TextEditingController {
   void _toggleFormatForRange(int start, int end, {bool? bold, bool? italic, bool? strike}) {
     if (start >= end) return;
 
-    // Check if entire selected range already has the style
     bool isAlready = false;
     for (final s in _spans) {
       if (s.start <= start && s.end >= end) {
@@ -259,7 +250,6 @@ class RichSpanEditingController extends TextEditingController {
     }
 
     if (isAlready) {
-      // Remove style from range
       for (final s in _spans) {
         if (s.start <= start && s.end >= end) {
           if (bold == true) s.isBold = false;
@@ -280,7 +270,7 @@ class RichSpanEditingController extends TextEditingController {
     _normalizeSpans(text.length);
   }
 
-  /// Exports current document text with markdown formatting for persistence
+  /// Exports plain text with markdown formatting tags for persistent saving
   String exportMarkdown() {
     final raw = text;
     if (raw.isEmpty || _spans.isEmpty) return raw;

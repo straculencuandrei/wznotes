@@ -49,7 +49,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
     // True WYSIWYG Span-Based Rich Text Controller
     _bodyController = RichSpanEditingController(
-      text: initialBody,
+      rawMarkdown: initialBody,
       baseStyle: bodyStyle,
     );
     _bodyFocusNode = FocusNode();
