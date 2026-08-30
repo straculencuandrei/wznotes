@@ -4,9 +4,8 @@ import '../../core/constants/app_colors.dart';
 import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
-import 'smooth_caret_field.dart';
 
-/// High-Performance Seamless AMOLED Note Writing Layer with VSCode Smooth Caret
+/// High-Performance Seamless AMOLED Note Writing Layer
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -167,8 +166,10 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
                 letterSpacing: -0.6,
               ),
               cursorColor: AppColors.samsungOrange,
-              cursorWidth: 2.8,
+              cursorWidth: 2.5,
+              cursorHeight: 30.0,
               cursorRadius: const Radius.circular(2.0),
+              cursorOpacityAnimates: settings.smoothCaretEnabled,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -184,10 +185,18 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
             ),
             const SizedBox(height: 12),
 
-            // 2. VSCode Smooth Sliding Caret Body Text Editor
-            SmoothCaretField(
+            // 2. Seamless Infinite Body Text Editor (Zero crash, exact native height alignment)
+            TextField(
               controller: _bodyController,
               focusNode: _bodyFocusNode,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              cursorColor: AppColors.samsungOrange,
+              cursorWidth: 2.5,
+              cursorHeight: settings.fontSize * 1.25,
+              cursorRadius: const Radius.circular(2.0),
+              cursorOpacityAnimates: settings.smoothCaretEnabled,
               style: TextStyle(
                 fontSize: settings.fontSize,
                 height: 1.6,
@@ -195,10 +204,14 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
                 fontFamily: 'Inter',
                 letterSpacing: 0.2,
               ),
-              hintText: 'Write your thoughts, ideas, or journal...',
-              hintStyle: TextStyle(
-                color: const Color(0xFF383838),
-                fontSize: settings.fontSize,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Write your thoughts, ideas, or journal...',
+                hintStyle: TextStyle(
+                  color: const Color(0xFF383838),
+                  fontSize: settings.fontSize,
+                ),
+                contentPadding: EdgeInsets.zero,
               ),
               onChanged: _onBodyChanged,
             ),
