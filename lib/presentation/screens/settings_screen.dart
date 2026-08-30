@@ -220,15 +220,28 @@ class SettingsScreen extends ConsumerWidget {
                           if (updateState.hasUpdate) {
                             UpdateDialog.show(context, updateInfo: updateState.updateInfo!);
                           } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Checking for updates...'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
                             await updateNotifier.check(silent: false);
                             final latest = ref.read(updateProvider);
                             if (context.mounted) {
                               if (latest.hasUpdate) {
                                 UpdateDialog.show(context, updateInfo: latest.updateInfo!);
+                              } else if (latest.errorMessage != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Update check error: ${latest.errorMessage}'),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('wznotes is up to date!'),
+                                  SnackBar(
+                                    content: Text('wznotes is up to date (v${UpdateService.currentVersion}+${UpdateService.currentBuildNumber})!'),
                                     backgroundColor: AppColors.accentEmerald,
                                   ),
                                 );

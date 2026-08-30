@@ -1,6 +1,7 @@
 #ifndef RUNNER_UTILS_H_
 #define RUNNER_UTILS_H_
 
+// Utility helper functions for the Windows desktop runner application.
 #include <string>
 #include <vector>
 

@@ -78,10 +78,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       final totalBytes = response.contentLength ?? 0;
       int receivedBytes = 0;
 
-      final tempDir = Platform.isAndroid
-          ? await getExternalStorageDirectory() ?? await getTemporaryDirectory()
-          : await getTemporaryDirectory();
-
+      final tempDir = await getTemporaryDirectory();
       final extension = Platform.isAndroid ? '.apk' : (url.endsWith('.zip') ? '.zip' : '.exe');
       final fileName = 'wznotes-v${widget.updateInfo.version}$extension';
       final file = File(p.join(tempDir.path, fileName));
@@ -134,7 +131,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
   Future<void> _installDownloadedFile(String filePath) async {
     try {
-      final result = await OpenFilex.open(filePath);
+      final result = await OpenFilex.open(
+        filePath,
+        type: Platform.isAndroid ? 'application/vnd.android.package-archive' : null,
+      );
       if (result.type != ResultType.done && mounted) {
         // Fallback: try open in browser
         _launchBrowserFallback();

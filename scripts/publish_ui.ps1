@@ -154,7 +154,10 @@ $nextBuild = $currentBuild + 1
             </Grid.ColumnDefinitions>
 
             <Button Grid.Column="0" Name="btnOpenDist" Content="Open 'dist' Folder" Background="#262626" Foreground="#FFFFFF"/>
-            <ProgressBar Grid.Column="1" Name="prgBar" Height="10" Margin="16,0" IsIndeterminate="False" Visibility="Hidden" Foreground="#FF8C00"/>
+            <Grid Grid.Column="1" Margin="16,0">
+                <ProgressBar Name="prgBar" Height="14" Minimum="0" Maximum="100" Value="0" IsIndeterminate="False" Visibility="Hidden" Foreground="#FF8C00" Background="#1E1E1E" BorderThickness="0"/>
+                <TextBlock Name="lblProgressPercent" Text="0%" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" Visibility="Hidden"/>
+            </Grid>
             <Button Grid.Column="2" Name="btnClearLog" Content="Clear Log" Background="#1E1E1E" Foreground="#888888" Margin="0,0,10,0"/>
             <Button Grid.Column="3" Name="btnStart" Content="Run Pipeline &amp; Publish Update" Background="#FF8C00" Foreground="#000000" Width="260"/>
         </Grid>
@@ -181,15 +184,41 @@ $btnStart = $window.FindName("btnStart")
 $btnOpenDist = $window.FindName("btnOpenDist")
 $btnClearLog = $window.FindName("btnClearLog")
 $prgBar = $window.FindName("prgBar")
+$lblProgressPercent = $window.FindName("lblProgressPercent")
 
 function Write-DashboardLog([string]$msg, [string]$status = "") {
     $time = (Get-Date).ToString("HH:mm:ss")
     $line = "[$time] $msg`r`n"
-    $window.Dispatcher.Invoke([Action]{
-        $txtLog.AppendText($line)
-        $txtLog.ScrollToEnd()
-        if ($status) { $lblStatus.Text = $status }
-    })
+    $txtLog.AppendText($line)
+    $txtLog.ScrollToEnd()
+    if ($status) { $lblStatus.Text = $status }
+    [System.Windows.Forms.Application]::DoEvents()
+}
+
+function Set-PipelineProgress([int]$percent, [string]$status = "") {
+    $prgBar.Value = $percent
+    $lblProgressPercent.Text = "$percent%"
+    if ($status) { $lblStatus.Text = $status }
+    [System.Windows.Forms.Application]::DoEvents()
+}
+
+function Invoke-PipelineCommand([string]$description, [scriptblock]$commandBlock) {
+    Write-DashboardLog "[EXEC] $description..."
+    [System.Windows.Forms.Application]::DoEvents()
+
+    $output = & $commandBlock 2>&1
+    $exitCode = $LASTEXITCODE
+
+    foreach ($line in $output) {
+        if ($line) {
+            Write-DashboardLog ($line.ToString())
+        }
+    }
+
+    return @{
+        ExitCode = $exitCode
+        Output = $output
+    }
 }
 
 $btnClearLog.Add_Click({
@@ -255,12 +284,10 @@ $btnStart.Add_Click({
 
     $btnStart.IsEnabled = $false
     $prgBar.Visibility = [System.Windows.Visibility]::Visible
-    $prgBar.IsIndeterminate = $true
+    $lblProgressPercent.Visibility = [System.Windows.Visibility]::Visible
+    Set-PipelineProgress 5 "Initializing..."
 
-    $worker = New-Object System.ComponentModel.BackgroundWorker
-    $worker.DoWork += {
-        param($sender, $e)
-
+    try {
         Set-Location $ProjectRoot
         Write-DashboardLog "Starting update pipeline for wznotes v$ver+$build..." "Running pipeline..."
         if ($isNewer) {
@@ -272,32 +299,20 @@ $btnStart.Add_Click({
         # STEP 1: Run Automated Tests
         if ($doTests) {
             Write-DashboardLog "========================================"
-            Write-DashboardLog "[TEST] Running Automated Test Suite..." "Running tests..."
-            $pinfo = New-Object System.Diagnostics.ProcessStartInfo
-            $pinfo.FileName = "flutter.bat"
-            $pinfo.Arguments = "test"
-            $pinfo.RedirectStandardOutput = $true
-            $pinfo.RedirectStandardError = $true
-            $pinfo.UseShellExecute = $false
-            $pinfo.CreateNoWindow = $true
+            Set-PipelineProgress 10 "[1/6] Running Automated Test Suite..."
+            $res = Invoke-PipelineCommand "Automated Test Suite" { cmd.exe /c flutter test }
 
-            $proc = [System.Diagnostics.Process]::Start($pinfo)
-            $stdout = $proc.StandardOutput.ReadToEnd()
-            $stderr = $proc.StandardError.ReadToEnd()
-            $proc.WaitForExit()
-
-            if ($proc.ExitCode -ne 0) {
+            if ($res.ExitCode -ne 0) {
                 Write-DashboardLog "[FAIL] Test Suite Encountered Errors! Aborting build." "Tests failed!"
-                if ($stdout) { Write-DashboardLog $stdout }
-                if ($stderr) { Write-DashboardLog $stderr }
                 return
             }
-            Write-DashboardLog "[PASS] All 15 Unit, Inking, Math & Sync Tests Passed!" "Tests passed!"
+            Set-PipelineProgress 25 "[PASS] All Unit, Inking, Math & Sync Tests Passed!"
+            Write-DashboardLog "[PASS] All Unit, Inking, Math & Sync Tests Passed!"
         }
 
         # STEP 2: Update Version in files
         Write-DashboardLog "========================================"
-        Write-DashboardLog "[UPDATE] Updating pubspec.yaml and UpdateService to v$ver+$build..." "Updating versions..."
+        Set-PipelineProgress 30 "[2/6] Updating version numbers in project..."
         $pubspecRaw = Get-Content "pubspec.yaml" -Raw
         $pubspecUpdated = $pubspecRaw -replace "version:\s*[0-9\.\+]+", "version: $ver+$build"
         Set-Content "pubspec.yaml" -Value $pubspecUpdated
@@ -314,32 +329,23 @@ $btnStart.Add_Click({
         if (-not (Test-Path $distDir)) {
             New-Item -ItemType Directory -Path $distDir | Out-Null
         }
+        Set-PipelineProgress 40 "[PASS] Versions updated to v$ver+$build"
 
         # STEP 3: Build Windows Desktop
         if ($doWin) {
             Write-DashboardLog "========================================"
-            Write-DashboardLog "[BUILD] Compiling Windows Desktop Release..." "Building Windows..."
-            $winInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $winInfo.FileName = "flutter.bat"
-            $winInfo.Arguments = "build windows"
-            $winInfo.RedirectStandardOutput = $true
-            $winInfo.RedirectStandardError = $true
-            $winInfo.UseShellExecute = $false
-            $winInfo.CreateNoWindow = $true
+            Set-PipelineProgress 45 "[3/6] Compiling Windows Desktop Release (1-2 min)..."
+            $res = Invoke-PipelineCommand "Windows Desktop Build" { cmd.exe /c flutter build windows }
 
-            $procWin = [System.Diagnostics.Process]::Start($winInfo)
-            $outWin = $procWin.StandardOutput.ReadToEnd()
-            $procWin.WaitForExit()
-
-            if ($procWin.ExitCode -ne 0) {
-                Write-DashboardLog "[FAIL] Windows Build Failed!" "Windows build failed"
-                if ($outWin) { Write-DashboardLog $outWin }
+            if ($res.ExitCode -ne 0) {
+                Write-DashboardLog "[FAIL] Windows Desktop Build Failed!" "Windows build failed"
             } else {
                 $winReleaseDir = "build\windows\x64\runner\Release"
                 $zipPath = Join-Path $distDir "wznotes-windows-v$ver.zip"
                 Write-DashboardLog "[PACKAGE] Compressing release into $zipPath..."
                 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
                 Compress-Archive -Path "$winReleaseDir\*" -DestinationPath $zipPath -Force
+                Set-PipelineProgress 70 "[PASS] Windows Package Ready"
                 Write-DashboardLog "[PASS] Windows Package Ready: wznotes-windows-v$ver.zip" "Windows package ready"
             }
         }
@@ -347,23 +353,14 @@ $btnStart.Add_Click({
         # STEP 4: Build Android APK
         if ($doAndroid) {
             Write-DashboardLog "========================================"
-            Write-DashboardLog "[BUILD] Compiling Android Release APK..." "Building Android APK..."
-            $apkInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $apkInfo.FileName = "flutter.bat"
-            $apkInfo.Arguments = "build apk --release"
-            $apkInfo.RedirectStandardOutput = $true
-            $apkInfo.RedirectStandardError = $true
-            $apkInfo.UseShellExecute = $false
-            $apkInfo.CreateNoWindow = $true
-
-            $procApk = [System.Diagnostics.Process]::Start($apkInfo)
-            $outApk = $procApk.StandardOutput.ReadToEnd()
-            $procApk.WaitForExit()
+            Set-PipelineProgress 72 "[4/6] Compiling Android APK Release..."
+            $res = Invoke-PipelineCommand "Android Release APK Build" { cmd.exe /c flutter build apk --release }
 
             $apkSource = "build\app\outputs\flutter-apk\app-release.apk"
             if (Test-Path $apkSource) {
                 $apkDest = Join-Path $distDir "wznotes-android-v$ver.apk"
                 Copy-Item -Path $apkSource -Destination $apkDest -Force
+                Set-PipelineProgress 90 "[PASS] Android APK Ready"
                 Write-DashboardLog "[PASS] Android APK Ready: wznotes-android-v$ver.apk" "Android APK ready"
             } else {
                 Write-DashboardLog "[WARN] Android APK build completed with warnings or was skipped."
@@ -373,7 +370,7 @@ $btnStart.Add_Click({
         # STEP 5: Generate Manifest
         if ($doManifest) {
             Write-DashboardLog "========================================"
-            Write-DashboardLog "[MANIFEST] Generating version_manifest.json..." "Generating manifest..."
+            Set-PipelineProgress 92 "[5/6] Generating version_manifest.json..."
             $manifest = @{
                 version = $ver
                 build_number = [int]$build
@@ -388,13 +385,14 @@ $btnStart.Add_Click({
             $json = $manifest | ConvertTo-Json -Depth 4
             Set-Content (Join-Path $distDir "version_manifest.json") -Value $json
             Set-Content (Join-Path $ProjectRoot "version_manifest.json") -Value $json
+            Set-PipelineProgress 95 "[PASS] Manifest Generated"
             Write-DashboardLog "[PASS] version_manifest.json generated successfully."
         }
 
         # STEP 6: Git Tag & Push
         if ($doGitTag) {
             Write-DashboardLog "========================================"
-            Write-DashboardLog "[GIT] Creating commit and tag v$ver..." "Tagging Git..."
+            Set-PipelineProgress 96 "[6/6] Tagging and Pushing to Git..."
             git add .
             git commit -m "Release v${ver}+${build} - $notes"
             git tag -a "v$ver" -m "wznotes Release v$ver"
@@ -408,18 +406,17 @@ $btnStart.Add_Click({
             }
         }
 
+        Set-PipelineProgress 100 "All steps completed successfully!"
         Write-DashboardLog "========================================"
         Write-DashboardLog "[COMPLETE] All selected pipeline steps finished successfully!" "Build & Update Ready!"
+    } catch {
+        Write-DashboardLog "[ERROR] $($_.Exception.Message)" "Error encountered"
+        Write-DashboardLog "[ERROR] $($_.ScriptStackTrace)"
+    } finally {
+        $btnStart.IsEnabled = $true
+        [System.Windows.Forms.Application]::DoEvents()
     }
-
-    $worker.RunWorkerCompleted += {
-        $window.Dispatcher.Invoke([Action]{
-            $btnStart.IsEnabled = $true
-            $prgBar.Visibility = [System.Windows.Visibility]::Hidden
-        })
-    }
-
-    $worker.RunWorkerAsync()
 })
 
 $window.ShowDialog() | Out-Null
+

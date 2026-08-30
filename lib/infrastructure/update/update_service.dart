@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'models/app_update_info.dart';
 
 class UpdateService {
-  static const String currentVersion = '0.7.2';
-  static const int currentBuildNumber = 9;
+  static const String currentVersion = '0.7.3';
+  static const int currentBuildNumber = 10;
 
   // Default manifest URL (can be customized by user or configured via repository)
   static const String defaultManifestUrl =
@@ -38,7 +39,13 @@ class UpdateService {
   }) async {
     try {
       final uri = Uri.parse(manifestUrl);
-      final response = await http.get(uri).timeout(const Duration(seconds: 6));
+      final response = await http.get(
+        uri,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonMap = json.decode(response.body) as Map<String, dynamic>;
@@ -50,11 +57,18 @@ class UpdateService {
         )) {
           return updateInfo;
         }
+        return null;
+      } else {
+        debugPrint('[UpdateService] Failed to load manifest: HTTP ${response.statusCode}');
+        throw Exception('Server returned HTTP ${response.statusCode}');
       }
-    } catch (_) {}
-    return null;
+    } catch (e) {
+      debugPrint('[UpdateService] Update check error: $e');
+      rethrow;
+    }
   }
 }
+
 
 
 
