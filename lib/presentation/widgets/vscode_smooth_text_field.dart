@@ -74,10 +74,11 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
     final text = widget.controller.text;
     final selection = widget.controller.selection;
     final int cursorIndex = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
+    final fontSize = widget.style.fontSize ?? 17.0;
 
-    // Use zero-width space '\u200B' when text is empty so TextPainter always has full font ascent on line 1!
+    // Use non-empty character 'A' so TextPainter always has full font ascent on line 1 even when empty
     final textPainter = TextPainter(
-      text: TextSpan(text: text.isEmpty ? '\u200B' : text, style: widget.style),
+      text: TextSpan(text: text.isEmpty ? 'A' : text, style: widget.style),
       textDirection: TextDirection.ltr,
       maxLines: null,
     );
@@ -87,7 +88,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
     final TextPosition textPosition = TextPosition(offset: text.isEmpty ? 0 : cursorIndex);
     final Offset pos = textPainter.getOffsetForCaret(
       textPosition,
-      Rect.fromLTWH(0, 0, 2.4, widget.style.fontSize ?? 17.0),
+      Rect.fromLTWH(0, 0, 2.4, fontSize),
     );
 
     return pos;
@@ -96,9 +97,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
   @override
   Widget build(BuildContext context) {
     final fontSize = widget.style.fontSize ?? 17.0;
-    final fontHeight = widget.style.height ?? 1.6;
-    final caretHeight = fontSize * 1.16;
-    final verticalOffset = (fontSize * fontHeight - caretHeight) / 2.0;
+    final caretHeight = fontSize * 1.12;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -135,7 +134,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
               },
             ),
 
-            // 2. VSCode Smooth Gliding Animated Caret
+            // 2. VSCode Smooth Gliding Animated Caret (Exact Native Glyph Height & Centering)
             if (showSmoothCaret)
               TweenAnimationBuilder<Offset>(
                 tween: Tween<Offset>(begin: _currentCaretOffset, end: targetOffset),
@@ -147,7 +146,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
                 builder: (context, animatedOffset, _) {
                   return Positioned(
                     left: animatedOffset.dx,
-                    top: animatedOffset.dy + verticalOffset,
+                    top: animatedOffset.dy,
                     child: IgnorePointer(
                       child: AnimatedBuilder(
                         animation: _blinkAnimation,
