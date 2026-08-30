@@ -7,9 +7,8 @@ import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/editor_formatting_bridge.dart';
 import '../controllers/rich_span_editing_controller.dart';
-import 'vscode_smooth_text_field.dart';
 
-/// Ultra-Fast Seamless AMOLED Note Writing Layer with Pure Native Span Formatting & VSCode Smooth Caret
+/// Ultra-Fast Seamless AMOLED Note Writing Layer with Pure Native Span Formatting & Native Smooth Caret
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -211,84 +210,56 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Note Title with VSCode Smooth Caret
-            if (settings.smoothCaretEnabled)
-              VSCodeSmoothTextField(
-                controller: _titleController,
-                focusNode: _titleFocusNode,
-                style: titleStyle,
+            // 1. Note Title (Native Precision Alignment)
+            TextField(
+              controller: _titleController,
+              focusNode: _titleFocusNode,
+              style: titleStyle,
+              cursorColor: const Color(0xFFFF9100),
+              cursorWidth: 2.4,
+              cursorHeight: 32.0,
+              cursorRadius: const Radius.circular(2.0),
+              cursorOpacityAnimates: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
                 hintText: 'Title',
-                hintStyle: const TextStyle(
+                hintStyle: TextStyle(
                   color: Color(0xFF404040),
                   fontWeight: FontWeight.w800,
                   fontSize: 28,
                 ),
-                textCapitalization: TextCapitalization.sentences,
-                onChanged: (val) => _onBodyChanged(_bodyController.text),
-              )
-            else
-              TextField(
-                controller: _titleController,
-                focusNode: _titleFocusNode,
-                style: titleStyle,
-                cursorColor: const Color(0xFFFF9100),
-                cursorWidth: 2.4,
-                cursorHeight: 32.0,
-                cursorRadius: const Radius.circular(2.0),
-                cursorOpacityAnimates: true,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Title',
-                  hintStyle: TextStyle(
-                    color: Color(0xFF404040),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 28,
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: (val) => _onBodyChanged(_bodyController.text),
+                contentPadding: EdgeInsets.zero,
               ),
+              onChanged: (val) => _onBodyChanged(_bodyController.text),
+            ),
 
             const SizedBox(height: 14),
 
-            // 2. Infinite Body Text Editor with Pure Native Span-Based WYSIWYG
-            if (settings.smoothCaretEnabled)
-              VSCodeSmoothTextField(
-                controller: _bodyController,
-                focusNode: _bodyFocusNode,
-                style: bodyStyle,
+            // 2. Infinite Body Text Editor (100% Synchronized Caret & Pure Native Span WYSIWYG)
+            TextField(
+              controller: _bodyController,
+              focusNode: _bodyFocusNode,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              cursorColor: const Color(0xFFFF9100),
+              cursorWidth: 2.4,
+              cursorHeight: settings.fontSize * 1.22,
+              cursorRadius: const Radius.circular(2.0),
+              cursorOpacityAnimates: true,
+              style: bodyStyle,
+              decoration: InputDecoration(
+                border: InputBorder.none,
                 hintText: 'Write your thoughts, ideas, or journal...',
                 hintStyle: TextStyle(
                   color: const Color(0xFF383838),
                   fontSize: settings.fontSize,
                 ),
-                onChanged: _onBodyChanged,
-              )
-            else
-              TextField(
-                controller: _bodyController,
-                focusNode: _bodyFocusNode,
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-                textCapitalization: TextCapitalization.sentences,
-                cursorColor: const Color(0xFFFF9100),
-                cursorWidth: 2.4,
-                cursorHeight: settings.fontSize * 1.25,
-                cursorRadius: const Radius.circular(2.0),
-                cursorOpacityAnimates: true,
-                style: bodyStyle,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Write your thoughts, ideas, or journal...',
-                  hintStyle: TextStyle(
-                    color: const Color(0xFF383838),
-                    fontSize: settings.fontSize,
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: _onBodyChanged,
+                contentPadding: EdgeInsets.zero,
               ),
+              onChanged: _onBodyChanged,
+            ),
           ],
         ),
       ),
