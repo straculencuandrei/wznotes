@@ -420,13 +420,11 @@ class NotesLibraryScreen extends ConsumerWidget {
     if (note.metadata.isLocked) return '•••• •••••••• ••••••';
     if (note.blocks.isEmpty) return '';
     final raw = note.blocks.map((b) => b.rawText).join(' ');
-    // Remove markdown symbols (**, *, ~~, `, #, >, [ ], [x], -)
     return raw
-        .replaceAll('**', '')
-        .replaceAll('~~', '')
+        .replaceAll('*', '')
+        .replaceAll('~', '')
         .replaceAll('`', '')
-        .replaceAll(RegExp(r'(^|\s)\*\s*'), ' ')
-        .replaceAll(RegExp(r'#{1,6}\s*'), '')
+        .replaceAll('#', '')
         .replaceAll(RegExp(r'\[\s*[xX ]\s*\]'), '☐')
         .replaceAll(RegExp(r'(^|\s)>\s*'), ' ')
         .replaceAll(RegExp(r'(^|\s)-\s*'), ' ')

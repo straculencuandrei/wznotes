@@ -130,13 +130,11 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       }
     }
 
-    if (mounted) {
-      final currentDoc = ref.read(documentProvider);
-      ref.read(documentProvider.notifier).state = currentDoc.copyWith(
-        metadata: currentDoc.metadata.copyWith(title: _titleController.text),
-        blocks: updatedBlocks,
-      ).recalculateStats();
-    }
+    final currentDoc = ref.read(documentProvider);
+    ref.read(documentProvider.notifier).state = currentDoc.copyWith(
+      metadata: currentDoc.metadata.copyWith(title: _titleController.text),
+      blocks: updatedBlocks,
+    ).recalculateStats();
   }
 
   @override
