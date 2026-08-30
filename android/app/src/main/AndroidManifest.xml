@@ -14,7 +14,7 @@
     <uses-feature android:name="android.hardware.audio.output" android:required="false" />
 
     <application
-        android:label="OpenNotes"
+        android:label="wznotes"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
