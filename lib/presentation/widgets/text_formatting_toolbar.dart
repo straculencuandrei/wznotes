@@ -7,6 +7,7 @@ import '../controllers/text_editor_controller.dart';
 import '../controllers/inking_controller.dart';
 
 /// Clean Samsung Notes Style Bottom Keyboard Formatting Bar
+/// Evenly scaled across the full screen width
 class TextFormattingToolbar extends ConsumerWidget {
   const TextFormattingToolbar({super.key});
 
@@ -28,72 +29,83 @@ class TextFormattingToolbar extends ConsumerWidget {
     final currentType = activeBlock?.type ?? TextBlockType.paragraph;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: const BoxDecoration(
         color: AppColors.amoledSurface,
-        border: Border(top: BorderSide(color: AppColors.amoledBorder, width: 1)),
+        border: Border(top: BorderSide(color: AppColors.amoledBorder, width: 1.2)),
       ),
       child: SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: [
-              // 1. Bullet List
-              _buildIconBtn(
-                icon: Icons.format_list_bulleted,
-                isSelected: currentType == TextBlockType.bulletList,
-                onTap: () => _toggleType(ref, activeBlock, TextBlockType.bulletList),
-              ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // 1. Bullet List
+            _buildIconBtn(
+              icon: Icons.format_list_bulleted,
+              tooltip: 'Bullet List',
+              isSelected: currentType == TextBlockType.bulletList,
+              onTap: () => _toggleType(ref, activeBlock, TextBlockType.bulletList),
+            ),
 
-              // 4. Checklist
-              _buildIconBtn(
-                icon: Icons.checklist_rtl,
-                isSelected: currentType == TextBlockType.checklist,
-                onTap: () => _toggleType(ref, activeBlock, TextBlockType.checklist),
-              ),
+            // 2. Interactive Checklist
+            _buildIconBtn(
+              icon: Icons.checklist_rtl,
+              tooltip: 'Checklist',
+              isSelected: currentType == TextBlockType.checklist,
+              onTap: () => _toggleType(ref, activeBlock, TextBlockType.checklist),
+            ),
 
-              // 5. Quote
-              _buildIconBtn(
-                icon: Icons.format_quote,
-                isSelected: currentType == TextBlockType.blockquote,
-                onTap: () => _toggleType(ref, activeBlock, TextBlockType.blockquote),
-              ),
+            // 3. Blockquote
+            _buildIconBtn(
+              icon: Icons.format_quote,
+              tooltip: 'Quote',
+              isSelected: currentType == TextBlockType.blockquote,
+              onTap: () => _toggleType(ref, activeBlock, TextBlockType.blockquote),
+            ),
 
-              // 6. Code Block
-              _buildIconBtn(
-                icon: Icons.code,
-                isSelected: currentType == TextBlockType.codeBlock,
-                onTap: () => _toggleType(ref, activeBlock, TextBlockType.codeBlock),
-              ),
+            // 4. Code Block
+            _buildIconBtn(
+              icon: Icons.code,
+              tooltip: 'Code Block',
+              isSelected: currentType == TextBlockType.codeBlock,
+              onTap: () => _toggleType(ref, activeBlock, TextBlockType.codeBlock),
+            ),
 
-              Container(
-                width: 1,
-                height: 24,
-                color: AppColors.amoledBorder,
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-              ),
+            // Divider
+            Container(
+              width: 1.2,
+              height: 26,
+              color: AppColors.amoledBorder,
+            ),
 
-              // 7. Toggle Drawing / Inking Mode
-              _buildIconBtn(
-                icon: inkingState.isInkingMode ? Icons.edit : Icons.draw_outlined,
-                isSelected: inkingState.isInkingMode,
-                activeColor: AppColors.primaryBlue,
-                onTap: () => inkingNotifier.toggleInkingMode(!inkingState.isInkingMode),
-              ),
+            // 5. Toggle Stylus / Drawing Mode
+            _buildIconBtn(
+              icon: inkingState.isInkingMode ? Icons.edit : Icons.draw_outlined,
+              tooltip: inkingState.isInkingMode ? 'Switch to Typing' : 'Handwriting / Drawing Mode',
+              isSelected: inkingState.isInkingMode,
+              activeColor: AppColors.primaryBlue,
+              onTap: () => inkingNotifier.toggleInkingMode(!inkingState.isInkingMode),
+            ),
 
-              // 8. Undo / Redo
-              IconButton(
-                icon: const Icon(Icons.undo, size: 20, color: Colors.white70),
-                onPressed: docNotifier.canUndo ? () => docNotifier.undo() : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.redo, size: 20, color: Colors.white70),
-                onPressed: docNotifier.canRedo ? () => docNotifier.redo() : null,
-              ),
-            ],
-          ),
+            // 6. Undo
+            _buildIconBtn(
+              icon: Icons.undo,
+              tooltip: 'Undo',
+              isSelected: false,
+              isEnabled: docNotifier.canUndo,
+              onTap: docNotifier.canUndo ? () => docNotifier.undo() : () {},
+            ),
+
+            // 7. Redo
+            _buildIconBtn(
+              icon: Icons.redo,
+              tooltip: 'Redo',
+              isSelected: false,
+              isEnabled: docNotifier.canRedo,
+              onTap: docNotifier.canRedo ? () => docNotifier.redo() : () {},
+            ),
+          ],
         ),
       ),
     );
@@ -108,53 +120,35 @@ class TextFormattingToolbar extends ConsumerWidget {
         );
   }
 
-  Widget _buildBtn({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.samsungOrange : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.black : Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildIconBtn({
     required IconData icon,
+    required String tooltip,
     required bool isSelected,
+    bool isEnabled = true,
     Color activeColor = AppColors.samsungOrange,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: isSelected ? Colors.black : Colors.white,
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isEnabled ? onTap : null,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? activeColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              size: 22,
+              color: isSelected
+                  ? Colors.black
+                  : (isEnabled ? Colors.white : Colors.white24),
+            ),
+          ),
         ),
       ),
     );

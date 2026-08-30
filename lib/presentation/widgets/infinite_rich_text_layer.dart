@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
+import '../controllers/settings_controller.dart';
+import 'smooth_caret_field.dart';
 
-/// High-Performance Seamless AMOLED Note Writing Layer
+/// High-Performance Seamless AMOLED Note Writing Layer with VSCode Smooth Caret
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -28,7 +30,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     super.initState();
     final doc = ref.read(documentProvider);
     _titleController = TextEditingController(text: doc.metadata.title);
-    
+
     // Combine existing blocks into one continuous text stream
     final initialBody = doc.blocks.map((b) => _blockToMarkdown(b)).join('\n');
     _bodyController = TextEditingController(text: initialBody);
@@ -66,7 +68,6 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   }
 
   void _onBodyChanged(String text) {
-    // Parse text lines into structured blocks in memory for outline & stats
     final lines = text.split('\n');
     final List<TextBlock> updatedBlocks = [];
 
@@ -132,32 +133,11 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     docNotifier.state = currentDoc.copyWith(blocks: updatedBlocks).recalculateStats();
   }
 
-  void _insertPrefix(String prefix) {
-    final text = _bodyController.text;
-    final selection = _bodyController.selection;
-    final int start = selection.start >= 0 ? selection.start : text.length;
-
-    // Find the start of the current line
-    int lineStart = 0;
-    if (start > 0 && start <= text.length) {
-      lineStart = text.lastIndexOf('\n', start - 1);
-      lineStart = lineStart == -1 ? 0 : lineStart + 1;
-    }
-
-    final newText = text.replaceRange(lineStart, lineStart, prefix);
-    _bodyController.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: start + prefix.length),
-    );
-    _onBodyChanged(newText);
-    _bodyFocusNode.requestFocus();
-  }
-
   @override
   Widget build(BuildContext context) {
     final doc = ref.watch(documentProvider);
+    final settings = ref.watch(settingsProvider);
 
-    // Keep title in sync if changed from outside
     if (_isInitialized && _titleController.text != doc.metadata.title) {
       _titleController.text = doc.metadata.title;
     }
@@ -165,7 +145,6 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        // Tapping anywhere focuses the body editor without spawning duplicate blocks
         if (!_bodyFocusNode.hasFocus) {
           _bodyFocusNode.requestFocus();
           _bodyController.selection = TextSelection.collapsed(offset: _bodyController.text.length);
@@ -187,6 +166,9 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
                 color: AppColors.amoledTextPrimary,
                 letterSpacing: -0.6,
               ),
+              cursorColor: AppColors.samsungOrange,
+              cursorWidth: 2.8,
+              cursorRadius: const Radius.circular(2.0),
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -202,32 +184,21 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
             ),
             const SizedBox(height: 12),
 
-            // 2. Seamless Infinite Body Text Editor (VSCode Smooth Caret & Typing)
-            TextField(
+            // 2. VSCode Smooth Sliding Caret Body Text Editor
+            SmoothCaretField(
               controller: _bodyController,
               focusNode: _bodyFocusNode,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
-              cursorColor: AppColors.samsungOrange,
-              cursorWidth: 2.8,
-              cursorRadius: const Radius.circular(2.0),
-              cursorOpacityAnimates: true,
-              style: const TextStyle(
-                fontSize: 17.0,
+              style: TextStyle(
+                fontSize: settings.fontSize,
                 height: 1.6,
                 color: AppColors.amoledTextPrimary,
                 fontFamily: 'Inter',
                 letterSpacing: 0.2,
               ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Write your thoughts, ideas, or journal...',
-                hintStyle: TextStyle(
-                  color: Color(0xFF383838),
-                  fontSize: 17,
-                ),
-                contentPadding: EdgeInsets.zero,
+              hintText: 'Write your thoughts, ideas, or journal...',
+              hintStyle: TextStyle(
+                color: const Color(0xFF383838),
+                fontSize: settings.fontSize,
               ),
               onChanged: _onBodyChanged,
             ),
