@@ -202,18 +202,23 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
             ),
             const SizedBox(height: 12),
 
-            // 2. Seamless Infinite Body Text Editor (Zero lag, no repeated "Start typing")
+            // 2. Seamless Infinite Body Text Editor (VSCode Smooth Caret & Typing)
             TextField(
               controller: _bodyController,
               focusNode: _bodyFocusNode,
               maxLines: null,
               keyboardType: TextInputType.multiline,
               textCapitalization: TextCapitalization.sentences,
+              cursorColor: AppColors.samsungOrange,
+              cursorWidth: 2.8,
+              cursorRadius: const Radius.circular(2.0),
+              cursorOpacityAnimates: true,
               style: const TextStyle(
                 fontSize: 17.0,
                 height: 1.6,
                 color: AppColors.amoledTextPrimary,
                 fontFamily: 'Inter',
+                letterSpacing: 0.2,
               ),
               decoration: const InputDecoration(
                 border: InputBorder.none,

@@ -4,11 +4,44 @@ import '../../core/constants/app_colors.dart';
 import '../../domain/models/note_document.dart';
 import '../controllers/notes_library_controller.dart';
 import '../controllers/document_controller.dart';
+import '../controllers/settings_controller.dart';
+import '../../infrastructure/security/biometric_service.dart';
 import 'note_editor_screen.dart';
+import 'settings_screen.dart';
 
 /// Pure AMOLED Samsung Notes Inspired Home Library Screen
 class NotesLibraryScreen extends ConsumerWidget {
   const NotesLibraryScreen({super.key});
+
+  Future<void> _handleNoteTap(BuildContext context, WidgetRef ref, NoteDocument note) async {
+    // If note is locked, require Fingerprint / Biometric / PIN unlock
+    if (note.metadata.isLocked) {
+      final settings = ref.read(settingsProvider);
+      bool isUnlocked = false;
+
+      // Try Fingerprint first
+      isUnlocked = await BiometricSecurityService.authenticate(
+        reason: 'Scan fingerprint to unlock "${note.metadata.title}"',
+      );
+
+      // Fallback to PIN if fingerprint not verified
+      if (!isUnlocked && context.mounted) {
+        final pinToMatch = note.metadata.lockPin ?? settings.appPin;
+        isUnlocked = await BiometricSecurityService.promptPin(
+          context,
+          correctPin: pinToMatch,
+          title: 'Unlock Note',
+        );
+      }
+
+      if (!isUnlocked) {
+        return; // User cancelled or failed authentication
+      }
+    }
+
+    if (!context.mounted) return;
+    _openNote(context, ref, note);
+  }
 
   void _openNote(BuildContext context, WidgetRef ref, NoteDocument note) {
     ref.read(documentProvider.notifier).setDocument(note);
@@ -30,6 +63,7 @@ class NotesLibraryScreen extends ConsumerWidget {
       ),
       builder: (context) {
         final isFav = note.metadata.folderId == 'favorites';
+        final isLocked = note.metadata.isLocked;
         final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
 
         return SafeArea(
@@ -53,6 +87,42 @@ class NotesLibraryScreen extends ConsumerWidget {
                   ),
                 ),
                 const Divider(color: AppColors.amoledBorder),
+
+                // 1. Lock / Unlock Note with Fingerprint & PIN
+                ListTile(
+                  leading: Icon(
+                    isLocked ? Icons.lock_open : Icons.lock_outline,
+                    color: AppColors.samsungOrange,
+                  ),
+                  title: Text(
+                    isLocked ? 'Unlock note (Remove protection)' : 'Lock note (Fingerprint / PIN)',
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                  ),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    if (!isLocked) {
+                      // Lock note
+                      final updated = note.copyWith(
+                        metadata: note.metadata.copyWith(isLocked: true),
+                      );
+                      ref.read(notesLibraryProvider.notifier).saveNote(updated);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Note locked with fingerprint & PIN')),
+                      );
+                    } else {
+                      // Verify before unlocking
+                      final isAuthed = await BiometricSecurityService.authenticate(reason: 'Verify fingerprint to unlock');
+                      if (isAuthed) {
+                        final updated = note.copyWith(
+                          metadata: note.metadata.copyWith(isLocked: false),
+                        );
+                        ref.read(notesLibraryProvider.notifier).saveNote(updated);
+                      }
+                    }
+                  },
+                ),
+
+                // 2. Favorite
                 ListTile(
                   leading: Icon(
                     isFav ? Icons.star : Icons.star_border,
@@ -67,6 +137,8 @@ class NotesLibraryScreen extends ConsumerWidget {
                     Navigator.of(context).pop();
                   },
                 ),
+
+                // 3. Delete
                 ListTile(
                   leading: const Icon(Icons.delete_outline, color: AppColors.accentRose),
                   title: const Text(
@@ -108,7 +180,7 @@ class NotesLibraryScreen extends ConsumerWidget {
             // 1. Large Samsung One UI Header
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.only(left: 24, right: 20, top: 24, bottom: 12),
+                padding: const EdgeInsets.only(left: 24, right: 16, top: 24, bottom: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -135,14 +207,29 @@ class NotesLibraryScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: Icon(
-                        libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                        color: AppColors.amoledTextPrimary,
-                        size: 26,
-                      ),
-                      tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
-                      onPressed: () => libraryNotifier.toggleViewLayout(),
+                    Row(
+                      children: [
+                        // Grid / List Layout Switcher
+                        IconButton(
+                          icon: Icon(
+                            libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                            color: AppColors.amoledTextPrimary,
+                            size: 26,
+                          ),
+                          tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
+                          onPressed: () => libraryNotifier.toggleViewLayout(),
+                        ),
+                        // Settings Gear Icon
+                        IconButton(
+                          icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 26),
+                          tooltip: 'Settings',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -180,7 +267,7 @@ class NotesLibraryScreen extends ConsumerWidget {
               ),
             ),
 
-            // 3. Notes Content
+            // 3. Notes Content with Smooth Animated View Transitions
             if (notes.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
@@ -226,7 +313,6 @@ class NotesLibraryScreen extends ConsumerWidget {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 16),
         ),
         onPressed: () {
-          // Instant navigation without adding an empty ghost note beforehand
           final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
           _openNote(context, ref, newDoc);
         },
@@ -235,32 +321,49 @@ class NotesLibraryScreen extends ConsumerWidget {
   }
 
   Widget _buildGridCard(BuildContext context, WidgetRef ref, NoteDocument note) {
-    final previewText = note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '';
+    final isLocked = note.metadata.isLocked;
+    final previewText = isLocked
+        ? '•••• •••••••• ••••••'
+        : (note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '');
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
 
-    return GestureDetector(
-      onTap: () => _openNote(context, ref, note),
+    return InkWell(
+      onTap: () => _handleNoteTap(context, ref, note),
       onLongPress: () => _showNoteActions(context, ref, note),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.amoledSurface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.amoledBorder, width: 1.2),
+          border: Border.all(
+            color: isLocked ? AppColors.samsungOrange.withValues(alpha: 0.5) : AppColors.amoledBorder,
+            width: 1.2,
+          ),
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.amoledTextPrimary,
-              ),
+            // Title & Lock Status
+            Row(
+              children: [
+                if (isLocked) ...[
+                  const Icon(Icons.lock, size: 16, color: AppColors.samsungOrange),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.amoledTextPrimary,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
 
@@ -270,10 +373,11 @@ class NotesLibraryScreen extends ConsumerWidget {
                 previewText.isNotEmpty ? previewText : 'Empty note',
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: AppColors.amoledTextSecondary,
+                  color: isLocked ? Colors.white30 : AppColors.amoledTextSecondary,
+                  letterSpacing: isLocked ? 2.0 : null,
                 ),
               ),
             ),
@@ -301,18 +405,25 @@ class NotesLibraryScreen extends ConsumerWidget {
   }
 
   Widget _buildListCard(BuildContext context, WidgetRef ref, NoteDocument note) {
-    final previewText = note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '';
+    final isLocked = note.metadata.isLocked;
+    final previewText = isLocked
+        ? '•••• •••••••• ••••••'
+        : (note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '');
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
 
-    return GestureDetector(
-      onTap: () => _openNote(context, ref, note),
+    return InkWell(
+      onTap: () => _handleNoteTap(context, ref, note),
       onLongPress: () => _showNoteActions(context, ref, note),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: AppColors.amoledSurface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.amoledBorder, width: 1.2),
+          border: Border.all(
+            color: isLocked ? AppColors.samsungOrange.withValues(alpha: 0.5) : AppColors.amoledBorder,
+            width: 1.2,
+          ),
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -322,15 +433,25 @@ class NotesLibraryScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.amoledTextPrimary,
-                    ),
+                  child: Row(
+                    children: [
+                      if (isLocked) ...[
+                        const Icon(Icons.lock, size: 16, color: AppColors.samsungOrange),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.amoledTextPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Text(
@@ -345,10 +466,11 @@ class NotesLibraryScreen extends ConsumerWidget {
                 previewText,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: AppColors.amoledTextSecondary,
+                  color: isLocked ? Colors.white30 : AppColors.amoledTextSecondary,
+                  letterSpacing: isLocked ? 2.0 : null,
                 ),
               ),
             ],

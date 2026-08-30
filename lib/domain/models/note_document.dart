@@ -18,6 +18,8 @@ class NoteMetadata {
   final int readingTimeMinutes;
   final double totalHeight;
   final bool hasAudio;
+  final bool isLocked;
+  final String? lockPin;
 
   const NoteMetadata({
     required this.id,
@@ -31,6 +33,8 @@ class NoteMetadata {
     this.readingTimeMinutes = 0,
     this.totalHeight = CanvasDimensions.initialInfiniteHeight,
     this.hasAudio = false,
+    this.isLocked = false,
+    this.lockPin,
   });
 
   NoteMetadata copyWith({
@@ -45,6 +49,8 @@ class NoteMetadata {
     int? readingTimeMinutes,
     double? totalHeight,
     bool? hasAudio,
+    bool? isLocked,
+    String? lockPin,
   }) {
     return NoteMetadata(
       id: id ?? this.id,
@@ -58,6 +64,8 @@ class NoteMetadata {
       readingTimeMinutes: readingTimeMinutes ?? this.readingTimeMinutes,
       totalHeight: totalHeight ?? this.totalHeight,
       hasAudio: hasAudio ?? this.hasAudio,
+      isLocked: isLocked ?? this.isLocked,
+      lockPin: lockPin ?? this.lockPin,
     );
   }
 
@@ -73,6 +81,8 @@ class NoteMetadata {
         'readingTimeMinutes': readingTimeMinutes,
         'totalHeight': totalHeight,
         'hasAudio': hasAudio,
+        'isLocked': isLocked,
+        if (lockPin != null) 'lockPin': lockPin,
       };
 
   factory NoteMetadata.initial({String title = 'Untitled Note'}) {
@@ -98,6 +108,8 @@ class NoteMetadata {
       readingTimeMinutes: (json['readingTimeMinutes'] as num?)?.toInt() ?? 0,
       totalHeight: (json['totalHeight'] as num?)?.toDouble() ?? CanvasDimensions.initialInfiniteHeight,
       hasAudio: json['hasAudio'] as bool? ?? false,
+      isLocked: json['isLocked'] as bool? ?? false,
+      lockPin: json['lockPin'] as String?,
     );
   }
 }

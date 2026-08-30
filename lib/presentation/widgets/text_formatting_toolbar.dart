@@ -40,21 +40,7 @@ class TextFormattingToolbar extends ConsumerWidget {
           physics: const BouncingScrollPhysics(),
           child: Row(
             children: [
-              // 1. Heading 1
-              _buildBtn(
-                label: 'H1',
-                isSelected: currentType == TextBlockType.heading1,
-                onTap: () => _toggleType(ref, activeBlock, TextBlockType.heading1),
-              ),
-
-              // 2. Heading 2
-              _buildBtn(
-                label: 'H2',
-                isSelected: currentType == TextBlockType.heading2,
-                onTap: () => _toggleType(ref, activeBlock, TextBlockType.heading2),
-              ),
-
-              // 3. Bullet List
+              // 1. Bullet List
               _buildIconBtn(
                 icon: Icons.format_list_bulleted,
                 isSelected: currentType == TextBlockType.bulletList,
