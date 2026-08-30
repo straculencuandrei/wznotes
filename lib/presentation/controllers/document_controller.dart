@@ -42,6 +42,13 @@ class DocumentNotifier extends StateNotifier<NoteDocument> {
     state = doc;
   }
 
+  void updateContent({required String title, required List<TextBlock> blocks}) {
+    state = state.copyWith(
+      metadata: state.metadata.copyWith(title: title),
+      blocks: blocks,
+    ).recalculateStats();
+  }
+
   // --- Document Operations ---
 
   void setTitle(String newTitle) {

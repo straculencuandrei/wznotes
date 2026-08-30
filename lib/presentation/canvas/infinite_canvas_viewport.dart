@@ -47,6 +47,7 @@ class _InfiniteCanvasViewportState extends ConsumerState<InfiniteCanvasViewport>
     final viewportState = ref.watch(canvasViewportProvider);
     final doc = ref.watch(documentProvider);
     final inkingState = ref.watch(inkingProvider);
+    final inkingNotifier = ref.read(inkingProvider.notifier);
     final double screenWidth = MediaQuery.of(context).size.width;
     final double docWidth = screenWidth < 820.0 ? screenWidth : 820.0;
     final double docHeight = viewportState.canvasHeight;
