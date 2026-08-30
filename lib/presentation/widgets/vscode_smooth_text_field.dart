@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// VSCode Smooth Caret Animation TextField
-/// Uses TweenAnimationBuilder for silky smooth cursor gliding with zero framework assertion issues
+/// Silky smooth cursor gliding with exact sub-pixel font layout alignment
 class VSCodeSmoothTextField extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -27,10 +27,11 @@ class VSCodeSmoothTextField extends StatefulWidget {
 }
 
 class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with SingleTickerProviderStateMixin {
-  Offset? _currentCaretOffset;
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
+  Offset _previousOffset = Offset.zero;
   int _lastTextLength = 0;
+  bool _snapNext = true;
 
   @override
   void initState() {
@@ -93,7 +94,10 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
 
     textPainter.layout(maxWidth: maxWidth);
 
-    final TextPosition textPosition = TextPosition(offset: text.isEmpty ? 0 : cursorIndex.clamp(0, text.length));
+    final TextPosition textPosition = TextPosition(
+      offset: text.isEmpty ? 0 : cursorIndex.clamp(0, text.length),
+      affinity: selection.affinity,
+    );
     final Offset pos = textPainter.getOffsetForCaret(
       textPosition,
       Rect.fromLTWH(0, 0, 2.4, fontSize),
@@ -114,10 +118,13 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
         final int lengthDiff = (currentTextLen - _lastTextLength).abs();
         _lastTextLength = currentTextLen;
 
-        // If large jump / paste occurred (>3 chars or >80px jump), snap immediately without floating animation
-        if (_currentCaretOffset == null || lengthDiff > 3 || (_currentCaretOffset! - targetOffset).distance > 80) {
-          _currentCaretOffset = targetOffset;
-        }
+        // If large jump, paste, or line jump, snap immediately without floating across the page
+        final double dist = (_previousOffset - targetOffset).distance;
+        final bool shouldSnap = _snapNext || lengthDiff > 2 || dist > 60 || (_previousOffset.dy - targetOffset.dy).abs() > (fontSize * 0.4);
+        
+        final Offset startOffset = shouldSnap ? targetOffset : _previousOffset;
+        _previousOffset = targetOffset;
+        _snapNext = false;
 
         final isCollapsed = widget.controller.selection.isCollapsed || widget.controller.selection.baseOffset < 0;
         final showSmoothCaret = widget.focusNode.hasFocus && isCollapsed;
@@ -149,12 +156,10 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
             // 2. VSCode Smooth Gliding Animated Caret (Exact Native Alignment on Line 1 & all lines)
             if (showSmoothCaret)
               TweenAnimationBuilder<Offset>(
-                tween: Tween<Offset>(begin: _currentCaretOffset ?? targetOffset, end: targetOffset),
-                duration: const Duration(milliseconds: 90),
+                key: ValueKey(shouldSnap ? targetOffset : null),
+                tween: Tween<Offset>(begin: startOffset, end: targetOffset),
+                duration: const Duration(milliseconds: 110),
                 curve: Curves.easeOutCubic,
-                onEnd: () {
-                  _currentCaretOffset = targetOffset;
-                },
                 builder: (context, animatedOffset, _) {
                   return Positioned(
                     left: animatedOffset.dx,

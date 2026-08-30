@@ -47,9 +47,8 @@ class _InfiniteCanvasViewportState extends ConsumerState<InfiniteCanvasViewport>
     final viewportState = ref.watch(canvasViewportProvider);
     final doc = ref.watch(documentProvider);
     final inkingState = ref.watch(inkingProvider);
-    final inkingNotifier = ref.read(inkingProvider.notifier);
-
-    const double docWidth = CanvasDimensions.defaultDocumentWidth;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double docWidth = screenWidth < 820.0 ? screenWidth : 820.0;
     final double docHeight = viewportState.canvasHeight;
 
     return Container(
@@ -59,7 +58,8 @@ class _InfiniteCanvasViewportState extends ConsumerState<InfiniteCanvasViewport>
         physics: inkingState.isInkingMode && inkingState.isDrawing
             ? const NeverScrollableScrollPhysics()
             : const BouncingScrollPhysics(),
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: Container(
             width: docWidth,
             constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),

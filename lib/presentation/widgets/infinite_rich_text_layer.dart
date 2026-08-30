@@ -7,8 +7,9 @@ import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/editor_formatting_bridge.dart';
 import '../controllers/rich_span_editing_controller.dart';
+import 'vscode_smooth_text_field.dart';
 
-/// Ultra-Fast Seamless AMOLED Note Writing Layer with Pure Native Span Formatting & Native Smooth Caret
+/// Ultra-Fast Seamless AMOLED Note Writing Layer with Pure Native Span Formatting & VS Code Smooth Caret
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -26,6 +27,8 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   late RichSpanEditingController _bodyController;
   late FocusNode _titleFocusNode;
   late FocusNode _bodyFocusNode;
+  late EditorFormattingBridge _formattingBridge;
+  late DocumentNotifier _docNotifier;
   Timer? _debounceTimer;
 
   @override
@@ -33,6 +36,8 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     super.initState();
     final doc = ref.read(documentProvider);
     final settings = ref.read(settingsProvider);
+    _formattingBridge = ref.read(editorFormattingBridgeProvider);
+    _docNotifier = ref.read(documentProvider.notifier);
 
     _titleController = TextEditingController(text: doc.metadata.title);
     _titleFocusNode = FocusNode();
@@ -88,7 +93,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     _bodyFocusNode = FocusNode();
 
     // Bind formatting bridge for instant toolbar actions
-    ref.read(editorFormattingBridgeProvider).bind(
+    _formattingBridge.bind(
       controller: _bodyController,
       focusNode: _bodyFocusNode,
       onUpdate: () => _onBodyChanged(_bodyController.text),
@@ -97,9 +102,8 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
   @override
   void dispose() {
-    ref.read(editorFormattingBridgeProvider).unbind();
     _debounceTimer?.cancel();
-    _flushSync();
+    _formattingBridge.unbind();
     _titleController.dispose();
     _bodyController.dispose();
     _titleFocusNode.dispose();
@@ -134,7 +138,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   }
 
   void _flushSync() {
-    final text = _bodyController.text; // Pure clean text!
+    final text = _bodyController.text;
     final lines = text.split('\n');
     final List<TextBlock> updatedBlocks = [];
     int currentOffset = 0;
@@ -144,7 +148,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       final id = 'block_$i';
       final lineStart = currentOffset;
       final lineEnd = currentOffset + line.length;
-      currentOffset = lineEnd + 1; // account for newline
+      currentOffset = lineEnd + 1;
 
       final lineSpans = _bodyController.exportSpansForRange(lineStart, lineEnd);
 
@@ -167,11 +171,10 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       }
     }
 
-    final currentDoc = ref.read(documentProvider);
-    ref.read(documentProvider.notifier).state = currentDoc.copyWith(
-      metadata: currentDoc.metadata.copyWith(title: _titleController.text),
+    _docNotifier.updateContent(
+      title: _titleController.text,
       blocks: updatedBlocks,
-    ).recalculateStats();
+    );
   }
 
   @override
@@ -195,73 +198,52 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
     _bodyController.baseStyle = bodyStyle;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        if (!_bodyFocusNode.hasFocus && !_titleFocusNode.hasFocus) {
-          _bodyFocusNode.requestFocus();
-          _bodyController.selection = TextSelection.collapsed(offset: _bodyController.text.length);
-        }
-      },
-      child: Container(
-        width: widget.width,
-        color: AppColors.amoledBlack,
-        padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 16.0, bottom: 250.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Note Title (Native Precision Alignment)
-            TextField(
-              controller: _titleController,
-              focusNode: _titleFocusNode,
-              style: titleStyle,
-              cursorColor: const Color(0xFFFF9100),
-              cursorWidth: 2.4,
-              cursorHeight: 32.0,
-              cursorRadius: const Radius.circular(2.0),
-              cursorOpacityAnimates: true,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Title',
-                hintStyle: TextStyle(
-                  color: Color(0xFF404040),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 28,
-                ),
-                contentPadding: EdgeInsets.zero,
+    return Container(
+      width: widget.width,
+      color: AppColors.amoledBlack,
+      padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 16.0, bottom: 250.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Note Title (Native Precision Alignment)
+          TextField(
+            controller: _titleController,
+            focusNode: _titleFocusNode,
+            style: titleStyle,
+            cursorColor: const Color(0xFFFF9100),
+            cursorWidth: 2.4,
+            cursorHeight: 32.0,
+            cursorRadius: const Radius.circular(2.0),
+            cursorOpacityAnimates: true,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Title',
+              hintStyle: TextStyle(
+                color: Color(0xFF6E6E6E),
+                fontWeight: FontWeight.w800,
+                fontSize: 28,
               ),
-              onChanged: (val) => _onBodyChanged(_bodyController.text),
+              contentPadding: EdgeInsets.zero,
             ),
+            onChanged: (val) => _onBodyChanged(_bodyController.text),
+          ),
 
-            const SizedBox(height: 14),
+          const SizedBox(height: 14),
 
-            // 2. Infinite Body Text Editor (100% Synchronized Caret & Pure Native Span WYSIWYG)
-            TextField(
-              controller: _bodyController,
-              focusNode: _bodyFocusNode,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
-              cursorColor: const Color(0xFFFF9100),
-              cursorWidth: 2.4,
-              cursorHeight: settings.fontSize * 1.22,
-              cursorRadius: const Radius.circular(2.0),
-              cursorOpacityAnimates: true,
-              style: bodyStyle,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Write your thoughts, ideas, or journal...',
-                hintStyle: TextStyle(
-                  color: const Color(0xFF383838),
-                  fontSize: settings.fontSize,
-                ),
-                contentPadding: EdgeInsets.zero,
-              ),
-              onChanged: _onBodyChanged,
+          // 2. Infinite Body Text Editor (VS Code Smooth Caret Animation)
+          VSCodeSmoothTextField(
+            controller: _bodyController,
+            focusNode: _bodyFocusNode,
+            style: bodyStyle,
+            hintText: 'Write your thoughts, ideas, or journal...',
+            hintStyle: TextStyle(
+              color: const Color(0xFF5A5A5A),
+              fontSize: settings.fontSize,
             ),
-          ],
-        ),
+            onChanged: _onBodyChanged,
+          ),
+        ],
       ),
     );
   }
