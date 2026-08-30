@@ -10,6 +10,19 @@ import 'note_editor_screen.dart';
 class NotesLibraryScreen extends ConsumerWidget {
   const NotesLibraryScreen({super.key});
 
+  void _openNote(BuildContext context, WidgetRef ref, NoteDocument note) {
+    ref.read(documentProvider.notifier).setDocument(note);
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) => const NoteEditorScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 150),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(notesLibraryProvider);
@@ -19,90 +32,117 @@ class NotesLibraryScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.amoledBlack,
       body: SafeArea(
-        child: NestedScrollView(
-          headerSliverBuilder: (context, _) {
-            return [
-              // 1. Large Samsung One UI Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 20, top: 24, bottom: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'All notes',
-                            style: TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.amoledTextPrimary,
-                              letterSpacing: -0.8,
-                            ),
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // 1. Large Samsung One UI Header
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24, right: 20, top: 24, bottom: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'All notes',
+                          style: TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.amoledTextPrimary,
+                            letterSpacing: -0.8,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: AppColors.amoledTextSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                          color: AppColors.amoledTextPrimary,
-                          size: 26,
                         ),
-                        tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
-                        onPressed: () => libraryNotifier.toggleViewLayout(),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: AppColors.amoledTextSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                        color: AppColors.amoledTextPrimary,
+                        size: 26,
                       ),
-                    ],
-                  ),
+                      tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
+                      onPressed: () => libraryNotifier.toggleViewLayout(),
+                    ),
+                  ],
                 ),
               ),
+            ),
 
-              // 2. Big AMOLED Search Bar
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.amoledSurface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppColors.amoledBorder, width: 1.2),
+            // 2. Big AMOLED Search Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.amoledSurface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.amoledBorder, width: 1.2),
+                  ),
+                  child: TextField(
+                    style: const TextStyle(fontSize: 16, color: AppColors.amoledTextPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Search notes...',
+                      hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 15),
+                      prefixIcon: const Icon(Icons.search, color: AppColors.samsungOrange, size: 24),
+                      suffixIcon: libraryState.searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
+                              onPressed: () => libraryNotifier.setSearchQuery(''),
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: TextField(
-                      style: const TextStyle(fontSize: 16, color: AppColors.amoledTextPrimary),
-                      decoration: InputDecoration(
-                        hintText: 'Search notes...',
-                        hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 15),
-                        prefixIcon: const Icon(Icons.search, color: AppColors.samsungOrange, size: 24),
-                        suffixIcon: libraryState.searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
-                                onPressed: () => libraryNotifier.setSearchQuery(''),
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onChanged: (val) => libraryNotifier.setSearchQuery(val),
-                    ),
+                    onChanged: (val) => libraryNotifier.setSearchQuery(val),
                   ),
                 ),
               ),
-            ];
-          },
-          body: notes.isEmpty
-              ? _buildEmptyState(context, ref)
-              : libraryState.isGridView
-                  ? _buildGridView(context, ref, notes)
-                  : _buildListView(context, ref, notes),
+            ),
+
+            // 3. Notes Content
+            if (notes.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmptyState(context, ref),
+              )
+            else if (libraryState.isGridView)
+              SliverPadding(
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 100),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.85,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildGridCard(context, ref, notes[index]),
+                    childCount: notes.length,
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildListCard(context, ref, notes[index]),
+                    childCount: notes.length,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
       // Samsung Notes Style Floating Action Button
@@ -117,55 +157,18 @@ class NotesLibraryScreen extends ConsumerWidget {
         ),
         onPressed: () {
           final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
-          ref.read(documentProvider.notifier).setDocument(newDoc);
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const NoteEditorScreen()),
-          );
+          _openNote(context, ref, newDoc);
         },
       ),
     );
   }
 
-  Widget _buildGridView(BuildContext context, WidgetRef ref, List<NoteDocument> notes) {
-    return GridView.builder(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 100),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.82,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-      ),
-      itemCount: notes.length,
-      itemBuilder: (context, index) {
-        return _buildNoteCard(context, ref, notes[index]);
-      },
-    );
-  }
-
-  Widget _buildListView(BuildContext context, WidgetRef ref, List<NoteDocument> notes) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 100),
-      itemCount: notes.length,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: _buildNoteCard(context, ref, notes[index], isList: true),
-        );
-      },
-    );
-  }
-
-  Widget _buildNoteCard(BuildContext context, WidgetRef ref, NoteDocument note, {bool isList = false}) {
-    final previewText = note.blocks.isNotEmpty ? note.blocks.first.rawText : '';
+  Widget _buildGridCard(BuildContext context, WidgetRef ref, NoteDocument note) {
+    final previewText = note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '';
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
 
     return GestureDetector(
-      onTap: () {
-        ref.read(documentProvider.notifier).setDocument(note);
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const NoteEditorScreen()),
-        );
-      },
+      onTap: () => _openNote(context, ref, note),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.amoledSurface,
@@ -176,13 +179,13 @@ class NotesLibraryScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Note Title
+            // Title
             Text(
               title,
-              maxLines: isList ? 1 : 2,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 17,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppColors.amoledTextPrimary,
               ),
@@ -193,7 +196,7 @@ class NotesLibraryScreen extends ConsumerWidget {
             Expanded(
               child: Text(
                 previewText.isNotEmpty ? previewText : 'Empty note',
-                maxLines: isList ? 2 : 4,
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 13,
@@ -202,7 +205,7 @@ class NotesLibraryScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
             // Date & Word count
             Row(
@@ -210,15 +213,79 @@ class NotesLibraryScreen extends ConsumerWidget {
               children: [
                 Text(
                   _formatDate(note.metadata.modifiedAt),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF666666), fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF666666), fontWeight: FontWeight.w500),
                 ),
                 if (note.metadata.wordCount > 0)
                   Text(
                     '${note.metadata.wordCount}w',
-                    style: const TextStyle(fontSize: 12, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
                   ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListCard(BuildContext context, WidgetRef ref, NoteDocument note) {
+    final previewText = note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '';
+    final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
+
+    return GestureDetector(
+      onTap: () => _openNote(context, ref, note),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.amoledSurface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.amoledBorder, width: 1.2),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.amoledTextPrimary,
+                    ),
+                  ),
+                ),
+                Text(
+                  _formatDate(note.metadata.modifiedAt),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF666666), fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            if (previewText.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                previewText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: AppColors.amoledTextSecondary,
+                ),
+              ),
+            ],
+            if (note.metadata.wordCount > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                '${note.metadata.wordCount} words',
+                style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
+              ),
+            ],
           ],
         ),
       ),

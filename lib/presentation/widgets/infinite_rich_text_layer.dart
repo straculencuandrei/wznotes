@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
-import '../controllers/text_editor_controller.dart';
 
-/// Pure AMOLED Keyboard-First Rich Text Writing Layer
+/// High-Performance Seamless AMOLED Note Writing Layer
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -19,223 +18,217 @@ class InfiniteRichTextLayer extends ConsumerStatefulWidget {
 }
 
 class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
-  final FocusNode _firstBlockFocus = FocusNode();
+  late TextEditingController _titleController;
+  late TextEditingController _bodyController;
+  late FocusNode _bodyFocusNode;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final doc = ref.read(documentProvider);
+    _titleController = TextEditingController(text: doc.metadata.title);
+    
+    // Combine existing blocks into one continuous text stream
+    final initialBody = doc.blocks.map((b) => _blockToMarkdown(b)).join('\n');
+    _bodyController = TextEditingController(text: initialBody);
+    _bodyFocusNode = FocusNode();
+    _isInitialized = true;
+  }
 
   @override
   void dispose() {
-    _firstBlockFocus.dispose();
+    _titleController.dispose();
+    _bodyController.dispose();
+    _bodyFocusNode.dispose();
     super.dispose();
+  }
+
+  String _blockToMarkdown(TextBlock b) {
+    switch (b.type) {
+      case TextBlockType.heading1:
+        return '# ${b.rawText}';
+      case TextBlockType.heading2:
+        return '## ${b.rawText}';
+      case TextBlockType.heading3:
+        return '### ${b.rawText}';
+      case TextBlockType.bulletList:
+        return '- ${b.rawText}';
+      case TextBlockType.checklist:
+        return b.isChecked ? '[x] ${b.rawText}' : '[ ] ${b.rawText}';
+      case TextBlockType.blockquote:
+        return '> ${b.rawText}';
+      case TextBlockType.codeBlock:
+        return '```\n${b.rawText}\n```';
+      default:
+        return b.rawText;
+    }
+  }
+
+  void _onBodyChanged(String text) {
+    // Parse text lines into structured blocks in memory for outline & stats
+    final lines = text.split('\n');
+    final List<TextBlock> updatedBlocks = [];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final id = 'block_$i';
+
+      if (line.startsWith('# ')) {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.heading1,
+          rawText: line.substring(2),
+        ));
+      } else if (line.startsWith('## ')) {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.heading2,
+          rawText: line.substring(3),
+        ));
+      } else if (line.startsWith('### ')) {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.heading3,
+          rawText: line.substring(4),
+        ));
+      } else if (line.startsWith('- ') || line.startsWith('* ')) {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.bulletList,
+          rawText: line.substring(2),
+        ));
+      } else if (line.startsWith('[ ] ')) {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.checklist,
+          rawText: line.substring(4),
+          isChecked: false,
+        ));
+      } else if (line.startsWith('[x] ') || line.startsWith('[X] ')) {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.checklist,
+          rawText: line.substring(4),
+          isChecked: true,
+        ));
+      } else if (line.startsWith('> ')) {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.blockquote,
+          rawText: line.substring(2),
+        ));
+      } else {
+        updatedBlocks.add(TextBlock(
+          id: id,
+          type: TextBlockType.paragraph,
+          rawText: line,
+        ));
+      }
+    }
+
+    final docNotifier = ref.read(documentProvider.notifier);
+    final currentDoc = ref.read(documentProvider);
+    docNotifier.state = currentDoc.copyWith(blocks: updatedBlocks).recalculateStats();
+  }
+
+  void _insertPrefix(String prefix) {
+    final text = _bodyController.text;
+    final selection = _bodyController.selection;
+    final int start = selection.start >= 0 ? selection.start : text.length;
+
+    // Find the start of the current line
+    int lineStart = 0;
+    if (start > 0 && start <= text.length) {
+      lineStart = text.lastIndexOf('\n', start - 1);
+      lineStart = lineStart == -1 ? 0 : lineStart + 1;
+    }
+
+    final newText = text.replaceRange(lineStart, lineStart, prefix);
+    _bodyController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + prefix.length),
+    );
+    _onBodyChanged(newText);
+    _bodyFocusNode.requestFocus();
   }
 
   @override
   Widget build(BuildContext context) {
     final doc = ref.watch(documentProvider);
 
-    return Container(
-      width: widget.width,
-      color: AppColors.amoledBlack,
-      padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 20.0, bottom: 300.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Clean AMOLED Note Title Field
-          TextField(
-            controller: TextEditingController(text: doc.metadata.title)
-              ..selection = TextSelection.collapsed(offset: doc.metadata.title.length),
-            style: const TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: AppColors.amoledTextPrimary,
-              letterSpacing: -0.5,
-            ),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              hintText: 'Title',
-              hintStyle: TextStyle(
-                color: Color(0xFF4A4A4A),
-                fontWeight: FontWeight.w700,
-                fontSize: 30,
-              ),
-            ),
-            onChanged: (val) => ref.read(documentProvider.notifier).setTitle(val),
-          ),
-          const SizedBox(height: 12),
-
-          // 2. Text Blocks (Headings, Paragraphs, Checklists, Bullet Lists)
-          ...doc.blocks.map((block) {
-            return _buildBlockWidget(context, ref, block);
-          }),
-
-          // 3. Tap anywhere in empty space below to add text / focus
-          GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () {
-              if (doc.blocks.isNotEmpty) {
-                ref.read(textEditorProvider.notifier).insertNewBlockAfter(doc.blocks.last.id);
-              }
-            },
-            child: Container(
-              height: 350,
-              width: double.infinity,
-              color: Colors.transparent,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBlockWidget(BuildContext context, WidgetRef ref, TextBlock block) {
-    TextStyle style = const TextStyle(
-      fontSize: 17.0,
-      height: 1.6,
-      color: AppColors.amoledTextPrimary,
-      fontFamily: 'Inter',
-    );
-
-    if (block.type == TextBlockType.heading1) {
-      style = style.copyWith(
-        fontSize: 24,
-        fontWeight: FontWeight.w800,
-        color: AppColors.samsungOrange,
-      );
-    } else if (block.type == TextBlockType.heading2) {
-      style = style.copyWith(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: const Color(0xFFE0E0E0),
-      );
-    } else if (block.type == TextBlockType.heading3) {
-      style = style.copyWith(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFFBDBDBD),
-      );
+    // Keep title in sync if changed from outside
+    if (_isInitialized && _titleController.text != doc.metadata.title) {
+      _titleController.text = doc.metadata.title;
     }
 
-    if (block.type == TextBlockType.checklist) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Transform.scale(
-              scale: 1.15,
-              child: Checkbox(
-                value: block.isChecked,
-                onChanged: (_) => ref.read(documentProvider.notifier).toggleChecklist(block.id),
-                activeColor: AppColors.samsungOrange,
-                checkColor: Colors.black,
-                side: const BorderSide(color: Color(0xFF666666), width: 1.8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: _buildEditableTextField(
-                ref,
-                block,
-                style.copyWith(
-                  decoration: block.isChecked ? TextDecoration.lineThrough : null,
-                  color: block.isChecked ? const Color(0xFF555555) : null,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (block.type == TextBlockType.bulletList) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3.0),
-        child: Row(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        // Tapping anywhere focuses the body editor without spawning duplicate blocks
+        if (!_bodyFocusNode.hasFocus) {
+          _bodyFocusNode.requestFocus();
+          _bodyController.selection = TextSelection.collapsed(offset: _bodyController.text.length);
+        }
+      },
+      child: Container(
+        width: widget.width,
+        color: AppColors.amoledBlack,
+        padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 16.0, bottom: 250.0),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(right: 10.0, top: 4.0),
-              child: Text(
-                '•',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.samsungOrange,
-                ),
+            // 1. Note Title
+            TextField(
+              controller: _titleController,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: AppColors.amoledTextPrimary,
+                letterSpacing: -0.6,
               ),
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Title',
+                hintStyle: TextStyle(
+                  color: Color(0xFF404040),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: (val) => ref.read(documentProvider.notifier).setTitle(val),
             ),
-            Expanded(child: _buildEditableTextField(ref, block, style)),
+            const SizedBox(height: 12),
+
+            // 2. Seamless Infinite Body Text Editor (Zero lag, no repeated "Start typing")
+            TextField(
+              controller: _bodyController,
+              focusNode: _bodyFocusNode,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              style: const TextStyle(
+                fontSize: 17.0,
+                height: 1.6,
+                color: AppColors.amoledTextPrimary,
+                fontFamily: 'Inter',
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Write your thoughts, ideas, or journal...',
+                hintStyle: TextStyle(
+                  color: Color(0xFF383838),
+                  fontSize: 17,
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: _onBodyChanged,
+            ),
           ],
         ),
-      );
-    }
-
-    if (block.type == TextBlockType.codeBlock) {
-      return Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        padding: const EdgeInsets.all(14.0),
-        decoration: BoxDecoration(
-          color: const Color(0xFF141414),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF282828)),
-        ),
-        child: _buildEditableTextField(
-          ref,
-          block,
-          const TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 14,
-            height: 1.5,
-            color: Color(0xFF00E676),
-          ),
-        ),
-      );
-    }
-
-    if (block.type == TextBlockType.blockquote) {
-      return Container(
-        margin: const EdgeInsets.symmetric(vertical: 6.0),
-        padding: const EdgeInsets.only(left: 14.0, top: 4.0, bottom: 4.0),
-        decoration: const BoxDecoration(
-          border: Border(left: BorderSide(color: AppColors.samsungOrange, width: 3.5)),
-        ),
-        child: _buildEditableTextField(
-          ref,
-          block,
-          style.copyWith(
-            fontStyle: FontStyle.italic,
-            color: const Color(0xFFAAAAAA),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: _buildEditableTextField(ref, block, style),
-    );
-  }
-
-  Widget _buildEditableTextField(WidgetRef ref, TextBlock block, TextStyle style) {
-    return TextFormField(
-      key: ValueKey(block.id),
-      initialValue: block.rawText,
-      style: style,
-      maxLines: null,
-      keyboardType: TextInputType.multiline,
-      textCapitalization: TextCapitalization.sentences,
-      decoration: const InputDecoration(
-        isDense: true,
-        contentPadding: EdgeInsets.symmetric(vertical: 4),
-        border: InputBorder.none,
-        hintText: 'Start writing...',
-        hintStyle: TextStyle(color: Color(0xFF333333), fontSize: 16),
       ),
-      onChanged: (val) {
-        ref.read(textEditorProvider.notifier).handleTextInput(block.id, val);
-      },
-      onTap: () {
-        ref.read(textEditorProvider.notifier).setActiveBlock(block.id);
-      },
     );
   }
 }
