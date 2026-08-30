@@ -6,9 +6,10 @@ import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/editor_formatting_bridge.dart';
+import '../controllers/markdown_rich_text_controller.dart';
 import 'vscode_smooth_text_field.dart';
 
-/// Ultra-Fast Seamless AMOLED Note Writing Layer with Real VSCode Smooth Caret on Title & Body
+/// Ultra-Fast Seamless AMOLED Note Writing Layer with Real WYSIWYG Bold/Italic and VSCode Smooth Caret
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -23,23 +24,35 @@ class InfiniteRichTextLayer extends ConsumerStatefulWidget {
 
 class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   late TextEditingController _titleController;
-  late TextEditingController _bodyController;
+  late MarkdownRichTextController _bodyController;
   late FocusNode _titleFocusNode;
   late FocusNode _bodyFocusNode;
   Timer? _debounceTimer;
-  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     final doc = ref.read(documentProvider);
+    final settings = ref.read(settingsProvider);
+
     _titleController = TextEditingController(text: doc.metadata.title);
     _titleFocusNode = FocusNode();
 
     final initialBody = doc.blocks.map((b) => _blockToMarkdown(b)).join('\n');
-    _bodyController = TextEditingController(text: initialBody);
+    final bodyStyle = TextStyle(
+      fontSize: settings.fontSize,
+      height: 1.6,
+      color: AppColors.amoledTextPrimary,
+      fontFamily: 'Inter',
+      letterSpacing: 0.2,
+    );
+
+    // WYSIWYG In-Place Markdown Controller (Direct Bold, Italic, Strikethrough, and Bullets)
+    _bodyController = MarkdownRichTextController(
+      text: initialBody,
+      baseStyle: bodyStyle,
+    );
     _bodyFocusNode = FocusNode();
-    _isInitialized = true;
 
     // Bind formatting bridge for instant toolbar actions
     ref.read(editorFormattingBridgeProvider).bind(
@@ -145,6 +158,8 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       letterSpacing: 0.2,
     );
 
+    _bodyController.baseStyle = bodyStyle;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -201,7 +216,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
             const SizedBox(height: 14),
 
-            // 2. Infinite Body Text Editor with VSCode Smooth Caret Gliding
+            // 2. Infinite Body Text Editor with WYSIWYG In-Place Formatting & VSCode Smooth Caret
             if (settings.smoothCaretEnabled)
               VSCodeSmoothTextField(
                 controller: _bodyController,
