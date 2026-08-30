@@ -9,6 +9,8 @@ class VSCodeSmoothTextField extends StatefulWidget {
   final String hintText;
   final TextStyle hintStyle;
   final TextCapitalization textCapitalization;
+  final int? maxLines;
+  final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
 
   const VSCodeSmoothTextField({
@@ -19,6 +21,8 @@ class VSCodeSmoothTextField extends StatefulWidget {
     required this.hintText,
     required this.hintStyle,
     this.textCapitalization = TextCapitalization.sentences,
+    this.maxLines,
+    this.keyboardType = TextInputType.multiline,
     this.onChanged,
   });
 
@@ -136,8 +140,8 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
             TextField(
               controller: widget.controller,
               focusNode: widget.focusNode,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
+              maxLines: widget.maxLines,
+              keyboardType: widget.keyboardType,
               textCapitalization: widget.textCapitalization,
               showCursor: false, // Hides rigid default jump cursor
               style: widget.style,

@@ -205,27 +205,18 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Note Title (Native Precision Alignment)
-          TextField(
+          // 1. Note Title (VS Code Smooth Caret Animation)
+          VSCodeSmoothTextField(
             controller: _titleController,
             focusNode: _titleFocusNode,
             style: titleStyle,
-            cursorColor: const Color(0xFFFF9100),
-            cursorWidth: 2.4,
-            cursorHeight: 32.0,
-            cursorRadius: const Radius.circular(2.0),
-            cursorOpacityAnimates: true,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              hintText: 'Title',
-              hintStyle: TextStyle(
-                color: Color(0xFF6E6E6E),
-                fontWeight: FontWeight.w800,
-                fontSize: 28,
-              ),
-              contentPadding: EdgeInsets.zero,
+            hintText: 'Title',
+            hintStyle: const TextStyle(
+              color: Color(0xFF6E6E6E),
+              fontWeight: FontWeight.w800,
+              fontSize: 28,
             ),
+            textCapitalization: TextCapitalization.sentences,
             onChanged: (val) => _onBodyChanged(_bodyController.text),
           ),
 
