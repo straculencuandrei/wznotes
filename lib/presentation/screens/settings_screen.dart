@@ -171,8 +171,21 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.amoledBorder, width: 1.2),
       ),
-      child: Column(
-        children: children,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(19),
+        child: Theme(
+          data: ThemeData(
+            splashColor: Colors.white10,
+            highlightColor: Colors.transparent,
+            splashFactory: InkRipple.splashFactory,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              children: children,
+            ),
+          ),
+        ),
       ),
     );
   }

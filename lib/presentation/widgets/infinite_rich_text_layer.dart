@@ -5,8 +5,9 @@ import '../../core/constants/app_colors.dart';
 import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
+import 'vscode_smooth_text_field.dart';
 
-/// Ultra-Fast Seamless AMOLED Note Writing Layer (Debounced Riverpod Sync for 120 FPS Typing)
+/// Ultra-Fast Seamless AMOLED Note Writing Layer with Real VSCode Smooth Caret
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -32,7 +33,6 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     final doc = ref.read(documentProvider);
     _titleController = TextEditingController(text: doc.metadata.title);
 
-    // Combine existing blocks into one continuous text stream
     final initialBody = doc.blocks.map((b) => _blockToMarkdown(b)).join('\n');
     _bodyController = TextEditingController(text: initialBody);
     _bodyFocusNode = FocusNode();
@@ -42,7 +42,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _flushSync(); // Guarantee all text is saved before leaving
+    _flushSync();
     _titleController.dispose();
     _bodyController.dispose();
     _bodyFocusNode.dispose();
@@ -71,7 +71,6 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   }
 
   void _onBodyChanged(String text) {
-    // Debounce state synchronization to prevent main-thread frame drops during rapid typing
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 350), () {
       _flushSync();
@@ -119,6 +118,14 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
 
+    final bodyStyle = TextStyle(
+      fontSize: settings.fontSize,
+      height: 1.6,
+      color: AppColors.amoledTextPrimary,
+      fontFamily: 'Inter',
+      letterSpacing: 0.2,
+    );
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -164,35 +171,43 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
             ),
             const SizedBox(height: 12),
 
-            // 2. Seamless Infinite Body Text Editor (120 FPS, Zero Frame Drops)
-            TextField(
-              controller: _bodyController,
-              focusNode: _bodyFocusNode,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
-              cursorColor: const Color(0xFFFF9100),
-              cursorWidth: 2.4,
-              cursorRadius: const Radius.circular(2.0),
-              cursorOpacityAnimates: true,
-              style: TextStyle(
-                fontSize: settings.fontSize,
-                height: 1.6,
-                color: AppColors.amoledTextPrimary,
-                fontFamily: 'Inter',
-                letterSpacing: 0.2,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
+            // 2. Seamless Infinite Body Text Editor with Real VSCode Smooth Caret Gliding
+            if (settings.smoothCaretEnabled)
+              VSCodeSmoothTextField(
+                controller: _bodyController,
+                focusNode: _bodyFocusNode,
+                style: bodyStyle,
                 hintText: 'Write your thoughts, ideas, or journal...',
                 hintStyle: TextStyle(
                   color: const Color(0xFF383838),
                   fontSize: settings.fontSize,
                 ),
-                contentPadding: EdgeInsets.zero,
+                onChanged: _onBodyChanged,
+              )
+            else
+              TextField(
+                controller: _bodyController,
+                focusNode: _bodyFocusNode,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                cursorColor: const Color(0xFFFF9100),
+                cursorWidth: 2.4,
+                cursorHeight: settings.fontSize * 1.25,
+                cursorRadius: const Radius.circular(2.0),
+                cursorOpacityAnimates: true,
+                style: bodyStyle,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Write your thoughts, ideas, or journal...',
+                  hintStyle: TextStyle(
+                    color: const Color(0xFF383838),
+                    fontSize: settings.fontSize,
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: _onBodyChanged,
               ),
-              onChanged: _onBodyChanged,
-            ),
           ],
         ),
       ),

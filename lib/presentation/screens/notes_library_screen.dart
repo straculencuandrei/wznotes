@@ -43,8 +43,25 @@ class NotesLibraryScreen extends ConsumerWidget {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) => const NoteEditorScreen(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curvedAnim = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curvedAnim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.04, 0.0),
+                end: Offset.zero,
+              ).animate(curvedAnim),
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
       ),
     );
   }
