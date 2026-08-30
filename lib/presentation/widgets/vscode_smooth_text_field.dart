@@ -27,10 +27,9 @@ class VSCodeSmoothTextField extends StatefulWidget {
 }
 
 class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with SingleTickerProviderStateMixin {
-  Offset _currentCaretOffset = Offset.zero;
+  Offset? _currentCaretOffset;
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
-  bool _hasCalculated = false;
 
   @override
   void initState() {
@@ -76,7 +75,6 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
     final int cursorIndex = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
     final fontSize = widget.style.fontSize ?? 17.0;
 
-    // Use non-empty character 'A' so TextPainter always has full font ascent on line 1 even when empty
     final textPainter = TextPainter(
       text: TextSpan(text: text.isEmpty ? 'A' : text, style: widget.style),
       textDirection: TextDirection.ltr,
@@ -103,18 +101,16 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
       builder: (context, constraints) {
         final targetOffset = _calculateCaretOffset(constraints.maxWidth);
 
-        if (!_hasCalculated && constraints.maxWidth > 0) {
-          _currentCaretOffset = targetOffset;
-          _hasCalculated = true;
-        }
+        // Snap immediately on first calculation without animating from (0, 0)
+        _currentCaretOffset ??= targetOffset;
 
         final isCollapsed = widget.controller.selection.isCollapsed || widget.controller.selection.baseOffset < 0;
-        final showSmoothCaret = widget.focusNode.hasFocus && isCollapsed && _hasCalculated;
+        final showSmoothCaret = widget.focusNode.hasFocus && isCollapsed;
 
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            // 1. Native TextField (Native cursor hidden so smooth gliding caret displays)
+            // 1. Native TextField with isDense: true to guarantee zero hidden padding
             TextField(
               controller: widget.controller,
               focusNode: widget.focusNode,
@@ -124,6 +120,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
               showCursor: false, // Hides rigid default jump cursor
               style: widget.style,
               decoration: InputDecoration(
+                isDense: true, // Eliminates hidden InputDecorator vertical padding
                 border: InputBorder.none,
                 hintText: widget.hintText,
                 hintStyle: widget.hintStyle,
@@ -134,10 +131,10 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
               },
             ),
 
-            // 2. VSCode Smooth Gliding Animated Caret (Exact Native Glyph Height & Centering)
+            // 2. VSCode Smooth Gliding Animated Caret (Exact Native Alignment on Line 1 & all lines)
             if (showSmoothCaret)
               TweenAnimationBuilder<Offset>(
-                tween: Tween<Offset>(begin: _currentCaretOffset, end: targetOffset),
+                tween: Tween<Offset>(begin: _currentCaretOffset ?? targetOffset, end: targetOffset),
                 duration: const Duration(milliseconds: 95),
                 curve: Curves.easeOutCubic,
                 onEnd: () {

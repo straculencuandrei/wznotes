@@ -51,17 +51,20 @@ class NotesLibraryScreen extends ConsumerWidget {
           );
           return FadeTransition(
             opacity: curvedAnim,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.04, 0.0),
-                end: Offset.zero,
-              ).animate(curvedAnim),
-              child: child,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.94, end: 1.0).animate(curvedAnim),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 0.06),
+                  end: Offset.zero,
+                ).animate(curvedAnim),
+                child: child,
+              ),
             ),
           );
         },
-        transitionDuration: const Duration(milliseconds: 220),
-        reverseTransitionDuration: const Duration(milliseconds: 180),
+        transitionDuration: const Duration(milliseconds: 250),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
       ),
     );
   }
