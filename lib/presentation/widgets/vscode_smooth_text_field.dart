@@ -8,6 +8,7 @@ class VSCodeSmoothTextField extends StatefulWidget {
   final TextStyle style;
   final String hintText;
   final TextStyle hintStyle;
+  final TextCapitalization textCapitalization;
   final ValueChanged<String>? onChanged;
 
   const VSCodeSmoothTextField({
@@ -17,6 +18,7 @@ class VSCodeSmoothTextField extends StatefulWidget {
     required this.style,
     required this.hintText,
     required this.hintStyle,
+    this.textCapitalization = TextCapitalization.sentences,
     this.onChanged,
   });
 
@@ -73,15 +75,16 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
     final selection = widget.controller.selection;
     final int cursorIndex = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
 
+    // Use zero-width space '\u200B' when text is empty so TextPainter always has full font ascent on line 1!
     final textPainter = TextPainter(
-      text: TextSpan(text: text, style: widget.style),
+      text: TextSpan(text: text.isEmpty ? '\u200B' : text, style: widget.style),
       textDirection: TextDirection.ltr,
       maxLines: null,
     );
 
     textPainter.layout(maxWidth: maxWidth);
 
-    final TextPosition textPosition = TextPosition(offset: cursorIndex);
+    final TextPosition textPosition = TextPosition(offset: text.isEmpty ? 0 : cursorIndex);
     final Offset pos = textPainter.getOffsetForCaret(
       textPosition,
       Rect.fromLTWH(0, 0, 2.4, widget.style.fontSize ?? 17.0),
@@ -118,7 +121,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
               focusNode: widget.focusNode,
               maxLines: null,
               keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
+              textCapitalization: widget.textCapitalization,
               showCursor: false, // Hides rigid default jump cursor
               style: widget.style,
               decoration: InputDecoration(
