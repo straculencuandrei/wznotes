@@ -10,12 +10,16 @@ class AppTheme {
         primary: AppColors.samsungOrange,
         secondary: AppColors.primaryBlue,
         surface: AppColors.amoledSurface,
-        background: AppColors.amoledBlack,
         outline: AppColors.amoledBorder,
       ),
       scaffoldBackgroundColor: AppColors.amoledBlack,
       canvasColor: AppColors.amoledBlack,
       fontFamily: 'Inter',
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: Color(0xFFFF9100),
+        selectionColor: Color(0x44FF9100),
+        selectionHandleColor: Color(0xFFFF9100),
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.amoledBlack,
         surfaceTintColor: Colors.transparent,
@@ -44,5 +48,5 @@ class AppTheme {
     );
   }
 
-  static ThemeData get lightTheme => darkTheme; // Defaulting to pure AMOLED theme
+  static ThemeData get lightTheme => darkTheme;
 }

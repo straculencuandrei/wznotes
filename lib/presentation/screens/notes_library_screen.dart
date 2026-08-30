@@ -14,17 +14,14 @@ class NotesLibraryScreen extends ConsumerWidget {
   const NotesLibraryScreen({super.key});
 
   Future<void> _handleNoteTap(BuildContext context, WidgetRef ref, NoteDocument note) async {
-    // If note is locked, require Fingerprint / Biometric / PIN unlock
     if (note.metadata.isLocked) {
       final settings = ref.read(settingsProvider);
       bool isUnlocked = false;
 
-      // Try Fingerprint first
       isUnlocked = await BiometricSecurityService.authenticate(
         reason: 'Scan fingerprint to unlock "${note.metadata.title}"',
       );
 
-      // Fallback to PIN if fingerprint not verified
       if (!isUnlocked && context.mounted) {
         final pinToMatch = note.metadata.lockPin ?? settings.appPin;
         isUnlocked = await BiometricSecurityService.promptPin(
@@ -34,9 +31,7 @@ class NotesLibraryScreen extends ConsumerWidget {
         );
       }
 
-      if (!isUnlocked) {
-        return; // User cancelled or failed authentication
-      }
+      if (!isUnlocked) return;
     }
 
     if (!context.mounted) return;
@@ -57,111 +52,194 @@ class NotesLibraryScreen extends ConsumerWidget {
   void _showNoteActions(BuildContext context, WidgetRef ref, NoteDocument note) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.amoledSurfaceElevated,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
         final isFav = note.metadata.folderId == 'favorites';
         final isLocked = note.metadata.isLocked;
         final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
 
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.amoledTextPrimary,
-                    ),
+        return Container(
+          margin: const EdgeInsets.only(left: 14, right: 14, bottom: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161616),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFF282828), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.6),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Header: Title + Word count & Date pill
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF222222),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${note.metadata.wordCount}w • ${_formatDate(note.metadata.modifiedAt)}',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF999999), fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const Divider(color: AppColors.amoledBorder),
+                  const SizedBox(height: 12),
+                  const Divider(color: Color(0xFF262626), height: 1),
+                  const SizedBox(height: 8),
 
-                // 1. Lock / Unlock Note with Fingerprint & PIN
-                ListTile(
-                  leading: Icon(
-                    isLocked ? Icons.lock_open : Icons.lock_outline,
-                    color: AppColors.samsungOrange,
-                  ),
-                  title: Text(
-                    isLocked ? 'Unlock note (Remove protection)' : 'Lock note (Fingerprint / PIN)',
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                  ),
-                  onTap: () async {
-                    Navigator.of(context).pop();
-                    if (!isLocked) {
-                      // Lock note
-                      final updated = note.copyWith(
-                        metadata: note.metadata.copyWith(isLocked: true),
-                      );
-                      ref.read(notesLibraryProvider.notifier).saveNote(updated);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Note locked with fingerprint & PIN')),
-                      );
-                    } else {
-                      // Verify before unlocking
-                      final isAuthed = await BiometricSecurityService.authenticate(reason: 'Verify fingerprint to unlock');
-                      if (isAuthed) {
+                  // Compact Action Rows
+                  // 1. Lock / Unlock
+                  _buildCompactActionRow(
+                    icon: isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+                    iconColor: AppColors.samsungOrange,
+                    iconBg: AppColors.samsungOrange.withValues(alpha: 0.15),
+                    title: isLocked ? 'Unlock note' : 'Lock note with biometric / PIN',
+                    subtitle: isLocked ? 'Remove password protection' : 'Requires fingerprint to open',
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      if (!isLocked) {
                         final updated = note.copyWith(
-                          metadata: note.metadata.copyWith(isLocked: false),
+                          metadata: note.metadata.copyWith(isLocked: true),
                         );
                         ref.read(notesLibraryProvider.notifier).saveNote(updated);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Note locked with fingerprint & PIN'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      } else {
+                        final isAuthed = await BiometricSecurityService.authenticate(reason: 'Verify fingerprint to unlock');
+                        if (isAuthed) {
+                          final updated = note.copyWith(
+                            metadata: note.metadata.copyWith(isLocked: false),
+                          );
+                          ref.read(notesLibraryProvider.notifier).saveNote(updated);
+                        }
                       }
-                    }
-                  },
-                ),
+                    },
+                  ),
 
-                // 2. Favorite
-                ListTile(
-                  leading: Icon(
-                    isFav ? Icons.star : Icons.star_border,
-                    color: isFav ? const Color(0xFFFBBF24) : Colors.white70,
+                  // 2. Favorite
+                  _buildCompactActionRow(
+                    icon: isFav ? Icons.star_rounded : Icons.star_border_rounded,
+                    iconColor: const Color(0xFFFBBF24),
+                    iconBg: const Color(0xFFFBBF24).withValues(alpha: 0.15),
+                    title: isFav ? 'Remove from favorites' : 'Add to favorites',
+                    onTap: () {
+                      ref.read(notesLibraryProvider.notifier).toggleFavorite(note.metadata.id);
+                      Navigator.of(context).pop();
+                    },
                   ),
-                  title: Text(
-                    isFav ? 'Remove from favorites' : 'Add to favorites',
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                  ),
-                  onTap: () {
-                    ref.read(notesLibraryProvider.notifier).toggleFavorite(note.metadata.id);
-                    Navigator.of(context).pop();
-                  },
-                ),
 
-                // 3. Delete
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: AppColors.accentRose),
-                  title: const Text(
-                    'Delete note',
-                    style: TextStyle(color: AppColors.accentRose, fontSize: 15, fontWeight: FontWeight.bold),
+                  // 3. Delete
+                  _buildCompactActionRow(
+                    icon: Icons.delete_outline_rounded,
+                    iconColor: AppColors.accentRose,
+                    iconBg: AppColors.accentRose.withValues(alpha: 0.15),
+                    title: 'Delete note',
+                    titleColor: AppColors.accentRose,
+                    onTap: () {
+                      ref.read(notesLibraryProvider.notifier).deleteNote(note.metadata.id);
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Note deleted'),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: AppColors.amoledSurface,
+                        ),
+                      );
+                    },
                   ),
-                  onTap: () {
-                    ref.read(notesLibraryProvider.notifier).deleteNote(note.metadata.id);
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Note deleted'),
-                        duration: Duration(seconds: 2),
-                        backgroundColor: AppColors.amoledSurface,
-                      ),
-                    );
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+
+  static Widget _buildCompactActionRow({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required String title,
+    String? subtitle,
+    Color titleColor = Colors.white,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 9.0),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: titleColor,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF777777)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF444444), size: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -209,7 +287,6 @@ class NotesLibraryScreen extends ConsumerWidget {
                     ),
                     Row(
                       children: [
-                        // Grid / List Layout Switcher
                         IconButton(
                           icon: Icon(
                             libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
@@ -219,7 +296,6 @@ class NotesLibraryScreen extends ConsumerWidget {
                           tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
                           onPressed: () => libraryNotifier.toggleViewLayout(),
                         ),
-                        // Settings Gear Icon
                         IconButton(
                           icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 26),
                           tooltip: 'Settings',
@@ -267,7 +343,7 @@ class NotesLibraryScreen extends ConsumerWidget {
               ),
             ),
 
-            // 3. Notes Content with Smooth Animated View Transitions
+            // 3. Notes Content
             if (notes.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
@@ -344,7 +420,6 @@ class NotesLibraryScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title & Lock Status
             Row(
               children: [
                 if (isLocked) ...[
@@ -367,7 +442,6 @@ class NotesLibraryScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
 
-            // Content Snippet
             Expanded(
               child: Text(
                 previewText.isNotEmpty ? previewText : 'Empty note',
@@ -383,7 +457,6 @@ class NotesLibraryScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 6),
 
-            // Date & Word count
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
