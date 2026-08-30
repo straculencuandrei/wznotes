@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
+import '../controllers/editor_formatting_bridge.dart';
 import 'vscode_smooth_text_field.dart';
 
 /// Ultra-Fast Seamless AMOLED Note Writing Layer with Real VSCode Smooth Caret on Title & Body
