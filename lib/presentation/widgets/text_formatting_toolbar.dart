@@ -1,129 +1,131 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
-import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
-import '../controllers/text_editor_controller.dart';
 import '../controllers/inking_controller.dart';
+import '../controllers/editor_formatting_bridge.dart';
 
-/// Clean Samsung Notes Style Bottom Keyboard Formatting Bar
-/// Evenly scaled across the full screen width
+/// Samsung Notes Style Floating Island Formatting Toolbar
+/// Centered floating pill with essential, responsive formatting actions
 class TextFormattingToolbar extends ConsumerWidget {
   const TextFormattingToolbar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final editorState = ref.watch(textEditorProvider);
     final inkingState = ref.watch(inkingProvider);
     final inkingNotifier = ref.read(inkingProvider.notifier);
     final docNotifier = ref.read(documentProvider.notifier);
-    final doc = ref.watch(documentProvider);
-
-    final TextBlock? activeBlock = editorState.activeBlockId != null
-        ? doc.blocks.firstWhere(
-            (b) => b.id == editorState.activeBlockId,
-            orElse: () => const TextBlock(id: '', type: TextBlockType.paragraph, rawText: ''),
-          )
-        : (doc.blocks.isNotEmpty ? doc.blocks.last : null);
-
-    final currentType = activeBlock?.type ?? TextBlockType.paragraph;
+    final bridge = ref.read(editorFormattingBridgeProvider);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: const BoxDecoration(
-        color: AppColors.amoledSurface,
-        border: Border(top: BorderSide(color: AppColors.amoledBorder, width: 1.2)),
-      ),
+      color: Colors.transparent,
+      padding: const EdgeInsets.only(left: 14, right: 14, bottom: 10, top: 4),
       child: SafeArea(
         top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            // 1. Bullet List
-            _buildIconBtn(
-              icon: Icons.format_list_bulleted,
-              tooltip: 'Bullet List',
-              isSelected: currentType == TextBlockType.bulletList,
-              onTap: () => _toggleType(ref, activeBlock, TextBlockType.bulletList),
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161616),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFF2C2C2C), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // 1. Bold (**text**)
+                _buildIslandBtn(
+                  icon: Icons.format_bold_rounded,
+                  tooltip: 'Bold',
+                  onTap: () => bridge.wrapSelection('**', '**'),
+                ),
 
-            // 2. Interactive Checklist
-            _buildIconBtn(
-              icon: Icons.checklist_rtl,
-              tooltip: 'Checklist',
-              isSelected: currentType == TextBlockType.checklist,
-              onTap: () => _toggleType(ref, activeBlock, TextBlockType.checklist),
-            ),
+                // 2. Italic (*text*)
+                _buildIslandBtn(
+                  icon: Icons.format_italic_rounded,
+                  tooltip: 'Italic',
+                  onTap: () => bridge.wrapSelection('*', '*'),
+                ),
 
-            // 3. Blockquote
-            _buildIconBtn(
-              icon: Icons.format_quote,
-              tooltip: 'Quote',
-              isSelected: currentType == TextBlockType.blockquote,
-              onTap: () => _toggleType(ref, activeBlock, TextBlockType.blockquote),
-            ),
+                // 3. Strikethrough (~~text~~)
+                _buildIslandBtn(
+                  icon: Icons.strikethrough_s_rounded,
+                  tooltip: 'Strikethrough',
+                  onTap: () => bridge.wrapSelection('~~', '~~'),
+                ),
 
-            // 4. Code Block
-            _buildIconBtn(
-              icon: Icons.code,
-              tooltip: 'Code Block',
-              isSelected: currentType == TextBlockType.codeBlock,
-              onTap: () => _toggleType(ref, activeBlock, TextBlockType.codeBlock),
-            ),
+                // Divider
+                Container(
+                  width: 1.2,
+                  height: 22,
+                  color: const Color(0xFF2E2E2E),
+                ),
 
-            // Divider
-            Container(
-              width: 1.2,
-              height: 26,
-              color: AppColors.amoledBorder,
-            ),
+                // 4. Bullet List (- text)
+                _buildIslandBtn(
+                  icon: Icons.format_list_bulleted_rounded,
+                  tooltip: 'Bullet List',
+                  onTap: () => bridge.toggleLinePrefix('- '),
+                ),
 
-            // 5. Toggle Stylus / Drawing Mode
-            _buildIconBtn(
-              icon: inkingState.isInkingMode ? Icons.edit : Icons.draw_outlined,
-              tooltip: inkingState.isInkingMode ? 'Switch to Typing' : 'Handwriting / Drawing Mode',
-              isSelected: inkingState.isInkingMode,
-              activeColor: AppColors.primaryBlue,
-              onTap: () => inkingNotifier.toggleInkingMode(!inkingState.isInkingMode),
-            ),
+                // 5. Interactive Checklist ([ ] text)
+                _buildIslandBtn(
+                  icon: Icons.checklist_rtl_rounded,
+                  tooltip: 'Checklist',
+                  onTap: () => bridge.toggleLinePrefix('[ ] '),
+                ),
 
-            // 6. Undo
-            _buildIconBtn(
-              icon: Icons.undo,
-              tooltip: 'Undo',
-              isSelected: false,
-              isEnabled: docNotifier.canUndo,
-              onTap: docNotifier.canUndo ? () => docNotifier.undo() : () {},
-            ),
+                // 6. Blockquote (> text)
+                _buildIslandBtn(
+                  icon: Icons.format_quote_rounded,
+                  tooltip: 'Quote',
+                  onTap: () => bridge.toggleLinePrefix('> '),
+                ),
 
-            // 7. Redo
-            _buildIconBtn(
-              icon: Icons.redo,
-              tooltip: 'Redo',
-              isSelected: false,
-              isEnabled: docNotifier.canRedo,
-              onTap: docNotifier.canRedo ? () => docNotifier.redo() : () {},
+                // Divider
+                Container(
+                  width: 1.2,
+                  height: 22,
+                  color: const Color(0xFF2E2E2E),
+                ),
+
+                // 7. Handwriting / Drawing Toggle
+                _buildIslandBtn(
+                  icon: inkingState.isInkingMode ? Icons.edit_rounded : Icons.draw_outlined,
+                  tooltip: inkingState.isInkingMode ? 'Switch to Typing' : 'Handwriting / Drawing',
+                  isSelected: inkingState.isInkingMode,
+                  activeColor: AppColors.primaryBlue,
+                  onTap: () => inkingNotifier.toggleInkingMode(!inkingState.isInkingMode),
+                ),
+
+                // 8. Undo
+                _buildIslandBtn(
+                  icon: Icons.undo_rounded,
+                  tooltip: 'Undo',
+                  isEnabled: docNotifier.canUndo,
+                  onTap: docNotifier.canUndo ? () => docNotifier.undo() : () {},
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _toggleType(WidgetRef ref, TextBlock? block, TextBlockType type) {
-    if (block == null || block.id.isEmpty) return;
-    final newType = block.type == type ? TextBlockType.paragraph : type;
-    ref.read(documentProvider.notifier).updateBlock(
-          block.id,
-          block.copyWith(type: newType),
-        );
-  }
-
-  Widget _buildIconBtn({
+  Widget _buildIslandBtn({
     required IconData icon,
     required String tooltip,
-    required bool isSelected,
+    bool isSelected = false,
     bool isEnabled = true,
     Color activeColor = AppColors.samsungOrange,
     required VoidCallback onTap,
@@ -136,14 +138,16 @@ class TextFormattingToolbar extends ConsumerWidget {
           onTap: isEnabled ? onTap : null,
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: isSelected ? activeColor : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
+            alignment: Alignment.center,
             child: Icon(
               icon,
-              size: 22,
+              size: 20,
               color: isSelected
                   ? Colors.black
                   : (isEnabled ? Colors.white : Colors.white24),

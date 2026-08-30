@@ -39,10 +39,18 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     _bodyController = TextEditingController(text: initialBody);
     _bodyFocusNode = FocusNode();
     _isInitialized = true;
+
+    // Bind formatting bridge for instant toolbar actions
+    ref.read(editorFormattingBridgeProvider).bind(
+      controller: _bodyController,
+      focusNode: _bodyFocusNode,
+      onUpdate: () => _onBodyChanged(_bodyController.text),
+    );
   }
 
   @override
   void dispose() {
+    ref.read(editorFormattingBridgeProvider).unbind();
     _debounceTimer?.cancel();
     _flushSync();
     _titleController.dispose();
