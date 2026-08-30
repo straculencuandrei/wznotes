@@ -15,11 +15,81 @@ class NotesLibraryScreen extends ConsumerWidget {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) => const NoteEditorScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 150),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
       ),
+    );
+  }
+
+  void _showNoteActions(BuildContext context, WidgetRef ref, NoteDocument note) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.amoledSurfaceElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final isFav = note.metadata.folderId == 'favorites';
+        final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.amoledTextPrimary,
+                    ),
+                  ),
+                ),
+                const Divider(color: AppColors.amoledBorder),
+                ListTile(
+                  leading: Icon(
+                    isFav ? Icons.star : Icons.star_border,
+                    color: isFav ? const Color(0xFFFBBF24) : Colors.white70,
+                  ),
+                  title: Text(
+                    isFav ? 'Remove from favorites' : 'Add to favorites',
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                  ),
+                  onTap: () {
+                    ref.read(notesLibraryProvider.notifier).toggleFavorite(note.metadata.id);
+                    Navigator.of(context).pop();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: AppColors.accentRose),
+                  title: const Text(
+                    'Delete note',
+                    style: TextStyle(color: AppColors.accentRose, fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () {
+                    ref.read(notesLibraryProvider.notifier).deleteNote(note.metadata.id);
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Note deleted'),
+                        duration: Duration(seconds: 2),
+                        backgroundColor: AppColors.amoledSurface,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -156,6 +226,7 @@ class NotesLibraryScreen extends ConsumerWidget {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 16),
         ),
         onPressed: () {
+          // Instant navigation without adding an empty ghost note beforehand
           final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
           _openNote(context, ref, newDoc);
         },
@@ -169,6 +240,7 @@ class NotesLibraryScreen extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () => _openNote(context, ref, note),
+      onLongPress: () => _showNoteActions(context, ref, note),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.amoledSurface,
@@ -234,6 +306,7 @@ class NotesLibraryScreen extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () => _openNote(context, ref, note),
+      onLongPress: () => _showNoteActions(context, ref, note),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(

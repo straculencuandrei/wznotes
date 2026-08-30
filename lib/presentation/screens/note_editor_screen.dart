@@ -76,7 +76,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                 borderRadius: BorderRadius.circular(16),
                 side: const BorderSide(color: AppColors.amoledBorder),
               ),
-              onSelected: (action) => _handleExport(context, action, doc),
+              onSelected: (action) {
+                if (action == 'delete') {
+                  _confirmDelete(context, doc);
+                } else {
+                  _handleExport(context, action, doc);
+                }
+              },
               itemBuilder: (context) => [
                 const PopupMenuItem(
                   value: 'pdf',
@@ -89,6 +95,17 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                 const PopupMenuItem(
                   value: 'svg',
                   child: Text('Export to SVG Vector', style: TextStyle(color: Colors.white, fontSize: 14)),
+                ),
+                const PopupMenuDivider(height: 1),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, color: AppColors.accentRose, size: 20),
+                      SizedBox(width: 8),
+                      Text('Delete note', style: TextStyle(color: AppColors.accentRose, fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -113,6 +130,38 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             const TextFormattingToolbar(),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, NoteDocument doc) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.amoledSurfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.amoledBorder),
+        ),
+        title: const Text('Delete this note?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'This note will be permanently deleted.',
+          style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(notesLibraryProvider.notifier).deleteNote(doc.metadata.id);
+              Navigator.of(context).pop(); // dismiss dialog
+              Navigator.of(context).pop(); // exit editor
+            },
+            child: const Text('Delete', style: TextStyle(color: AppColors.accentRose, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

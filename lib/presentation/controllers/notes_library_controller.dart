@@ -1,13 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import '../../domain/models/note_document.dart';
-import '../../domain/models/text_block.dart';
-import '../../domain/models/canvas_template.dart';
 
 class NotesLibraryState {
   final List<NoteDocument> notes;
   final String searchQuery;
-  final String selectedCategory; // 'All', 'Favorites', 'Study', 'Personal'
+  final String selectedCategory;
   final bool isGridView;
 
   const NotesLibraryState({
@@ -61,14 +58,26 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     state = state.copyWith(isGridView: !state.isGridView);
   }
 
-  NoteDocument createNewNote({String title = 'Untitled Note'}) {
-    final newDoc = NoteDocument.initial(title: title);
-    state = state.copyWith(notes: [newDoc, ...state.notes]);
-    return newDoc;
+  NoteDocument createNewNote({String title = ''}) {
+    return NoteDocument.initial(title: title);
   }
 
   void saveNote(NoteDocument updatedDoc) {
+    // If note is completely empty (no title, no text, no strokes), don't save a blank ghost note
+    final hasContent = updatedDoc.metadata.title.trim().isNotEmpty ||
+        updatedDoc.blocks.any((b) => b.rawText.trim().isNotEmpty) ||
+        updatedDoc.strokes.isNotEmpty;
+
     final existingIndex = state.notes.indexWhere((n) => n.metadata.id == updatedDoc.metadata.id);
+
+    if (!hasContent) {
+      // If an existing note was cleared of all content, remove it
+      if (existingIndex >= 0) {
+        deleteNote(updatedDoc.metadata.id);
+      }
+      return;
+    }
+
     if (existingIndex >= 0) {
       final updatedList = List<NoteDocument>.from(state.notes);
       updatedList[existingIndex] = updatedDoc.recalculateStats();
