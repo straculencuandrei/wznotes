@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class EditorFormattingBridge {
+class EditorFormattingBridge extends ChangeNotifier {
   TextEditingController? bodyController;
   FocusNode? bodyFocusNode;
   VoidCallback? onTextUpdated;
+
+  bool isBold = false;
+  bool isItalic = false;
+  bool isStrike = false;
 
   void bind({
     required TextEditingController controller,
@@ -14,20 +18,58 @@ class EditorFormattingBridge {
     bodyController = controller;
     bodyFocusNode = focusNode;
     onTextUpdated = onUpdate;
+    controller.addListener(_syncActiveStyles);
   }
 
   void unbind() {
+    bodyController?.removeListener(_syncActiveStyles);
     bodyController = null;
     bodyFocusNode = null;
     onTextUpdated = null;
   }
 
-  /// Wraps current selection or inserts wrapper symbols (e.g. **bold**, *italic*, ~~strike~~)
-  void wrapSelection(String prefix, String suffix) {
+  void _syncActiveStyles() {
+    if (bodyController == null) return;
+    final text = bodyController!.text;
+    final selection = bodyController!.selection;
+    if (selection.isValid && !selection.isCollapsed) {
+      final selected = selection.textInside(text);
+      isBold = selected.startsWith('**') && selected.endsWith('**');
+      isItalic = selected.startsWith('*') && selected.endsWith('*');
+      isStrike = selected.startsWith('~~') && selected.endsWith('~~');
+      notifyListeners();
+    }
+  }
+
+  /// Toggles Bold formatting (**text**)
+  void toggleBold() {
+    isBold = !isBold;
+    _applyWrapper('**', '**');
+    notifyListeners();
+  }
+
+  /// Toggles Italic formatting (*text*)
+  void toggleItalic() {
+    isItalic = !isItalic;
+    _applyWrapper('*', '*');
+    notifyListeners();
+  }
+
+  /// Toggles Strikethrough (~~text~~)
+  void toggleStrike() {
+    isStrike = !isStrike;
+    _applyWrapper('~~', '~~');
+    notifyListeners();
+  }
+
+  void _applyWrapper(String prefix, String suffix) {
     if (bodyController == null) return;
     final controller = bodyController!;
     final text = controller.text;
     final selection = controller.selection;
+
+    // Ensure focus is kept on editor
+    bodyFocusNode?.requestFocus();
 
     if (!selection.isValid || selection.isCollapsed) {
       final int pos = selection.isValid && selection.baseOffset >= 0 ? selection.baseOffset : text.length;
@@ -38,7 +80,6 @@ class EditorFormattingBridge {
       );
     } else {
       final selectedText = selection.textInside(text);
-      // Toggle off if already wrapped
       if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
         final unwrapped = selectedText.substring(prefix.length, selectedText.length - suffix.length);
         final newText = text.replaceRange(selection.start, selection.end, unwrapped);
@@ -57,7 +98,6 @@ class EditorFormattingBridge {
     }
 
     onTextUpdated?.call();
-    bodyFocusNode?.requestFocus();
   }
 
   /// Toggles line prefix at current cursor line (e.g. "- ", "[ ] ", "> ")
@@ -66,9 +106,11 @@ class EditorFormattingBridge {
     final controller = bodyController!;
     final text = controller.text;
     final selection = controller.selection;
+
+    bodyFocusNode?.requestFocus();
+
     final int cursorIndex = selection.isValid && selection.baseOffset >= 0 ? selection.baseOffset : text.length;
 
-    // Find current line bounds
     int lineStart = 0;
     if (cursorIndex > 0 && cursorIndex <= text.length) {
       lineStart = text.lastIndexOf('\n', cursorIndex - 1);
@@ -81,7 +123,6 @@ class EditorFormattingBridge {
     final currentLine = text.substring(lineStart, lineEnd);
 
     if (currentLine.startsWith(prefix)) {
-      // Remove prefix
       final updatedLine = currentLine.substring(prefix.length);
       final newText = text.replaceRange(lineStart, lineEnd, updatedLine);
       final newCursor = (cursorIndex - prefix.length).clamp(lineStart, newText.length);
@@ -90,7 +131,6 @@ class EditorFormattingBridge {
         selection: TextSelection.collapsed(offset: newCursor),
       );
     } else {
-      // Add prefix
       final updatedLine = '$prefix$currentLine';
       final newText = text.replaceRange(lineStart, lineEnd, updatedLine);
       final newCursor = cursorIndex + prefix.length;
@@ -101,10 +141,9 @@ class EditorFormattingBridge {
     }
 
     onTextUpdated?.call();
-    bodyFocusNode?.requestFocus();
   }
 }
 
-final editorFormattingBridgeProvider = Provider<EditorFormattingBridge>((ref) {
+final editorFormattingBridgeProvider = ChangeNotifierProvider<EditorFormattingBridge>((ref) {
   return EditorFormattingBridge();
 });

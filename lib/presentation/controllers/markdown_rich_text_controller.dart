@@ -13,9 +13,9 @@ class MarkdownRichTextController extends TextEditingController {
   });
 
   static const TextStyle _hiddenStyle = TextStyle(
-    fontSize: 0.001,
+    fontSize: 0.0001,
+    height: 0.0001,
     color: Colors.transparent,
-    letterSpacing: -1.0,
   );
 
   @override
@@ -55,15 +55,15 @@ class MarkdownRichTextController extends TextEditingController {
     // 1. Line Prefix Parsing (Heading, Bullet, Checklist, Quote)
     if (line.startsWith('# ')) {
       children.add(const TextSpan(text: '# ', style: _hiddenStyle));
-      lineBaseStyle = effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 17) * 1.5, fontWeight: FontWeight.w900);
+      lineBaseStyle = effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 17) * 1.45, fontWeight: FontWeight.w900);
       prefixOffset = 2;
     } else if (line.startsWith('## ')) {
       children.add(const TextSpan(text: '## ', style: _hiddenStyle));
-      lineBaseStyle = effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 17) * 1.3, fontWeight: FontWeight.bold);
+      lineBaseStyle = effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 17) * 1.25, fontWeight: FontWeight.bold);
       prefixOffset = 3;
     } else if (line.startsWith('### ')) {
       children.add(const TextSpan(text: '### ', style: _hiddenStyle));
-      lineBaseStyle = effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 17) * 1.15, fontWeight: FontWeight.w700);
+      lineBaseStyle = effectiveStyle.copyWith(fontSize: (effectiveStyle.fontSize ?? 17) * 1.12, fontWeight: FontWeight.w700);
       prefixOffset = 4;
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
       // Render clean bullet symbol instead of raw markdown
@@ -93,8 +93,8 @@ class MarkdownRichTextController extends TextEditingController {
   void _parseInlineFormatting(String text, TextStyle currentStyle, List<InlineSpan> children) {
     if (text.isEmpty) return;
 
-    // Match bold (**text**), italic (*text*), strikethrough (~~text~~), code (`text`)
-    final regex = RegExp(r'(\*\*(.*?)\*\*|\*(.*?)\*|~~(.*?)~~|`(.*?)`)');
+    // Negated character classes to prevent greedy overlap across words
+    final regex = RegExp(r'(\*\*[^\*]+\*\*|\*[^\*]+\*|~~[^~]+~~|`[^`]+`)');
     int lastEnd = 0;
 
     for (final match in regex.allMatches(text)) {
