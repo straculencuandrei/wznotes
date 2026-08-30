@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../domain/models/text_span_node.dart';
 
 class FormattingSpan {
   int start;
@@ -21,17 +22,26 @@ class FormattingSpan {
   bool hasSameStyle(FormattingSpan other) {
     return isBold == other.isBold && isItalic == other.isItalic && isStrike == other.isStrike;
   }
+
+  Map<String, dynamic> toJson() => {
+        'start': start,
+        'end': end,
+        'isBold': isBold,
+        'isItalic': isItalic,
+        'isStrike': isStrike,
+      };
+
+  factory FormattingSpan.fromJson(Map<String, dynamic> json) => FormattingSpan(
+        start: json['start'] as int? ?? 0,
+        end: json['end'] as int? ?? 0,
+        isBold: json['isBold'] as bool? ?? false,
+        isItalic: json['isItalic'] as bool? ?? false,
+        isStrike: json['isStrike'] as bool? ?? false,
+      );
 }
 
-class ParsedMarkdownResult {
-  final String cleanText;
-  final List<FormattingSpan> spans;
-
-  const ParsedMarkdownResult(this.cleanText, this.spans);
-}
-
-/// High-Performance Deterministic Span-Based Rich Text Controller
-/// Converts saved markdown into clean plain text + style spans on load, and exports back on save
+/// Pure WYSIWYG Span-Based Controller
+/// Stores 100% clean plain text with zero markdown asterisks/tildes, persisting styles directly via spans
 class RichSpanEditingController extends TextEditingController {
   TextStyle baseStyle;
   final List<FormattingSpan> _spans = [];
@@ -43,18 +53,25 @@ class RichSpanEditingController extends TextEditingController {
   String _lastText = '';
 
   RichSpanEditingController({
-    String? rawMarkdown,
+    String? initialText,
+    List<FormattingSpan>? initialSpans,
     required this.baseStyle,
-  }) : super(text: _parseRawMarkdown(rawMarkdown ?? '').cleanText) {
-    final parsed = _parseRawMarkdown(rawMarkdown ?? '');
-    _lastText = parsed.cleanText;
-    _spans.addAll(parsed.spans);
+  }) : super(text: _sanitizeLegacyMarkdown(initialText ?? '').cleanText) {
+    final sanitized = _sanitizeLegacyMarkdown(initialText ?? '');
+    _lastText = sanitized.cleanText;
+
+    if (initialSpans != null && initialSpans.isNotEmpty) {
+      _spans.addAll(initialSpans);
+    } else {
+      _spans.addAll(sanitized.spans);
+    }
+
     _normalizeSpans(_lastText.length);
   }
 
-  /// Robust Regex Parser: Extracts pure plain text and records formatting span ranges
-  static ParsedMarkdownResult _parseRawMarkdown(String raw) {
-    if (raw.isEmpty) return const ParsedMarkdownResult('', []);
+  /// Cleans any legacy markdown syntax (**word**, ~~strike~~, *italic*) from older notes into pure plain text + spans
+  static ({String cleanText, List<FormattingSpan> spans}) _sanitizeLegacyMarkdown(String raw) {
+    if (raw.isEmpty) return (cleanText: '', spans: <FormattingSpan>[]);
 
     final regex = RegExp(r'(\*\*(.*?)\*\*|~~(.*?)~~|\*([^*]+)\*)');
     final buffer = StringBuffer();
@@ -99,8 +116,14 @@ class RichSpanEditingController extends TextEditingController {
       buffer.write(raw.substring(lastIndex));
     }
 
-    return ParsedMarkdownResult(buffer.toString(), spans);
+    // Clean any stray asterisks or tildes from corrupt previous saves
+    var clean = buffer.toString();
+    clean = clean.replaceAll('**', '').replaceAll('~~', '');
+
+    return (cleanText: clean, spans: spans);
   }
+
+  List<FormattingSpan> get spans => List.unmodifiable(_spans);
 
   @override
   set value(TextEditingValue newValue) {
@@ -265,42 +288,54 @@ class RichSpanEditingController extends TextEditingController {
     _normalizeSpans(text.length);
   }
 
-  /// 100% Guaranteed matching tag segment export
-  String exportMarkdown() {
-    final raw = text;
-    if (raw.isEmpty || _spans.isEmpty) return raw;
-
-    _normalizeSpans(raw.length);
-    if (_spans.isEmpty) return raw;
-
-    final buffer = StringBuffer();
-    int cursor = 0;
-
-    for (final span in _spans) {
-      final start = span.start.clamp(0, raw.length);
-      final end = span.end.clamp(0, raw.length);
-
-      if (start > cursor) {
-        buffer.write(raw.substring(cursor, start));
-      }
-
-      if (end > start) {
-        final content = raw.substring(start, end);
-        String formatted = content;
-        if (span.isStrike) formatted = '~~$formatted~~';
-        if (span.isItalic) formatted = '*$formatted*';
-        if (span.isBold) formatted = '**$formatted**';
-        buffer.write(formatted);
-      }
-
-      cursor = math.max(cursor, end);
+  List<TextSpanNode> exportSpansForRange(int lineStart, int lineEnd) {
+    final List<TextSpanNode> nodes = [];
+    final currentText = text;
+    if (lineStart >= lineEnd || lineStart >= currentText.length) {
+      return nodes;
     }
 
-    if (cursor < raw.length) {
-      buffer.write(raw.substring(cursor));
+    int cursor = lineStart;
+    while (cursor < lineEnd) {
+      bool isB = false;
+      bool isI = false;
+      bool isS = false;
+
+      for (final s in _spans) {
+        if (cursor >= s.start && cursor < s.end) {
+          if (s.isBold) isB = true;
+          if (s.isItalic) isI = true;
+          if (s.isStrike) isS = true;
+        }
+      }
+
+      int runEnd = cursor + 1;
+      while (runEnd < lineEnd) {
+        bool runB = false;
+        bool runI = false;
+        bool runS = false;
+        for (final s in _spans) {
+          if (runEnd >= s.start && runEnd < s.end) {
+            if (s.isBold) runB = true;
+            if (s.isItalic) runI = true;
+            if (s.isStrike) runS = true;
+          }
+        }
+        if (runB != isB || runI != isI || runS != isS) break;
+        runEnd++;
+      }
+
+      nodes.add(TextSpanNode(
+        text: currentText.substring(cursor, runEnd),
+        bold: isB,
+        italic: isI,
+        strikethrough: isS,
+      ));
+
+      cursor = runEnd;
     }
 
-    return buffer.toString();
+    return nodes;
   }
 
   @override

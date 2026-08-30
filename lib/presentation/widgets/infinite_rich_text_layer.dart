@@ -9,7 +9,7 @@ import '../controllers/editor_formatting_bridge.dart';
 import '../controllers/rich_span_editing_controller.dart';
 import 'vscode_smooth_text_field.dart';
 
-/// Ultra-Fast Seamless AMOLED Note Writing Layer with Real WYSIWYG Bold/Italic and VSCode Smooth Caret
+/// Ultra-Fast Seamless AMOLED Note Writing Layer with Pure Native Span Formatting & VSCode Smooth Caret
 class InfiniteRichTextLayer extends ConsumerStatefulWidget {
   final double width;
 
@@ -38,7 +38,6 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     _titleController = TextEditingController(text: doc.metadata.title);
     _titleFocusNode = FocusNode();
 
-    final initialBody = doc.blocks.map((b) => _blockToMarkdown(b)).join('\n');
     final bodyStyle = TextStyle(
       fontSize: settings.fontSize,
       height: 1.6,
@@ -47,9 +46,44 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       letterSpacing: 0.2,
     );
 
-    // True WYSIWYG Span-Based Rich Text Controller
+    // Build plain text and restore exact formatting spans
+    final buffer = StringBuffer();
+    final List<FormattingSpan> initialSpans = [];
+
+    for (int i = 0; i < doc.blocks.length; i++) {
+      final b = doc.blocks[i];
+      final prefix = _getBlockPrefix(b);
+      buffer.write(prefix);
+
+      if (b.spans.isNotEmpty) {
+        int spanOffset = buffer.length;
+        for (final s in b.spans) {
+          final spanStart = spanOffset;
+          final spanEnd = spanOffset + s.text.length;
+          if (s.bold || s.italic || s.strikethrough) {
+            initialSpans.add(FormattingSpan(
+              start: spanStart,
+              end: spanEnd,
+              isBold: s.bold,
+              isItalic: s.italic,
+              isStrike: s.strikethrough,
+            ));
+          }
+          spanOffset = spanEnd;
+        }
+        buffer.write(b.rawText);
+      } else {
+        buffer.write(b.rawText);
+      }
+
+      if (i < doc.blocks.length - 1) {
+        buffer.write('\n');
+      }
+    }
+
     _bodyController = RichSpanEditingController(
-      rawMarkdown: initialBody,
+      initialText: buffer.toString(),
+      initialSpans: initialSpans,
       baseStyle: bodyStyle,
     );
     _bodyFocusNode = FocusNode();
@@ -74,24 +108,22 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
     super.dispose();
   }
 
-  String _blockToMarkdown(TextBlock b) {
+  String _getBlockPrefix(TextBlock b) {
     switch (b.type) {
       case TextBlockType.heading1:
-        return '# ${b.rawText}';
+        return '# ';
       case TextBlockType.heading2:
-        return '## ${b.rawText}';
+        return '## ';
       case TextBlockType.heading3:
-        return '### ${b.rawText}';
+        return '### ';
       case TextBlockType.bulletList:
-        return '- ${b.rawText}';
+        return '- ';
       case TextBlockType.checklist:
-        return b.isChecked ? '[x] ${b.rawText}' : '[ ] ${b.rawText}';
+        return b.isChecked ? '[x] ' : '[ ] ';
       case TextBlockType.blockquote:
-        return '> ${b.rawText}';
-      case TextBlockType.codeBlock:
-        return '```\n${b.rawText}\n```';
+        return '> ';
       default:
-        return b.rawText;
+        return '';
     }
   }
 
@@ -103,30 +135,36 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   }
 
   void _flushSync() {
-    final text = _bodyController.exportMarkdown();
+    final text = _bodyController.text; // Pure clean text!
     final lines = text.split('\n');
     final List<TextBlock> updatedBlocks = [];
+    int currentOffset = 0;
 
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
       final id = 'block_$i';
+      final lineStart = currentOffset;
+      final lineEnd = currentOffset + line.length;
+      currentOffset = lineEnd + 1; // account for newline
+
+      final lineSpans = _bodyController.exportSpansForRange(lineStart, lineEnd);
 
       if (line.startsWith('# ')) {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.heading1, rawText: line.substring(2)));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.heading1, rawText: line.substring(2), spans: lineSpans));
       } else if (line.startsWith('## ')) {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.heading2, rawText: line.substring(3)));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.heading2, rawText: line.substring(3), spans: lineSpans));
       } else if (line.startsWith('### ')) {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.heading3, rawText: line.substring(4)));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.heading3, rawText: line.substring(4), spans: lineSpans));
       } else if (line.startsWith('- ') || line.startsWith('* ')) {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.bulletList, rawText: line.substring(2)));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.bulletList, rawText: line.substring(2), spans: lineSpans));
       } else if (line.startsWith('[ ] ')) {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.checklist, rawText: line.substring(4), isChecked: false));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.checklist, rawText: line.substring(4), isChecked: false, spans: lineSpans));
       } else if (line.startsWith('[x] ') || line.startsWith('[X] ')) {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.checklist, rawText: line.substring(4), isChecked: true));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.checklist, rawText: line.substring(4), isChecked: true, spans: lineSpans));
       } else if (line.startsWith('> ')) {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.blockquote, rawText: line.substring(2)));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.blockquote, rawText: line.substring(2), spans: lineSpans));
       } else {
-        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.paragraph, rawText: line));
+        updatedBlocks.add(TextBlock(id: id, type: TextBlockType.paragraph, rawText: line, spans: lineSpans));
       }
     }
 
@@ -214,7 +252,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
             const SizedBox(height: 14),
 
-            // 2. Infinite Body Text Editor with True WYSIWYG Span-Based Bold/Italic
+            // 2. Infinite Body Text Editor with Pure Native Span-Based WYSIWYG
             if (settings.smoothCaretEnabled)
               VSCodeSmoothTextField(
                 controller: _bodyController,
