@@ -30,10 +30,12 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
   Offset? _currentCaretOffset;
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
+  int _lastTextLength = 0;
 
   @override
   void initState() {
     super.initState();
+    _lastTextLength = widget.controller.text.length;
 
     // Soft breathing blink when idle
     _blinkController = AnimationController(
@@ -91,7 +93,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
 
     textPainter.layout(maxWidth: maxWidth);
 
-    final TextPosition textPosition = TextPosition(offset: text.isEmpty ? 0 : cursorIndex);
+    final TextPosition textPosition = TextPosition(offset: text.isEmpty ? 0 : cursorIndex.clamp(0, text.length));
     final Offset pos = textPainter.getOffsetForCaret(
       textPosition,
       Rect.fromLTWH(0, 0, 2.4, fontSize),
@@ -108,9 +110,14 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
     return LayoutBuilder(
       builder: (context, constraints) {
         final targetOffset = _calculateCaretOffset(context, constraints.maxWidth);
+        final currentTextLen = widget.controller.text.length;
+        final int lengthDiff = (currentTextLen - _lastTextLength).abs();
+        _lastTextLength = currentTextLen;
 
-        // Snap immediately on first calculation without animating from (0, 0)
-        _currentCaretOffset ??= targetOffset;
+        // If large jump / paste occurred (>3 chars or >80px jump), snap immediately without floating animation
+        if (_currentCaretOffset == null || lengthDiff > 3 || (_currentCaretOffset! - targetOffset).distance > 80) {
+          _currentCaretOffset = targetOffset;
+        }
 
         final isCollapsed = widget.controller.selection.isCollapsed || widget.controller.selection.baseOffset < 0;
         final showSmoothCaret = widget.focusNode.hasFocus && isCollapsed;
@@ -143,7 +150,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Sing
             if (showSmoothCaret)
               TweenAnimationBuilder<Offset>(
                 tween: Tween<Offset>(begin: _currentCaretOffset ?? targetOffset, end: targetOffset),
-                duration: const Duration(milliseconds: 95),
+                duration: const Duration(milliseconds: 90),
                 curve: Curves.easeOutCubic,
                 onEnd: () {
                   _currentCaretOffset = targetOffset;
