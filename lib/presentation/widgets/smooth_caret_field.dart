@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 
-/// VSCode Smooth Caret Animation TextField for Android & Desktop
-/// Smoothly interpolates the cursor position between characters as you type
+/// VSCode Ultra-Smooth Gliding Caret Animation TextField for Android
+/// Provides silky smooth interpolation between cursor positions with a subtle trailing fade
 class SmoothCaretField extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -32,8 +31,8 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
 
   Offset _oldCaretOffset = Offset.zero;
   Offset _targetCaretOffset = Offset.zero;
-  double _caretHeight = 21.0;
-  double _verticalOffset = 4.0;
+  double _caretHeight = 18.0;
+  double _verticalAdjustment = 6.0;
   bool _hasInitialPosition = false;
   double _currentWidth = 350.0;
 
@@ -41,20 +40,20 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
   void initState() {
     super.initState();
 
-    // 1. Smooth Spring Caret Glide (85ms smooth cubic glide)
+    // 1. Silky Smooth Gliding Controller (125ms ease-out quart for ultra-fluid motion)
     _moveController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 85),
+      duration: const Duration(milliseconds: 125),
     );
 
     // 2. Soft Breathing Blink (idle state)
     _blinkController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 950),
     )..repeat(reverse: true);
 
-    _blinkAnimation = Tween<double>(begin: 0.15, end: 1.0).animate(
-      CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut),
+    _blinkAnimation = Tween<double>(begin: 0.05, end: 1.0).animate(
+      CurvedAnimation(parent: _blinkController, curve: Curves.easeInOutSine),
     );
 
     widget.controller.addListener(_onTextChanged);
@@ -79,7 +78,7 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
 
   void _onTextChanged() {
     if (!mounted) return;
-    _blinkController.value = 1.0; // Keep visible while typing
+    _blinkController.value = 1.0;
     _computeCaret(_currentWidth);
   }
 
@@ -97,16 +96,19 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
 
     textPainter.layout(maxWidth: width);
 
+    final fontSize = widget.style.fontSize ?? 17.0;
+    final fontHeight = widget.style.height ?? 1.6;
+
     final TextPosition textPosition = TextPosition(offset: cursorIndex);
     final Offset caretPos = textPainter.getOffsetForCaret(
       textPosition,
-      Rect.fromLTWH(0, 0, 2.2, widget.style.fontSize ?? 17.0),
+      Rect.fromLTWH(0, 0, 2.0, fontSize),
     );
 
-    final fontSize = widget.style.fontSize ?? 17.0;
-    final lineHeight = fontSize * (widget.style.height ?? 1.6);
-    _caretHeight = fontSize * 1.22; // Perfect vertical proportion
-    _verticalOffset = (lineHeight - _caretHeight) / 2.0; // Exact vertical centering
+    // Exact height matching glyph cap-height (same height as text)
+    _caretHeight = fontSize * 1.08;
+    // Lowered offset so it aligns with glyph baseline and text center
+    _verticalAdjustment = (fontSize * (fontHeight - 1.0) / 2.0) + (fontSize * 0.28);
 
     if (!_hasInitialPosition) {
       _oldCaretOffset = caretPos;
@@ -156,36 +158,63 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
               },
             ),
 
-            // 2. VSCode Smooth Caret Animation (Recentered & Clean Matte Warm Amber)
+            // 2. VSCode Ultra-Smooth Gliding Caret with Trailing Fade
             if (widget.focusNode.hasFocus && _hasInitialPosition)
               AnimatedBuilder(
                 animation: Listenable.merge([_moveController, _blinkAnimation]),
                 builder: (context, _) {
+                  // Silky smooth quartic glide
                   final double t = CurvedAnimation(
                     parent: _moveController,
-                    curve: Curves.easeOutCubic,
+                    curve: Curves.easeOutQuart,
                   ).value;
 
                   final double currentX = _oldCaretOffset.dx + (_targetCaretOffset.dx - _oldCaretOffset.dx) * t;
                   final double currentY = _oldCaretOffset.dy + (_targetCaretOffset.dy - _oldCaretOffset.dy) * t;
                   final double opacity = _moveController.isAnimating ? 1.0 : _blinkAnimation.value;
 
-                  return Positioned(
-                    left: currentX,
-                    top: currentY + _verticalOffset,
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: opacity.clamp(0.0, 1.0),
-                        child: Container(
-                          width: 2.2,
-                          height: _caretHeight,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF9100), // Clean Warm Amber (less neon)
-                            borderRadius: BorderRadius.circular(1.5),
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Trailing soft motion blur fade during fast typing
+                      if (_moveController.isAnimating)
+                        Positioned(
+                          left: _oldCaretOffset.dx + (_targetCaretOffset.dx - _oldCaretOffset.dx) * (t * 0.7),
+                          top: currentY + _verticalAdjustment,
+                          child: IgnorePointer(
+                            child: Opacity(
+                              opacity: (1.0 - t).clamp(0.0, 0.4),
+                              child: Container(
+                                width: 2.2,
+                                height: _caretHeight,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF9100),
+                                  borderRadius: BorderRadius.circular(1.5),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Main Smooth Caret
+                      Positioned(
+                        left: currentX,
+                        top: currentY + _verticalAdjustment,
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: opacity.clamp(0.0, 1.0),
+                            child: Container(
+                              width: 2.2,
+                              height: _caretHeight,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF9100), // Clean Warm Amber
+                                borderRadius: BorderRadius.circular(1.5),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   );
                 },
               ),
