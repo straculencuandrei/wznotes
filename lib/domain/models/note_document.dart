@@ -210,6 +210,28 @@ class NoteDocument {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'metadata': metadata.toJson(),
+        'template': template.toJson(),
+        'blocks': blocks.map((b) => b.toJson()).toList(),
+        'strokes': strokes.map((s) => s.toJson()).toList(),
+      };
+
+  factory NoteDocument.fromJson(Map<String, dynamic> json) {
+    return NoteDocument(
+      metadata: NoteMetadata.fromJson(json['metadata'] as Map<String, dynamic>? ?? {}),
+      template: CanvasTemplate.fromJson(json['template'] as Map<String, dynamic>? ?? {}),
+      blocks: (json['blocks'] as List<dynamic>?)
+              ?.map((b) => TextBlock.fromJson(b as Map<String, dynamic>))
+              .toList() ??
+          [],
+      strokes: (json['strokes'] as List<dynamic>?)
+              ?.map((s) => VectorStroke.fromJson(s as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
   /// Creates a clean blank document
   factory NoteDocument.initial({String title = ''}) {
     final now = DateTime.now();
