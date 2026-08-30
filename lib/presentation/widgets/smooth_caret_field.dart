@@ -32,7 +32,8 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
 
   Offset _oldCaretOffset = Offset.zero;
   Offset _targetCaretOffset = Offset.zero;
-  double _caretHeight = 24.0;
+  double _caretHeight = 21.0;
+  double _verticalOffset = 4.0;
   bool _hasInitialPosition = false;
   double _currentWidth = 350.0;
 
@@ -40,10 +41,10 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
   void initState() {
     super.initState();
 
-    // 1. Smooth Spring Caret Glide (80ms smooth cubic glide)
+    // 1. Smooth Spring Caret Glide (85ms smooth cubic glide)
     _moveController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 90),
+      duration: const Duration(milliseconds: 85),
     );
 
     // 2. Soft Breathing Blink (idle state)
@@ -52,7 +53,7 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
 
-    _blinkAnimation = Tween<double>(begin: 0.1, end: 1.0).animate(
+    _blinkAnimation = Tween<double>(begin: 0.15, end: 1.0).animate(
       CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut),
     );
 
@@ -99,11 +100,13 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
     final TextPosition textPosition = TextPosition(offset: cursorIndex);
     final Offset caretPos = textPainter.getOffsetForCaret(
       textPosition,
-      Rect.fromLTWH(0, 0, 3.0, widget.style.fontSize ?? 17.0),
+      Rect.fromLTWH(0, 0, 2.2, widget.style.fontSize ?? 17.0),
     );
 
     final fontSize = widget.style.fontSize ?? 17.0;
-    _caretHeight = fontSize * (widget.style.height ?? 1.5) * 0.88;
+    final lineHeight = fontSize * (widget.style.height ?? 1.6);
+    _caretHeight = fontSize * 1.22; // Perfect vertical proportion
+    _verticalOffset = (lineHeight - _caretHeight) / 2.0; // Exact vertical centering
 
     if (!_hasInitialPosition) {
       _oldCaretOffset = caretPos;
@@ -153,7 +156,7 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
               },
             ),
 
-            // 2. VSCode Smooth Caret Animation
+            // 2. VSCode Smooth Caret Animation (Recentered & Clean Matte Warm Amber)
             if (widget.focusNode.hasFocus && _hasInitialPosition)
               AnimatedBuilder(
                 animation: Listenable.merge([_moveController, _blinkAnimation]),
@@ -169,23 +172,16 @@ class _SmoothCaretFieldState extends State<SmoothCaretField> with TickerProvider
 
                   return Positioned(
                     left: currentX,
-                    top: currentY + 2.0,
+                    top: currentY + _verticalOffset,
                     child: IgnorePointer(
                       child: Opacity(
                         opacity: opacity.clamp(0.0, 1.0),
                         child: Container(
-                          width: 2.8,
+                          width: 2.2,
                           height: _caretHeight,
                           decoration: BoxDecoration(
-                            color: AppColors.samsungOrange,
-                            borderRadius: BorderRadius.circular(2.0),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.samsungOrange.withValues(alpha: 0.5),
-                                blurRadius: 4.0,
-                                spreadRadius: 0.5,
-                              ),
-                            ],
+                            color: const Color(0xFFFF9100), // Clean Warm Amber (less neon)
+                            borderRadius: BorderRadius.circular(1.5),
                           ),
                         ),
                       ),
