@@ -416,11 +416,27 @@ class NotesLibraryScreen extends ConsumerWidget {
     );
   }
 
+  static String _cleanPreviewText(NoteDocument note) {
+    if (note.metadata.isLocked) return '•••• •••••••• ••••••';
+    if (note.blocks.isEmpty) return '';
+    final raw = note.blocks.map((b) => b.rawText).join(' ');
+    // Remove markdown symbols (**, *, ~~, `, #, >, [ ], [x], -)
+    return raw
+        .replaceAll('**', '')
+        .replaceAll('~~', '')
+        .replaceAll('`', '')
+        .replaceAll(RegExp(r'(^|\s)\*\s*'), ' ')
+        .replaceAll(RegExp(r'#{1,6}\s*'), '')
+        .replaceAll(RegExp(r'\[\s*[xX ]\s*\]'), '☐')
+        .replaceAll(RegExp(r'(^|\s)>\s*'), ' ')
+        .replaceAll(RegExp(r'(^|\s)-\s*'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
   Widget _buildGridCard(BuildContext context, WidgetRef ref, NoteDocument note) {
     final isLocked = note.metadata.isLocked;
-    final previewText = isLocked
-        ? '•••• •••••••• ••••••'
-        : (note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '');
+    final previewText = _cleanPreviewText(note);
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
 
     return InkWell(
@@ -499,9 +515,7 @@ class NotesLibraryScreen extends ConsumerWidget {
 
   Widget _buildListCard(BuildContext context, WidgetRef ref, NoteDocument note) {
     final isLocked = note.metadata.isLocked;
-    final previewText = isLocked
-        ? '•••• •••••••• ••••••'
-        : (note.blocks.isNotEmpty ? note.blocks.map((b) => b.rawText).join(' ') : '');
+    final previewText = _cleanPreviewText(note);
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
 
     return InkWell(
