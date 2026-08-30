@@ -31,7 +31,7 @@ class ParsedMarkdownResult {
 }
 
 /// High-Performance Deterministic Span-Based Rich Text Controller
-/// Converts raw markdown into plain text + style spans on load, and exports back to markdown on save
+/// Converts saved markdown into clean plain text + style spans on load, and exports back on save
 class RichSpanEditingController extends TextEditingController {
   TextStyle baseStyle;
   final List<FormattingSpan> _spans = [];
@@ -52,56 +52,51 @@ class RichSpanEditingController extends TextEditingController {
     _normalizeSpans(_lastText.length);
   }
 
+  /// Robust Regex Parser: Extracts pure plain text and records formatting span ranges
   static ParsedMarkdownResult _parseRawMarkdown(String raw) {
     if (raw.isEmpty) return const ParsedMarkdownResult('', []);
 
+    final regex = RegExp(r'(\*\*(.*?)\*\*|~~(.*?)~~|\*(.*?)\*)');
     final buffer = StringBuffer();
     final List<FormattingSpan> spans = [];
-    int i = 0;
+    int lastIndex = 0;
 
-    while (i < raw.length) {
-      if (raw.startsWith('**', i)) {
-        final endIdx = raw.indexOf('**', i + 2);
-        if (endIdx != -1) {
-          final content = raw.substring(i + 2, endIdx);
-          final startPos = buffer.length;
-          buffer.write(content);
-          final endPos = buffer.length;
-          if (endPos > startPos) {
-            spans.add(FormattingSpan(start: startPos, end: endPos, isBold: true));
-          }
-          i = endIdx + 2;
-          continue;
+    for (final match in regex.allMatches(raw)) {
+      if (match.start > lastIndex) {
+        buffer.write(raw.substring(lastIndex, match.start));
+      }
+
+      final full = match.group(0)!;
+      final startPos = buffer.length;
+
+      if (full.startsWith('**') && full.endsWith('**') && full.length >= 4) {
+        final content = match.group(2) ?? '';
+        buffer.write(content);
+        final endPos = buffer.length;
+        if (endPos > startPos) {
+          spans.add(FormattingSpan(start: startPos, end: endPos, isBold: true));
         }
-      } else if (raw.startsWith('~~', i)) {
-        final endIdx = raw.indexOf('~~', i + 2);
-        if (endIdx != -1) {
-          final content = raw.substring(i + 2, endIdx);
-          final startPos = buffer.length;
-          buffer.write(content);
-          final endPos = buffer.length;
-          if (endPos > startPos) {
-            spans.add(FormattingSpan(start: startPos, end: endPos, isStrike: true));
-          }
-          i = endIdx + 2;
-          continue;
+      } else if (full.startsWith('~~') && full.endsWith('~~') && full.length >= 4) {
+        final content = match.group(3) ?? '';
+        buffer.write(content);
+        final endPos = buffer.length;
+        if (endPos > startPos) {
+          spans.add(FormattingSpan(start: startPos, end: endPos, isStrike: true));
         }
-      } else if (raw.startsWith('*', i)) {
-        final endIdx = raw.indexOf('*', i + 1);
-        if (endIdx != -1) {
-          final content = raw.substring(i + 1, endIdx);
-          final startPos = buffer.length;
-          buffer.write(content);
-          final endPos = buffer.length;
-          if (endPos > startPos) {
-            spans.add(FormattingSpan(start: startPos, end: endPos, isItalic: true));
-          }
-          i = endIdx + 1;
-          continue;
+      } else if (full.startsWith('*') && full.endsWith('*') && full.length >= 2) {
+        final content = match.group(4) ?? '';
+        buffer.write(content);
+        final endPos = buffer.length;
+        if (endPos > startPos) {
+          spans.add(FormattingSpan(start: startPos, end: endPos, isItalic: true));
         }
       }
-      buffer.write(raw[i]);
-      i++;
+
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < raw.length) {
+      buffer.write(raw.substring(lastIndex));
     }
 
     return ParsedMarkdownResult(buffer.toString(), spans);
@@ -270,7 +265,7 @@ class RichSpanEditingController extends TextEditingController {
     _normalizeSpans(text.length);
   }
 
-  /// Exports plain text with markdown formatting tags for persistent saving
+  /// Exports clean text with markdown tags for saving
   String exportMarkdown() {
     final raw = text;
     if (raw.isEmpty || _spans.isEmpty) return raw;
