@@ -8,6 +8,7 @@ import '../../infrastructure/security/biometric_service.dart';
 import '../../infrastructure/update/update_service.dart';
 import '../controllers/update_controller.dart';
 import '../widgets/update_dialog.dart';
+import '../widgets/top_island_toast.dart';
 import 'sync_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -166,11 +167,11 @@ class SettingsScreen extends ConsumerWidget {
               title: const Text('Export Backup Archive', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
               subtitle: const Text('Save all notes as a compressed .zip container', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Backup archive created with ${libraryState.notes.length} notes!'),
-                    backgroundColor: AppColors.accentEmerald,
-                  ),
+                TopIslandToast.show(
+                  context,
+                  message: 'Backup archive created with ${libraryState.notes.length} notes!',
+                  icon: Icons.check_circle_outline_rounded,
+                  color: AppColors.accentEmerald,
                 );
               },
             ),
@@ -220,30 +221,32 @@ class SettingsScreen extends ConsumerWidget {
                           if (updateState.hasUpdate) {
                             UpdateDialog.show(context, updateInfo: updateState.updateInfo!);
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Checking for updates...'),
-                                duration: Duration(seconds: 1),
-                              ),
+                            TopIslandToast.show(
+                              context,
+                              message: 'Checking for updates...',
+                              isLoading: true,
+                              color: AppColors.samsungOrange,
+                              duration: const Duration(seconds: 10),
                             );
                             await updateNotifier.check(silent: false);
                             final latest = ref.read(updateProvider);
                             if (context.mounted) {
+                              TopIslandToast.dismiss();
                               if (latest.hasUpdate) {
                                 UpdateDialog.show(context, updateInfo: latest.updateInfo!);
                               } else if (latest.errorMessage != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Update check error: ${latest.errorMessage}'),
-                                    backgroundColor: Colors.redAccent,
-                                  ),
+                                TopIslandToast.show(
+                                  context,
+                                  message: 'Update check error: ${latest.errorMessage}',
+                                  icon: Icons.error_outline_rounded,
+                                  color: AppColors.accentRose,
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('wznotes is up to date (v${UpdateService.currentVersion}+${UpdateService.currentBuildNumber})!'),
-                                    backgroundColor: AppColors.accentEmerald,
-                                  ),
+                                TopIslandToast.show(
+                                  context,
+                                  message: 'wznotes is up to date (v${UpdateService.currentVersion}+${UpdateService.currentBuildNumber})',
+                                  icon: Icons.check_circle_outline_rounded,
+                                  color: AppColors.accentEmerald,
                                 );
                               }
                             }

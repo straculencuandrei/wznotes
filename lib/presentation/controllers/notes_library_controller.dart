@@ -12,6 +12,7 @@ class NotesLibraryState {
   final String selectedCategory;
   final bool isGridView;
   final bool isLoading;
+  final Set<String> selectedNoteIds;
 
   const NotesLibraryState({
     this.notes = const [],
@@ -19,7 +20,10 @@ class NotesLibraryState {
     this.selectedCategory = 'All',
     this.isGridView = true,
     this.isLoading = true,
+    this.selectedNoteIds = const {},
   });
+
+  bool get isSelectionMode => selectedNoteIds.isNotEmpty;
 
   List<NoteDocument> get filteredNotes {
     return notes.where((note) {
@@ -41,6 +45,7 @@ class NotesLibraryState {
     String? selectedCategory,
     bool? isGridView,
     bool? isLoading,
+    Set<String>? selectedNoteIds,
   }) {
     return NotesLibraryState(
       notes: notes ?? this.notes,
@@ -48,6 +53,7 @@ class NotesLibraryState {
       selectedCategory: selectedCategory ?? this.selectedCategory,
       isGridView: isGridView ?? this.isGridView,
       isLoading: isLoading ?? this.isLoading,
+      selectedNoteIds: selectedNoteIds ?? this.selectedNoteIds,
     );
   }
 }
@@ -178,6 +184,81 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
       final jsonString = json.encode(doc.toJson());
       file.writeAsStringSync(jsonString);
     } catch (_) {}
+  }
+
+  // --- SELECTION & BATCH OPERATIONS ---
+
+  void toggleNoteSelection(String noteId) {
+    final updated = Set<String>.from(state.selectedNoteIds);
+    if (updated.contains(noteId)) {
+      updated.remove(noteId);
+    } else {
+      updated.add(noteId);
+    }
+    state = state.copyWith(selectedNoteIds: updated);
+  }
+
+  void selectAllNotes() {
+    final allIds = state.filteredNotes.map((n) => n.metadata.id).toSet();
+    state = state.copyWith(selectedNoteIds: allIds);
+  }
+
+  void clearSelection() {
+    state = state.copyWith(selectedNoteIds: {});
+  }
+
+  void batchDeleteSelected() {
+    final toDelete = List<String>.from(state.selectedNoteIds);
+    for (final id in toDelete) {
+      deleteNote(id);
+    }
+    clearSelection();
+  }
+
+  void batchToggleFavorite({required bool setAsFavorite}) {
+    final ids = state.selectedNoteIds;
+    if (ids.isEmpty) return;
+
+    final updatedList = state.notes.map((note) {
+      if (ids.contains(note.metadata.id)) {
+        final updated = note.copyWith(
+          metadata: note.metadata.copyWith(
+            folderId: setAsFavorite ? 'favorites' : 'root',
+            modifiedAt: DateTime.now(),
+          ),
+        );
+        _persistNoteToDisk(updated);
+        return updated;
+      }
+      return note;
+    }).toList();
+
+    state = state.copyWith(notes: updatedList);
+    clearSelection();
+  }
+
+  void batchSetLock({required bool locked, String? lockPin}) {
+    final ids = state.selectedNoteIds;
+    if (ids.isEmpty) return;
+
+    final updatedList = state.notes.map((note) {
+      if (ids.contains(note.metadata.id)) {
+        final updated = note.copyWith(
+          metadata: note.metadata.copyWith(
+            isLocked: locked,
+            lockPin: locked ? lockPin : null,
+            clearLockPin: !locked,
+            modifiedAt: DateTime.now(),
+          ),
+        );
+        _persistNoteToDisk(updated);
+        return updated;
+      }
+      return note;
+    }).toList();
+
+    state = state.copyWith(notes: updatedList);
+    clearSelection();
   }
 
   void deleteNote(String noteId) {

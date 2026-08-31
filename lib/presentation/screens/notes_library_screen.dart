@@ -9,6 +9,8 @@ import '../controllers/settings_controller.dart';
 import '../../infrastructure/security/biometric_service.dart';
 import '../controllers/update_controller.dart';
 import '../widgets/update_dialog.dart';
+import '../widgets/hold_to_select_border_card.dart';
+import '../widgets/top_island_toast.dart';
 import 'note_editor_screen.dart';
 import 'settings_screen.dart';
 import 'sync_screen.dart';
@@ -142,7 +144,20 @@ class NotesLibraryScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
 
                   // Compact Action Rows
-                  // 1. Lock / Unlock
+                  // 1. Select Multiple Notes
+                  _buildCompactActionRow(
+                    icon: Icons.checklist_rounded,
+                    iconColor: Colors.white,
+                    iconBg: const Color(0xFF2E2E2E),
+                    title: 'Select multiple notes',
+                    subtitle: 'Enter multi-selection mode',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
+                    },
+                  ),
+
+                  // 2. Lock / Unlock
                   _buildCompactActionRow(
                     icon: isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
                     iconColor: AppColors.samsungOrange,
@@ -175,12 +190,11 @@ class NotesLibraryScreen extends ConsumerWidget {
                         );
                         ref.read(notesLibraryProvider.notifier).saveNote(updated);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Note locked (PIN: ${chosenPin ?? "1234"})'),
-                              backgroundColor: AppColors.accentEmerald,
-                              duration: const Duration(seconds: 2),
-                            ),
+                          TopIslandToast.show(
+                            context,
+                            message: 'Note locked (PIN: ${chosenPin ?? "1234"})',
+                            icon: Icons.lock_outline_rounded,
+                            color: AppColors.accentEmerald,
                           );
                         }
                       } else {
@@ -203,12 +217,20 @@ class NotesLibraryScreen extends ConsumerWidget {
                             metadata: note.metadata.copyWith(isLocked: false),
                           );
                           ref.read(notesLibraryProvider.notifier).saveNote(updated);
+                          if (context.mounted) {
+                            TopIslandToast.show(
+                              context,
+                              message: 'Note unlocked',
+                              icon: Icons.lock_open_rounded,
+                              color: AppColors.accentEmerald,
+                            );
+                          }
                         }
                       }
                     },
                   ),
 
-                  // 2. Favorite
+                  // 3. Favorite
                   _buildCompactActionRow(
                     icon: isFav ? Icons.star_rounded : Icons.star_border_rounded,
                     iconColor: const Color(0xFFFBBF24),
@@ -220,7 +242,7 @@ class NotesLibraryScreen extends ConsumerWidget {
                     },
                   ),
 
-                  // 3. Delete
+                  // 4. Delete
                   _buildCompactActionRow(
                     icon: Icons.delete_outline_rounded,
                     iconColor: AppColors.accentRose,
@@ -230,12 +252,11 @@ class NotesLibraryScreen extends ConsumerWidget {
                     onTap: () {
                       ref.read(notesLibraryProvider.notifier).deleteNote(note.metadata.id);
                       Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Note deleted'),
-                          duration: Duration(seconds: 2),
-                          backgroundColor: AppColors.amoledSurface,
-                        ),
+                      TopIslandToast.show(
+                        context,
+                        message: 'Note deleted',
+                        icon: Icons.delete_outline_rounded,
+                        color: AppColors.accentRose,
                       );
                     },
                   ),
@@ -316,245 +337,493 @@ class NotesLibraryScreen extends ConsumerWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final gridColumns = screenWidth > 1200 ? 5 : (screenWidth > 900 ? 4 : (screenWidth > 600 ? 3 : 2));
 
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
-          final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
-          _openNote(context, ref, newDoc);
-        },
-        SingleActivator(LogicalKeyboardKey.keyS, control: true, shift: true): () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
-          );
-        },
+    final isSelectionMode = libraryState.isSelectionMode;
+    final selectedCount = libraryState.selectedNoteIds.length;
+    final isAllSelected = selectedCount == notes.length && notes.isNotEmpty;
+
+    return PopScope(
+      canPop: !isSelectionMode,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && isSelectionMode) {
+          libraryNotifier.clearSelection();
+        }
       },
-      child: Focus(
-        autofocus: true,
-        child: Scaffold(
-          backgroundColor: AppColors.amoledBlack,
-          body: SafeArea(
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // 1. Large Samsung One UI Header
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 24, right: 16, top: 24, bottom: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'All notes',
-                              style: TextStyle(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.amoledTextPrimary,
-                                letterSpacing: -0.8,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: AppColors.amoledTextSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.sync_alt_rounded, color: AppColors.samsungOrange, size: 26),
-                              tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                                color: AppColors.amoledTextPrimary,
-                                size: 26,
-                              ),
-                              tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
-                              onPressed: () => libraryNotifier.toggleViewLayout(),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 26),
-                              tooltip: 'Settings',
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // 1.5. In-App Update Alert Banner (if update available)
-                Consumer(
-                  builder: (context, ref, _) {
-                    final updateState = ref.watch(updateProvider);
-                    if (!updateState.hasUpdate) return const SliverToBoxAdapter(child: SizedBox.shrink());
-
-                    final info = updateState.updateInfo!;
-                    return SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1E1710), Color(0xFF261D12)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.7)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.rocket_launch_rounded, color: AppColors.samsungOrange, size: 24),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
+            if (!isSelectionMode) {
+              final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
+              _openNote(context, ref, newDoc);
+            }
+          },
+          SingleActivator(LogicalKeyboardKey.keyS, control: true, shift: true): () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
+            );
+          },
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
+            backgroundColor: AppColors.amoledBlack,
+            body: Stack(
+              children: [
+                SafeArea(
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      // 1. Large Samsung One UI Header (or Selection Mode Header)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 24, right: 16, top: 24, bottom: 12),
+                          child: isSelectionMode
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      'wznotes v${info.version} Available',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
+                                          tooltip: 'Close Selection',
+                                          onPressed: () => libraryNotifier.clearSelection(),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '$selectedCount Selected',
+                                          style: const TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.amoledTextPrimary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      'Tap to view what\'s new & update',
-                                      style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12),
+                                    TextButton.icon(
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: AppColors.samsungOrange,
+                                      ),
+                                      icon: Icon(isAllSelected ? Icons.deselect_rounded : Icons.select_all_rounded, size: 20),
+                                      label: Text(
+                                        isAllSelected ? 'Deselect All' : 'Select All',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      onPressed: () {
+                                        if (isAllSelected) {
+                                          libraryNotifier.clearSelection();
+                                        } else {
+                                          libraryNotifier.selectAllNotes();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'All notes',
+                                          style: TextStyle(
+                                            fontSize: 34,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.amoledTextPrimary,
+                                            letterSpacing: -0.8,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            color: AppColors.amoledTextSecondary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.sync_alt_rounded, color: AppColors.samsungOrange, size: 26),
+                                          tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
+                                          onPressed: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
+                                            );
+                                          },
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                                            color: AppColors.amoledTextPrimary,
+                                            size: 26,
+                                          ),
+                                          tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
+                                          onPressed: () => libraryNotifier.toggleViewLayout(),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 26),
+                                          tooltip: 'Settings',
+                                          onPressed: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.samsungOrange,
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+
+                      // 1.5. In-App Update Alert Banner (if update available)
+                      if (!isSelectionMode)
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final updateState = ref.watch(updateProvider);
+                            if (!updateState.hasUpdate) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+                            final info = updateState.updateInfo!;
+                            return SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF1E1710), Color(0xFF261D12)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.7)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.rocket_launch_rounded, color: AppColors.samsungOrange, size: 24),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'wznotes v${info.version} Available',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            const Text(
+                                              'Tap to view what\'s new & update',
+                                              style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.samsungOrange,
+                                          foregroundColor: Colors.black,
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        onPressed: () {
+                                          UpdateDialog.show(context, updateInfo: info);
+                                        },
+                                        child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      IconButton(
+                                        icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
+                                        tooltip: 'Dismiss',
+                                        onPressed: () => ref.read(updateProvider.notifier).dismiss(),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                onPressed: () {
-                                  UpdateDialog.show(context, updateInfo: info);
-                                },
-                                child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
                               ),
-                              const SizedBox(width: 6),
-                              IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
-                                tooltip: 'Dismiss',
-                                onPressed: () => ref.read(updateProvider.notifier).dismiss(),
+                            );
+                          },
+                        ),
+
+                      // 2. Big AMOLED Search Bar
+                      if (!isSelectionMode)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.amoledSurface,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: AppColors.amoledBorder, width: 1.2),
                               ),
-                            ],
+                              child: TextField(
+                                style: const TextStyle(fontSize: 16, color: AppColors.amoledTextPrimary),
+                                decoration: InputDecoration(
+                                  hintText: 'Search notes...',
+                                  hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 15),
+                                  prefixIcon: const Icon(Icons.search, color: AppColors.samsungOrange, size: 24),
+                                  suffixIcon: libraryState.searchQuery.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
+                                          onPressed: () => libraryNotifier.setSearchQuery(''),
+                                        )
+                                      : null,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                onChanged: (val) => libraryNotifier.setSearchQuery(val),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
 
-                // 2. Big AMOLED Search Bar
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.amoledSurface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.amoledBorder, width: 1.2),
-                      ),
-                      child: TextField(
-                        style: const TextStyle(fontSize: 16, color: AppColors.amoledTextPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'Search notes...',
-                          hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 15),
-                          prefixIcon: const Icon(Icons.search, color: AppColors.samsungOrange, size: 24),
-                          suffixIcon: libraryState.searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
-                                  onPressed: () => libraryNotifier.setSearchQuery(''),
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      // 3. Notes Content
+                      if (notes.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _buildEmptyState(context, ref),
+                        )
+                      else if (libraryState.isGridView)
+                        SliverPadding(
+                          padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 120),
+                          sliver: SliverGrid(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: gridColumns,
+                              childAspectRatio: 0.85,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildGridCard(context, ref, notes[index], libraryState),
+                              childCount: notes.length,
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 120),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildListCard(context, ref, notes[index], libraryState),
+                              childCount: notes.length,
+                            ),
+                          ),
                         ),
-                        onChanged: (val) => libraryNotifier.setSearchQuery(val),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
 
-                // 3. Notes Content
-                if (notes.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _buildEmptyState(context, ref),
-                  )
-                else if (libraryState.isGridView)
-                  SliverPadding(
-                    padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 100),
-                    sliver: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: gridColumns,
-                        childAspectRatio: 0.85,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildGridCard(context, ref, notes[index]),
-                        childCount: notes.length,
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 100),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildListCard(context, ref, notes[index]),
-                        childCount: notes.length,
-                      ),
-                    ),
-                  ),
+                // Floating AMOLED Batch Action Toolbar (Visible when selecting notes)
+                if (isSelectionMode)
+                  _buildBatchActionBar(context, ref, libraryState),
               ],
             ),
-          ),
-          // Samsung Notes Style Floating Action Button
-          floatingActionButton: FloatingActionButton.extended(
-            backgroundColor: AppColors.samsungOrange,
-            elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            icon: const Icon(Icons.edit, color: Colors.black, size: 24),
-            label: const Text(
-              'Write',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 16),
-            ),
-            onPressed: () {
-              final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
-              _openNote(context, ref, newDoc);
-            },
+            // Samsung Notes Style Floating Action Button (Hidden during selection mode)
+            floatingActionButton: isSelectionMode
+                ? null
+                : FloatingActionButton.extended(
+                    backgroundColor: AppColors.samsungOrange,
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    icon: const Icon(Icons.edit, color: Colors.black, size: 24),
+                    label: const Text(
+                      'Write',
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                    onPressed: () {
+                      final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
+                      _openNote(context, ref, newDoc);
+                    },
+                  ),
           ),
         ),
+      ),
+    );
+  }
+
+  // --- BATCH ACTION BAR & DIALOGS ---
+
+  Widget _buildBatchActionBar(BuildContext context, WidgetRef ref, NotesLibraryState state) {
+    final selectedCount = state.selectedNoteIds.length;
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.only(left: 16, right: 16, bottom: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF181818),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.6), width: 1.3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.8),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Star / Favorite Toggle
+              IconButton(
+                icon: const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 24),
+                tooltip: 'Add to Favorites',
+                onPressed: selectedCount == 0
+                    ? null
+                    : () {
+                        ref.read(notesLibraryProvider.notifier).batchToggleFavorite(setAsFavorite: true);
+                        TopIslandToast.show(
+                          context,
+                          message: '$selectedCount notes marked as favorite',
+                          icon: Icons.star_rounded,
+                          color: const Color(0xFFFBBF24),
+                        );
+                      },
+              ),
+
+              // Lock / Unlock
+              IconButton(
+                icon: const Icon(Icons.lock_outline_rounded, color: AppColors.samsungOrange, size: 23),
+                tooltip: 'Lock / Unlock Notes',
+                onPressed: selectedCount == 0
+                    ? null
+                    : () => _handleBatchLock(context, ref, state),
+              ),
+
+              // Delete
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.accentRose, size: 23),
+                tooltip: 'Delete Selected',
+                onPressed: selectedCount == 0
+                    ? null
+                    : () => _showBatchDeleteDialog(context, ref, selectedCount),
+              ),
+
+              const SizedBox(width: 6),
+              Container(width: 1, height: 24, color: const Color(0xFF333333)),
+              const SizedBox(width: 6),
+
+              // Close / Done
+              IconButton(
+                icon: const Icon(Icons.check_rounded, color: Colors.white, size: 23),
+                tooltip: 'Done',
+                onPressed: () => ref.read(notesLibraryProvider.notifier).clearSelection(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleBatchLock(BuildContext context, WidgetRef ref, NotesLibraryState state) async {
+    final selectedNotes = state.notes.where((n) => state.selectedNoteIds.contains(n.metadata.id)).toList();
+    if (selectedNotes.isEmpty) return;
+
+    final hasUnlocked = selectedNotes.any((n) => !n.metadata.isLocked);
+    final count = selectedNotes.length;
+
+    if (hasUnlocked) {
+      // Lock all selected notes
+      final currentAppPin = ref.read(settingsProvider).appPin;
+      String? chosenPin = currentAppPin;
+
+      if (currentAppPin == '1234') {
+        final setPin = await BiometricSecurityService.promptSetPin(
+          context,
+          title: 'Lock $count Notes with PIN',
+        );
+        if (setPin != null) {
+          chosenPin = setPin;
+          ref.read(settingsProvider.notifier).setPin(setPin);
+        }
+      }
+
+      ref.read(notesLibraryProvider.notifier).batchSetLock(locked: true, lockPin: chosenPin);
+      if (context.mounted) {
+        TopIslandToast.show(
+          context,
+          message: '$count notes locked (PIN: ${chosenPin ?? "1234"})',
+          icon: Icons.lock_outline_rounded,
+          color: AppColors.accentEmerald,
+        );
+      }
+    } else {
+      // Unlock all selected notes: verify auth first
+      bool isAuthed = await BiometricSecurityService.authenticate(reason: 'Verify fingerprint to unlock notes');
+      if (!isAuthed && context.mounted) {
+        final appPin = ref.read(settingsProvider).appPin;
+        isAuthed = await BiometricSecurityService.promptPin(
+          context,
+          correctPin: appPin,
+          alternativePins: ['1234'],
+          title: 'Unlock $count Notes',
+        );
+      }
+      if (isAuthed) {
+        ref.read(notesLibraryProvider.notifier).batchSetLock(locked: false);
+        if (context.mounted) {
+          TopIslandToast.show(
+            context,
+            message: '$count notes unlocked',
+            icon: Icons.lock_open_rounded,
+            color: AppColors.accentEmerald,
+          );
+        }
+      }
+    }
+  }
+
+  void _showBatchDeleteDialog(BuildContext context, WidgetRef ref, int count) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181818),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF2E2E2E)),
+        ),
+        title: Text(
+          'Delete $count ${count == 1 ? 'Note' : 'Notes'}?',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete $count selected ${count == 1 ? 'note' : 'notes'}? This action cannot be undone.',
+          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentRose,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(notesLibraryProvider.notifier).batchDeleteSelected();
+              TopIslandToast.show(
+                context,
+                message: '$count ${count == 1 ? 'note' : 'notes'} deleted',
+                icon: Icons.delete_outline_rounded,
+                color: AppColors.accentRose,
+              );
+            },
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -575,15 +844,29 @@ class NotesLibraryScreen extends ConsumerWidget {
         .trim();
   }
 
-  Widget _buildGridCard(BuildContext context, WidgetRef ref, NoteDocument note) {
+  Widget _buildGridCard(BuildContext context, WidgetRef ref, NoteDocument note, NotesLibraryState libraryState) {
     final isLocked = note.metadata.isLocked;
     final previewText = _cleanPreviewText(note);
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
+    final isSelected = libraryState.selectedNoteIds.contains(note.metadata.id);
 
-    return InkWell(
-      onTap: () => _handleNoteTap(context, ref, note),
-      onLongPress: () => _showNoteActions(context, ref, note),
-      borderRadius: BorderRadius.circular(20),
+    return HoldToSelectBorderCard(
+      isSelected: isSelected,
+      isSelectionMode: libraryState.isSelectionMode,
+      onTap: () {
+        if (libraryState.isSelectionMode) {
+          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
+        } else {
+          _handleNoteTap(context, ref, note);
+        }
+      },
+      onHoldCompleted: () {
+        if (!libraryState.isSelectionMode) {
+          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
+        } else {
+          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
+        }
+      },
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.amoledSurface,
@@ -654,15 +937,29 @@ class NotesLibraryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildListCard(BuildContext context, WidgetRef ref, NoteDocument note) {
+  Widget _buildListCard(BuildContext context, WidgetRef ref, NoteDocument note, NotesLibraryState libraryState) {
     final isLocked = note.metadata.isLocked;
     final previewText = _cleanPreviewText(note);
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
+    final isSelected = libraryState.selectedNoteIds.contains(note.metadata.id);
 
-    return InkWell(
-      onTap: () => _handleNoteTap(context, ref, note),
-      onLongPress: () => _showNoteActions(context, ref, note),
-      borderRadius: BorderRadius.circular(20),
+    return HoldToSelectBorderCard(
+      isSelected: isSelected,
+      isSelectionMode: libraryState.isSelectionMode,
+      onTap: () {
+        if (libraryState.isSelectionMode) {
+          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
+        } else {
+          _handleNoteTap(context, ref, note);
+        }
+      },
+      onHoldCompleted: () {
+        if (!libraryState.isSelectionMode) {
+          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
+        } else {
+          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(

@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.3/wznotes-android-v0.7.3.apk",
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.5/wznotes-android-v0.7.5.apk",
     "release_notes":  "Performance optimizations, updated sync engine, and stability fixes.",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.3/wznotes-windows-v0.7.3.zip",
-    "title":  "wznotes v0.7.3 Update",
-    "published_at":  "2026-08-31T02:39:15Z",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.5/wznotes-windows-v0.7.5.zip",
+    "title":  "wznotes v0.7.5 Update",
+    "published_at":  "2026-08-31T03:20:26Z",
     "is_mandatory":  false,
-    "build_number":  10,
-    "version":  "0.7.3"
+    "build_number":  12,
+    "version":  "0.7.5"
 }

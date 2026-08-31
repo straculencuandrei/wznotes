@@ -1,7 +1,7 @@
 name: wznotes
 description: "wznotes: High-performance cross-platform vector inking & keyboard-first note-taking engine."
 publish_to: 'none'
-version: 0.7.3+10
+version: 0.7.5+12
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -34,6 +34,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+
+
 
 
 

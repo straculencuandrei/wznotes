@@ -79,3 +79,10 @@ migrate_working_dir/
 # macOS related
 **/macos/Flutter/ephemeral/
 **/macos/Flutter/ephemeral/.plugin_symlinks/
+
+# Distribution and release binaries
+/dist/
+*.apk
+*.aab
+*.zip
+

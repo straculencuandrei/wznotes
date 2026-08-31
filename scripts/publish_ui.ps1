@@ -202,22 +202,81 @@ function Set-PipelineProgress([int]$percent, [string]$status = "") {
     [System.Windows.Forms.Application]::DoEvents()
 }
 
-function Invoke-PipelineCommand([string]$description, [scriptblock]$commandBlock) {
+function Invoke-PipelineCommand([string]$description, $command) {
     Write-DashboardLog "[EXEC] $description..."
     [System.Windows.Forms.Application]::DoEvents()
 
-    $output = & $commandBlock 2>&1
-    $exitCode = $LASTEXITCODE
-
-    foreach ($line in $output) {
-        if ($line) {
-            Write-DashboardLog ($line.ToString())
-        }
+    $cmdString = ""
+    if ($command -is [string]) {
+        $cmdString = $command
+    } else {
+        $cmdString = $command.ToString().Trim('{', '}', ' ', "`t", "`r", "`n")
     }
 
+    $tempLog = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "wznotes_pipe_" + [System.Guid]::NewGuid().ToString("N") + ".log")
+    if (Test-Path $tempLog) { Remove-Item $tempLog -Force -ErrorAction SilentlyContinue }
+
+    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+    $pinfo.FileName = "cmd.exe"
+    $pinfo.Arguments = "/c `"$cmdString > `"`"$tempLog`"`" 2>&1`""
+    $pinfo.UseShellExecute = $false
+    $pinfo.CreateNoWindow = $true
+    $pinfo.WorkingDirectory = $ProjectRoot
+
+    $proc = New-Object System.Diagnostics.Process
+    $proc.StartInfo = $pinfo
+    $proc.Start() | Out-Null
+
+    $lastPosition = 0
+    while (-not $proc.HasExited) {
+        if (Test-Path $tempLog) {
+            try {
+                $stream = [System.IO.File]::Open($tempLog, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                if ($stream.Length -gt $lastPosition) {
+                    $stream.Position = $lastPosition
+                    $reader = New-Object System.IO.StreamReader($stream)
+                    $newText = $reader.ReadToEnd()
+                    $lastPosition = $stream.Position
+                    if ($newText) {
+                        foreach ($line in ($newText -split "`r?`n")) {
+                            if ($line) {
+                                Write-DashboardLog $line
+                            }
+                        }
+                    }
+                }
+                $stream.Close()
+            } catch {}
+        }
+        [System.Windows.Forms.Application]::DoEvents()
+        [System.Threading.Thread]::Sleep(60)
+    }
+
+    # Final drain
+    if (Test-Path $tempLog) {
+        try {
+            $stream = [System.IO.File]::Open($tempLog, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+            if ($stream.Length -gt $lastPosition) {
+                $stream.Position = $lastPosition
+                $reader = New-Object System.IO.StreamReader($stream)
+                $newText = $reader.ReadToEnd()
+                if ($newText) {
+                    foreach ($line in ($newText -split "`r?`n")) {
+                        if ($line) {
+                            Write-DashboardLog $line
+                        }
+                    }
+                }
+            }
+            $stream.Close()
+            Remove-Item $tempLog -Force -ErrorAction SilentlyContinue
+        } catch {}
+    }
+
+    [System.Windows.Forms.Application]::DoEvents()
+
     return @{
-        ExitCode = $exitCode
-        Output = $output
+        ExitCode = $proc.ExitCode
     }
 }
 
@@ -393,17 +452,28 @@ $btnStart.Add_Click({
         if ($doGitTag) {
             Write-DashboardLog "========================================"
             Set-PipelineProgress 96 "[6/6] Tagging and Pushing to Git..."
-            git add .
-            git commit -m "Release v${ver}+${build} - $notes"
-            git tag -a "v$ver" -m "wznotes Release v$ver"
-            Write-DashboardLog "[PASS] Git tag v$ver created."
+            
+            Invoke-PipelineCommand "Stage changes" { git add . }
+            
+            $statusCheck = (git status --porcelain)
+            if ($statusCheck) {
+                Invoke-PipelineCommand "Commit release" { git commit -m "Release v${ver}+${build} - $notes" }
+            } else {
+                Write-DashboardLog "[INFO] Working tree clean, nothing new to commit."
+            }
+
+            Invoke-PipelineCommand "Create Git Tag v$ver" { git tag -f -a "v$ver" -m "wznotes Release v$ver" }
+            Write-DashboardLog "[PASS] Git tag v$ver created successfully."
 
             if ($doGitPush) {
-                Write-DashboardLog "[GIT] Pushing commits and tags to remote..." "Pushing to Git..."
-                git push
-                git push --tags
-                Write-DashboardLog "[PASS] Pushed to remote successfully!"
+                Write-DashboardLog "[GIT] Pushing commits and tag v$ver to GitHub..." "Pushing to Git..."
+                Invoke-PipelineCommand "Push commits" { git push origin main }
+                Invoke-PipelineCommand "Push tag v$ver" { git push origin "v$ver" --force }
+                Invoke-PipelineCommand "Push all tags" { git push origin --tags }
+                Write-DashboardLog "[PASS] Pushed commits and tag v$ver to GitHub successfully!"
             }
+
+            Write-DashboardLog "[LINK] Create GitHub Release with binaries: https://github.com/straculencuandrei/wznotes/releases/new?tag=v$ver"
         }
 
         Set-PipelineProgress 100 "All steps completed successfully!"

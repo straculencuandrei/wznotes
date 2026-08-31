@@ -51,6 +51,7 @@ class NoteMetadata {
     bool? hasAudio,
     bool? isLocked,
     String? lockPin,
+    bool clearLockPin = false,
   }) {
     return NoteMetadata(
       id: id ?? this.id,
@@ -65,7 +66,7 @@ class NoteMetadata {
       totalHeight: totalHeight ?? this.totalHeight,
       hasAudio: hasAudio ?? this.hasAudio,
       isLocked: isLocked ?? this.isLocked,
-      lockPin: lockPin ?? this.lockPin,
+      lockPin: clearLockPin ? null : (lockPin ?? this.lockPin),
     );
   }
 
