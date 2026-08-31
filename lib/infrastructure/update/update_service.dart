@@ -1,12 +1,34 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'models/app_update_info.dart';
 
 class UpdateService {
-  static const String currentVersion = '0.7.8';
-  static const int currentBuildNumber = 15;
+  static const String defaultFallbackVersion = '0.7.8';
+  static const int defaultFallbackBuildNumber = 15;
 
+  static String _currentVersion = defaultFallbackVersion;
+  static int _currentBuildNumber = defaultFallbackBuildNumber;
+
+  static String get currentVersion => _currentVersion;
+  static int get currentBuildNumber => _currentBuildNumber;
+
+  /// Loads true version and build number from platform package info at runtime
+  static Future<void> init() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty) {
+        _currentVersion = info.version;
+      }
+      if (info.buildNumber.isNotEmpty) {
+        _currentBuildNumber = int.tryParse(info.buildNumber) ?? _currentBuildNumber;
+      }
+      debugPrint('[UpdateService] Initialized runtime version: v$_currentVersion+$_currentBuildNumber');
+    } catch (e) {
+      debugPrint('[UpdateService] Failed to read platform package info: $e');
+    }
+  }
 
   // Default manifest URL (can be customized by user or configured via repository)
   static const String defaultManifestUrl =
@@ -16,12 +38,15 @@ class UpdateService {
   static bool isNewerVersion({
     required String remoteVersion,
     required int remoteBuildNumber,
-    String localVersion = currentVersion,
-    int localBuildNumber = currentBuildNumber,
+    String? localVersion,
+    int? localBuildNumber,
   }) {
+    final effectiveLocalVersion = localVersion ?? currentVersion;
+    final effectiveLocalBuild = localBuildNumber ?? currentBuildNumber;
+
     // 1. Compare semantic version components (major.minor.patch)
     final remoteParts = remoteVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    final localParts = localVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    final localParts = effectiveLocalVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
     for (int i = 0; i < 3; i++) {
       final r = i < remoteParts.length ? remoteParts[i] : 0;
@@ -30,8 +55,8 @@ class UpdateService {
       if (r < l) return false;
     }
 
-    // 2. If semantic versions are identical (e.g. 0.7.7 vs 0.7.7), check build number
-    return remoteBuildNumber > localBuildNumber;
+    // 2. If semantic versions are identical (e.g. 0.7.8 vs 0.7.8), check build number
+    return remoteBuildNumber > effectiveLocalBuild;
   }
 
   /// Checks the remote manifest for available updates

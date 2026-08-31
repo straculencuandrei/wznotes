@@ -182,10 +182,10 @@ class SettingsScreen extends ConsumerWidget {
           // 4. About & Updates Section
           _buildSectionHeader('About & Updates'),
           _buildCard([
-            const ListTile(
-              title: Text('wznotes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-              subtitle: Text('Pure AMOLED Keyboard-First Engine', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
-              trailing: Text('v${UpdateService.currentVersion}', style: TextStyle(color: Colors.white38, fontSize: 14)),
+            ListTile(
+              title: const Text('wznotes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Pure AMOLED Keyboard-First Engine', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+              trailing: Text('v${UpdateService.currentVersion}', style: const TextStyle(color: Colors.white38, fontSize: 14)),
             ),
             const Divider(color: AppColors.amoledBorder, height: 1),
             Consumer(

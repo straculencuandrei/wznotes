@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'infrastructure/update/update_service.dart';
 import 'presentation/controllers/theme_controller.dart';
 import 'presentation/screens/notes_library_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await UpdateService.init();
   runApp(
     const ProviderScope(
       child: WzNotesApp(),
