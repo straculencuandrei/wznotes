@@ -24,7 +24,7 @@ class HoldToSelectBorderCard extends StatefulWidget {
     required this.onHoldCompleted,
     this.borderRadius = 20.0,
     this.glowColor = AppColors.samsungOrange,
-    this.holdDuration = const Duration(milliseconds: 460),
+    this.holdDuration = const Duration(milliseconds: 420),
   });
 
   @override
@@ -35,6 +35,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _isHolding = false;
+  DateTime? _lastHoldCompletedTime;
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
   }
 
   void _triggerComplete() {
+    _lastHoldCompletedTime = DateTime.now();
     HapticFeedback.heavyImpact();
     widget.onHoldCompleted();
     _controller.reset();
@@ -82,6 +84,17 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
     _controller.reverse();
   }
 
+  void _handleTap() {
+    // Prevent accidental unhold/deselection when releasing finger after hold completes
+    if (_lastHoldCompletedTime != null) {
+      final elapsed = DateTime.now().difference(_lastHoldCompletedTime!).inMilliseconds;
+      if (elapsed < 450) {
+        return;
+      }
+    }
+    widget.onTap();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Listener(
@@ -90,7 +103,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
       onPointerCancel: _onPointerCancel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
+        onTap: _handleTap,
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {

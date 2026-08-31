@@ -366,7 +366,7 @@ class NotesLibraryScreen extends ConsumerWidget {
           autofocus: true,
           child: Scaffold(
             backgroundColor: AppColors.amoledBlack,
-            body: Stack(
+body: Stack(
               children: [
                 SafeArea(
                   child: CustomScrollView(
@@ -376,106 +376,125 @@ class NotesLibraryScreen extends ConsumerWidget {
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.only(left: 24, right: 16, top: 24, bottom: 12),
-                          child: isSelectionMode
-                              ? Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
-                                          tooltip: 'Close Selection',
-                                          onPressed: () => libraryNotifier.clearSelection(),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '$selectedCount Selected',
-                                          style: const TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.amoledTextPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    TextButton.icon(
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: AppColors.samsungOrange,
-                                      ),
-                                      icon: Icon(isAllSelected ? Icons.deselect_rounded : Icons.select_all_rounded, size: 20),
-                                      label: Text(
-                                        isAllSelected ? 'Deselect All' : 'Select All',
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      onPressed: () {
-                                        if (isAllSelected) {
-                                          libraryNotifier.clearSelection();
-                                        } else {
-                                          libraryNotifier.selectAllNotes();
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'All notes',
-                                          style: TextStyle(
-                                            fontSize: 34,
-                                            fontWeight: FontWeight.w900,
-                                            color: AppColors.amoledTextPrimary,
-                                            letterSpacing: -0.8,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            color: AppColors.amoledTextSecondary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.sync_alt_rounded, color: AppColors.samsungOrange, size: 26),
-                                          tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
-                                          onPressed: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
-                                            );
-                                          },
-                                        ),
-                                        IconButton(
-                                          icon: Icon(
-                                            libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                                            color: AppColors.amoledTextPrimary,
-                                            size: 26,
-                                          ),
-                                          tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
-                                          onPressed: () => libraryNotifier.toggleViewLayout(),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 26),
-                                          tooltip: 'Settings',
-                                          onPressed: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 240),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.0, -0.08),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
                                 ),
+                              );
+                            },
+                            child: isSelectionMode
+                                ? Row(
+                                    key: const ValueKey('selection_header'),
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
+                                            tooltip: 'Close Selection',
+                                            onPressed: () => libraryNotifier.clearSelection(),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '$selectedCount Selected',
+                                            style: const TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.amoledTextPrimary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      TextButton.icon(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.samsungOrange,
+                                        ),
+                                        icon: Icon(isAllSelected ? Icons.deselect_rounded : Icons.select_all_rounded, size: 20),
+                                        label: Text(
+                                          isAllSelected ? 'Deselect All' : 'Select All',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        onPressed: () {
+                                          if (isAllSelected) {
+                                            libraryNotifier.clearSelection();
+                                          } else {
+                                            libraryNotifier.selectAllNotes();
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    key: const ValueKey('normal_header'),
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'All notes',
+                                            style: TextStyle(
+                                              fontSize: 34,
+                                              fontWeight: FontWeight.w900,
+                                              color: AppColors.amoledTextPrimary,
+                                              letterSpacing: -0.8,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              color: AppColors.amoledTextSecondary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.sync_alt_rounded, color: AppColors.samsungOrange, size: 26),
+                                            tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
+                                              );
+                                            },
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                                              color: AppColors.amoledTextPrimary,
+                                              size: 26,
+                                            ),
+                                            tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
+                                            onPressed: () => libraryNotifier.toggleViewLayout(),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 26),
+                                            tooltip: 'Settings',
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                          ),
                         ),
                       ),
 
@@ -619,15 +638,39 @@ class NotesLibraryScreen extends ConsumerWidget {
                   ),
                 ),
 
-                // Floating AMOLED Batch Action Toolbar (Visible when selecting notes)
-                if (isSelectionMode)
-                  _buildBatchActionBar(context, ref, libraryState),
+                // Floating AMOLED Batch Action Toolbar (Smooth slide up and fade in)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    ignoring: !isSelectionMode,
+                    child: AnimatedSlide(
+                      offset: isSelectionMode ? Offset.zero : const Offset(0.0, 1.4),
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedOpacity(
+                        opacity: isSelectionMode ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        child: _buildBatchActionBar(context, ref, libraryState),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-            // Samsung Notes Style Floating Action Button (Hidden during selection mode)
-            floatingActionButton: isSelectionMode
-                ? null
-                : FloatingActionButton.extended(
+            // Samsung Notes Style Floating Action Button (Smooth scale and fade)
+            floatingActionButton: AnimatedScale(
+              scale: isSelectionMode ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutBack,
+              child: AnimatedOpacity(
+                opacity: isSelectionMode ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 180),
+                child: IgnorePointer(
+                  ignoring: isSelectionMode,
+                  child: FloatingActionButton.extended(
                     backgroundColor: AppColors.samsungOrange,
                     elevation: 8,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -641,6 +684,9 @@ class NotesLibraryScreen extends ConsumerWidget {
                       _openNote(context, ref, newDoc);
                     },
                   ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
