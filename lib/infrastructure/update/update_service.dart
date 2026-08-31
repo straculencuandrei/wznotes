@@ -4,8 +4,9 @@ import 'package:http/http.dart' as http;
 import 'models/app_update_info.dart';
 
 class UpdateService {
-  static const String currentVersion = '0.7.6';
-  static const int currentBuildNumber = 13;
+  static const String currentVersion = '0.7.7';
+  static const int currentBuildNumber = 14;
+
 
   // Default manifest URL (can be customized by user or configured via repository)
   static const String defaultManifestUrl =
