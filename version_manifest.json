@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.9/wznotes-android-v0.7.9.apk",
-    "release_notes":  "Performance optimizations, updated sync engine, and stability fixes.",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.9/wznotes-windows-v0.7.9.zip",
-    "title":  "wznotes v0.7.9 Update",
-    "published_at":  "2026-08-31T04:06:45Z",
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.0/wznotes-android-v0.8.0.apk",
+    "release_notes":  "Swipe/scroll hold cancellation to eliminate accidental selections, dual fingerprint \u0026 PIN security lock",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.0/wznotes-windows-v0.8.0.zip",
+    "title":  "wznotes v0.8.0 Update",
+    "published_at":  "2026-08-31T04:14:06Z",
     "is_mandatory":  false,
-    "build_number":  16,
-    "version":  "0.7.9"
+    "build_number":  17,
+    "version":  "0.8.0"
 }
