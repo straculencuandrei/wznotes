@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.8/wznotes-android-v0.7.8.apk",
-    "release_notes":  "Performance optimizations, updated sync engine, and stability fixes.",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.8/wznotes-windows-v0.7.8.zip",
-    "title":  "wznotes v0.7.8 Update",
-    "published_at":  "2026-08-31T03:51:22Z",
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.9/wznotes-android-v0.7.9.apk",
+    "release_notes":  "Touch grace period for instant note opening, rock-solid stable selection layout without jumping, animated checkmark badges",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.7.9/wznotes-windows-v0.7.9.zip",
+    "title":  "wznotes v0.7.9 Update",
+    "published_at":  "2026-08-31T04:05:33Z",
     "is_mandatory":  false,
-    "build_number":  15,
-    "version":  "0.7.8"
+    "build_number":  16,
+    "version":  "0.7.9"
 }
