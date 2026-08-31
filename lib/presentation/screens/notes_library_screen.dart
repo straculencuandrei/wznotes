@@ -670,7 +670,7 @@ body: Stack(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutBack,
               child: AnimatedOpacity(
-                opacity: isSelectionMode ? 1.0 : 0.0,
+                opacity: isSelectionMode ? 0.0 : 1.0,
                 duration: const Duration(milliseconds: 180),
                 child: IgnorePointer(
                   ignoring: isSelectionMode,
