@@ -38,7 +38,9 @@ class UpdateService {
     String manifestUrl = defaultManifestUrl,
   }) async {
     try {
-      final uri = Uri.parse(manifestUrl);
+      final cacheBuster = DateTime.now().millisecondsSinceEpoch;
+      final separator = manifestUrl.contains('?') ? '&' : '?';
+      final uri = Uri.parse('$manifestUrl${separator}_cb=$cacheBuster');
       final response = await http.get(
         uri,
         headers: {
