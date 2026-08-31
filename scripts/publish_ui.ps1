@@ -117,12 +117,12 @@ $nextBuild = $currentBuild + 1
             <Border Grid.Column="1" Background="#141414" CornerRadius="10" Padding="16" Margin="10,0,0,0" BorderBrush="#222222" BorderThickness="1">
                 <StackPanel>
                     <TextBlock Text="PIPELINE STEPS" FontSize="11" FontWeight="Bold" Foreground="#FF8C00" Margin="0,0,0,10"/>
-                    <CheckBox Name="chkRunTests" Content="[TEST] Run 15 Automated Tests" IsChecked="True"/>
+                    <CheckBox Name="chkRunTests" Content="[TEST] Run 20 Automated Tests" IsChecked="True"/>
                     <CheckBox Name="chkBuildWindows" Content="[WIN] Build Windows (.zip)" IsChecked="True"/>
                     <CheckBox Name="chkBuildAndroid" Content="[APK] Build Android (.apk)" IsChecked="True"/>
                     <CheckBox Name="chkGenManifest" Content="[JSON] Update version_manifest" IsChecked="True"/>
-                    <CheckBox Name="chkGitTag" Content="[GIT] Create Git Commit &amp; Tag" IsChecked="False"/>
-                    <CheckBox Name="chkGitPush" Content="[GIT] Push to GitHub Remote" IsChecked="False"/>
+                    <CheckBox Name="chkGitTag" Content="[GIT] Create Git Commit &amp; Tag" IsChecked="True"/>
+                    <CheckBox Name="chkGitPush" Content="[GIT] Push to GitHub Remote" IsChecked="True"/>
                 </StackPanel>
             </Border>
         </Grid>

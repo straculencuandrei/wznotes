@@ -138,12 +138,22 @@ $ManifestJson = $ManifestData | ConvertTo-Json -Depth 4
 Set-Content (Join-Path $DistDir "version_manifest.json") -Value $ManifestJson
 Set-Content (Join-Path $ProjectRoot "version_manifest.json") -Value $ManifestJson
 
+Write-Host "`n[5/5] Staging, committing, and pushing update to GitHub..." -ForegroundColor Green
+git add .
+$statusCheck = (git status --porcelain)
+if ($statusCheck) {
+    git commit -m "Release v${NewVersion}+${BuildNumber}: $ReleaseNotes"
+}
+git tag -f -a "v$NewVersion" -m "wznotes Release v$NewVersion"
+git push origin main
+git push origin "v$NewVersion" --force
+
 Write-Host "`n================================================" -ForegroundColor Yellow
-Write-Host "   Release Packages Ready in: $DistDir   " -ForegroundColor Green
+Write-Host "   Release Packages Ready & Pushed to GitHub!   " -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Yellow
 Get-ChildItem $DistDir | Select-Object Name, Length
 
-Write-Host "`nTo publish this update to your users:" -ForegroundColor Cyan
-Write-Host "1. Push to GitHub: git add . && git commit -m 'Release v${NewVersion}+${BuildNumber}' && git push" -ForegroundColor Gray
-Write-Host "2. Upload files in dist/ to GitHub Release v$NewVersion (or your hosting server)." -ForegroundColor Gray
+Write-Host "`nTo publish binaries to your users:" -ForegroundColor Cyan
+Write-Host "Upload files in dist/ to: https://github.com/straculencuandrei/wznotes/releases/new?tag=v$NewVersion" -ForegroundColor Gray
 Write-Host "All running PC and Mobile wznotes apps will automatically detect this update!`n" -ForegroundColor Green
+
