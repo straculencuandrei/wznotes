@@ -375,253 +375,245 @@ body: Stack(
                       // 1. Large Samsung One UI Header (or Selection Mode Header)
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 24, right: 16, top: 24, bottom: 12),
+                          padding: const EdgeInsets.only(left: 24, right: 16, top: 20, bottom: 8),
                           child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 240),
+                            duration: const Duration(milliseconds: 220),
                             switchInCurve: Curves.easeOutCubic,
                             switchOutCurve: Curves.easeInCubic,
                             transitionBuilder: (child, animation) {
                               return FadeTransition(
                                 opacity: animation,
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0.0, -0.08),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: child,
-                                ),
+                                child: child,
                               );
                             },
                             child: isSelectionMode
-                                ? Row(
+                                ? Container(
                                     key: const ValueKey('selection_header'),
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
-                                            tooltip: 'Close Selection',
-                                            onPressed: () => libraryNotifier.clearSelection(),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '$selectedCount Selected',
-                                            style: const TextStyle(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.amoledTextPrimary,
+                                    height: 64,
+                                    alignment: Alignment.center,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
+                                              tooltip: 'Close Selection',
+                                              onPressed: () => libraryNotifier.clearSelection(),
                                             ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '$selectedCount Selected',
+                                              style: const TextStyle(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.amoledTextPrimary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        TextButton.icon(
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: AppColors.samsungOrange,
                                           ),
-                                        ],
-                                      ),
-                                      TextButton.icon(
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: AppColors.samsungOrange,
+                                          icon: Icon(isAllSelected ? Icons.deselect_rounded : Icons.select_all_rounded, size: 20),
+                                          label: Text(
+                                            isAllSelected ? 'Deselect All' : 'Select All',
+                                            style: const TextStyle(fontWeight: FontWeight.bold),
+                                          ),
+                                          onPressed: () {
+                                            if (isAllSelected) {
+                                              libraryNotifier.clearSelection();
+                                            } else {
+                                              libraryNotifier.selectAllNotes();
+                                            }
+                                          },
                                         ),
-                                        icon: Icon(isAllSelected ? Icons.deselect_rounded : Icons.select_all_rounded, size: 20),
-                                        label: Text(
-                                          isAllSelected ? 'Deselect All' : 'Select All',
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                        onPressed: () {
-                                          if (isAllSelected) {
-                                            libraryNotifier.clearSelection();
-                                          } else {
-                                            libraryNotifier.selectAllNotes();
-                                          }
-                                        },
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   )
-                                : Row(
+                                : Container(
                                     key: const ValueKey('normal_header'),
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'All notes',
-                                            style: TextStyle(
-                                              fontSize: 34,
-                                              fontWeight: FontWeight.w900,
-                                              color: AppColors.amoledTextPrimary,
-                                              letterSpacing: -0.8,
+                                    height: 64,
+                                    alignment: Alignment.center,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Text(
+                                              'All notes',
+                                              style: TextStyle(
+                                                fontSize: 28,
+                                                fontWeight: FontWeight.w900,
+                                                color: AppColors.amoledTextPrimary,
+                                                letterSpacing: -0.8,
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              color: AppColors.amoledTextSecondary,
-                                              fontWeight: FontWeight.w600,
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppColors.amoledTextSecondary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.sync_alt_rounded, color: AppColors.samsungOrange, size: 26),
-                                            tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
-                                            onPressed: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
-                                              );
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                                              color: AppColors.amoledTextPrimary,
-                                              size: 26,
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.sync_alt_rounded, color: AppColors.samsungOrange, size: 24),
+                                              tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
+                                              onPressed: () {
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
+                                                );
+                                              },
                                             ),
-                                            tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
-                                            onPressed: () => libraryNotifier.toggleViewLayout(),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 26),
-                                            tooltip: 'Settings',
-                                            onPressed: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                            IconButton(
+                                              icon: Icon(
+                                                libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                                                color: AppColors.amoledTextPrimary,
+                                                size: 24,
+                                              ),
+                                              tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
+                                              onPressed: () => libraryNotifier.toggleViewLayout(),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 24),
+                                              tooltip: 'Settings',
+                                              onPressed: () {
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                           ),
                         ),
                       ),
 
-                      // 1.5. In-App Update Alert Banner (Smooth collapse on selection mode)
-                      SliverToBoxAdapter(
-                        child: Consumer(
-                          builder: (context, ref, _) {
-                            final updateState = ref.watch(updateProvider);
-                            final shouldShow = updateState.hasUpdate && !isSelectionMode;
+                      // 1.5. In-App Update Alert Banner (if update available)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final updateState = ref.watch(updateProvider);
+                          if (!updateState.hasUpdate) return const SliverToBoxAdapter(child: SizedBox.shrink());
 
-                            return AnimatedSize(
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.easeOutCubic,
-                              alignment: Alignment.topCenter,
-                              child: !shouldShow
-                                  ? const SizedBox(width: double.infinity, height: 0)
-                                  : Padding(
-                                      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
-                                      child: AnimatedOpacity(
-                                        opacity: isSelectionMode ? 0.0 : 1.0,
-                                        duration: const Duration(milliseconds: 200),
-                                        curve: Curves.easeOut,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [Color(0xFF1E1710), Color(0xFF261D12)],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                            borderRadius: BorderRadius.circular(18),
-                                            border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.7)),
-                                          ),
-                                          child: Row(
+                          final info = updateState.updateInfo!;
+                          return SliverToBoxAdapter(
+                            child: AnimatedOpacity(
+                              opacity: isSelectionMode ? 0.3 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: IgnorePointer(
+                                ignoring: isSelectionMode,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF1E1710), Color(0xFF261D12)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.7)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.rocket_launch_rounded, color: AppColors.samsungOrange, size: 24),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              const Icon(Icons.rocket_launch_rounded, color: AppColors.samsungOrange, size: 24),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'wznotes v${updateState.updateInfo?.version ?? ""} Available',
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 14,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    const Text(
-                                                      'Tap to view what\'s new & update',
-                                                      style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12),
-                                                    ),
-                                                  ],
+                                              Text(
+                                                'wznotes v${info.version} Available',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
                                                 ),
                                               ),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: AppColors.samsungOrange,
-                                                  foregroundColor: Colors.black,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                                ),
-                                                onPressed: () {
-                                                  if (updateState.updateInfo != null) {
-                                                    UpdateDialog.show(context, updateInfo: updateState.updateInfo!);
-                                                  }
-                                                },
-                                                child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              IconButton(
-                                                icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
-                                                tooltip: 'Dismiss',
-                                                onPressed: () => ref.read(updateProvider.notifier).dismiss(),
+                                              const SizedBox(height: 2),
+                                              const Text(
+                                                'Tap to view what\'s new & update',
+                                                style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ),
-                                    ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      // 2. Big AMOLED Search Bar (Smooth glide and collapse on selection mode)
-                      SliverToBoxAdapter(
-                        child: AnimatedSize(
-                          duration: const Duration(milliseconds: 260),
-                          curve: Curves.easeOutCubic,
-                          alignment: Alignment.topCenter,
-                          child: isSelectionMode
-                              ? const SizedBox(width: double.infinity, height: 0)
-                              : Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                  child: AnimatedOpacity(
-                                    opacity: isSelectionMode ? 0.0 : 1.0,
-                                    duration: const Duration(milliseconds: 200),
-                                    curve: Curves.easeOut,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: AppColors.amoledSurface,
-                                        borderRadius: BorderRadius.circular(24),
-                                        border: Border.all(color: AppColors.amoledBorder, width: 1.2),
-                                      ),
-                                      child: TextField(
-                                        style: const TextStyle(fontSize: 16, color: AppColors.amoledTextPrimary),
-                                        decoration: InputDecoration(
-                                          hintText: 'Search notes...',
-                                          hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 15),
-                                          prefixIcon: const Icon(Icons.search, color: AppColors.samsungOrange, size: 24),
-                                          suffixIcon: libraryState.searchQuery.isNotEmpty
-                                              ? IconButton(
-                                                  icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
-                                                  onPressed: () => libraryNotifier.setSearchQuery(''),
-                                                )
-                                              : null,
-                                          border: InputBorder.none,
-                                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.samsungOrange,
+                                            foregroundColor: Colors.black,
+                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          ),
+                                          onPressed: () {
+                                            UpdateDialog.show(context, updateInfo: info);
+                                          },
+                                          child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
                                         ),
-                                        onChanged: (val) => libraryNotifier.setSearchQuery(val),
-                                      ),
+                                        const SizedBox(width: 6),
+                                        IconButton(
+                                          icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
+                                          tooltip: 'Dismiss',
+                                          onPressed: () => ref.read(updateProvider.notifier).dismiss(),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                      // 2. Big AMOLED Search Bar (Stable layout with smooth dimming in selection mode)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                          child: AnimatedOpacity(
+                            opacity: isSelectionMode ? 0.35 : 1.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: IgnorePointer(
+                              ignoring: isSelectionMode,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.amoledSurface,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: AppColors.amoledBorder, width: 1.2),
+                                ),
+                                child: TextField(
+                                  style: const TextStyle(fontSize: 16, color: AppColors.amoledTextPrimary),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search notes...',
+                                    hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 15),
+                                    prefixIcon: const Icon(Icons.search, color: AppColors.samsungOrange, size: 24),
+                                    suffixIcon: libraryState.searchQuery.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
+                                            onPressed: () => libraryNotifier.setSearchQuery(''),
+                                          )
+                                        : null,
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  onChanged: (val) => libraryNotifier.setSearchQuery(val),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
 

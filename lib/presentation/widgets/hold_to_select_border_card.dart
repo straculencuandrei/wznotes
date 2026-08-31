@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,6 +37,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
   late final AnimationController _controller;
   bool _isHolding = false;
   DateTime? _lastHoldCompletedTime;
+  Timer? _holdStartTimer;
 
   @override
   void initState() {
@@ -52,6 +54,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
 
   @override
   void dispose() {
+    _holdStartTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -61,26 +64,48 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
     HapticFeedback.heavyImpact();
     widget.onHoldCompleted();
     _controller.reset();
-    _isHolding = false;
+    if (mounted) {
+      setState(() {
+        _isHolding = false;
+      });
+    }
   }
 
   void _onPointerDown(PointerDownEvent event) {
     if (widget.isSelectionMode) return;
-    _isHolding = true;
-    _controller.forward(from: 0.0);
+    _holdStartTimer?.cancel();
+    // 140ms grace period so quick taps to open a note never flicker or trigger hold state
+    _holdStartTimer = Timer(const Duration(milliseconds: 140), () {
+      if (mounted && !widget.isSelectionMode) {
+        setState(() {
+          _isHolding = true;
+        });
+        _controller.forward(from: 0.0);
+      }
+    });
   }
 
   void _onPointerUp(PointerUpEvent event) {
+    _holdStartTimer?.cancel();
     if (!_isHolding) return;
-    _isHolding = false;
+    if (mounted) {
+      setState(() {
+        _isHolding = false;
+      });
+    }
     if (_controller.isAnimating && _controller.status != AnimationStatus.completed) {
       _controller.reverse();
     }
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
+    _holdStartTimer?.cancel();
     if (!_isHolding) return;
-    _isHolding = false;
+    if (mounted) {
+      setState(() {
+        _isHolding = false;
+      });
+    }
     _controller.reverse();
   }
 
@@ -108,7 +133,6 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
           animation: _controller,
           builder: (context, child) {
             final progress = _controller.value;
-            final isHighlight = progress > 0.0 || widget.isSelected;
 
             return Stack(
               children: [
@@ -142,39 +166,47 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
                     ),
                   ),
 
-                // Selected Checkmark Badge (Top Right)
-                if (widget.isSelectionMode)
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: IgnorePointer(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: widget.isSelected ? widget.glowColor : const Color(0x80000000),
-                          border: Border.all(
-                            color: widget.isSelected ? Colors.transparent : Colors.white60,
-                            width: 1.8,
+                // Selected Checkmark Badge (Top Right with smooth pop-in animation)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IgnorePointer(
+                    child: AnimatedScale(
+                      scale: widget.isSelectionMode ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutBack,
+                      child: AnimatedOpacity(
+                        opacity: widget.isSelectionMode ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 180),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: widget.isSelected ? widget.glowColor : const Color(0x80000000),
+                            border: Border.all(
+                              color: widget.isSelected ? Colors.transparent : Colors.white60,
+                              width: 1.8,
+                            ),
+                            boxShadow: widget.isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: widget.glowColor.withValues(alpha: 0.6),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                           ),
-                          boxShadow: widget.isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: widget.glowColor.withValues(alpha: 0.6),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
+                          child: widget.isSelected
+                              ? const Icon(Icons.check_rounded, color: Colors.black, size: 18)
                               : null,
                         ),
-                        child: widget.isSelected
-                            ? const Icon(Icons.check_rounded, color: Colors.black, size: 18)
-                            : null,
                       ),
                     ),
                   ),
+                ),
               ],
             );
           },
