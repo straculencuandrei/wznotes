@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.0/wznotes-android-v0.8.0.apk",
-    "release_notes":  "Performance optimizations, updated sync engine, and stability fixes.",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.0/wznotes-windows-v0.8.0.zip",
-    "title":  "wznotes v0.8.0 Update",
-    "published_at":  "2026-08-31T04:14:51Z",
-    "is_mandatory":  true,
-    "build_number":  17,
-    "version":  "0.8.0"
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.1/wznotes-android-v0.8.1.apk",
+    "release_notes":  "Restore Write Floating Action Button visibility and smooth scale animation",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.1/wznotes-windows-v0.8.1.zip",
+    "title":  "wznotes v0.8.1 Update",
+    "published_at":  "2026-08-31T04:19:13Z",
+    "is_mandatory":  false,
+    "build_number":  18,
+    "version":  "0.8.1"
 }
