@@ -49,12 +49,34 @@ void main() {
 
       expect(
         UpdateService.isNewerVersion(
+          remoteVersion: '0.7.7',
+          remoteBuildNumber: 14,
+          localVersion: '0.7.7',
+          localBuildNumber: 14,
+        ),
+        isFalse,
+      );
+
+      expect(
+        UpdateService.isNewerVersion(
           remoteVersion: '0.6.9',
-          remoteBuildNumber: 6,
+          remoteBuildNumber: 99,
           localVersion: '0.7.0',
           localBuildNumber: 7,
         ),
         isFalse,
+      );
+    });
+
+    test('Correctly detects newer build numbers when semver is equal', () {
+      expect(
+        UpdateService.isNewerVersion(
+          remoteVersion: '0.7.7',
+          remoteBuildNumber: 15,
+          localVersion: '0.7.7',
+          localBuildNumber: 14,
+        ),
+        isTrue,
       );
     });
 

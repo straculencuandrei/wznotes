@@ -19,8 +19,7 @@ class UpdateService {
     String localVersion = currentVersion,
     int localBuildNumber = currentBuildNumber,
   }) {
-    if (remoteBuildNumber > localBuildNumber) return true;
-
+    // 1. Compare semantic version components (major.minor.patch)
     final remoteParts = remoteVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     final localParts = localVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
@@ -31,7 +30,8 @@ class UpdateService {
       if (r < l) return false;
     }
 
-    return false;
+    // 2. If semantic versions are identical (e.g. 0.7.7 vs 0.7.7), check build number
+    return remoteBuildNumber > localBuildNumber;
   }
 
   /// Checks the remote manifest for available updates
