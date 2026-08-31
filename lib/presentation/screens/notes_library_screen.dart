@@ -162,43 +162,31 @@ class NotesLibraryScreen extends ConsumerWidget {
                     icon: isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
                     iconColor: AppColors.samsungOrange,
                     iconBg: AppColors.samsungOrange.withValues(alpha: 0.15),
-                    title: isLocked ? 'Unlock note' : 'Lock note with biometric / PIN',
-                    subtitle: isLocked ? 'Remove password protection' : 'Requires fingerprint to open',
+                    title: isLocked ? 'Unlock note' : 'Lock note with Fingerprint / PIN',
+                    subtitle: isLocked ? 'Remove security protection' : 'Protects note with fingerprint & PIN',
                     onTap: () async {
                       Navigator.of(context).pop();
                       if (!isLocked) {
                         final currentAppPin = ref.read(settingsProvider).appPin;
-                        String? chosenPin = currentAppPin;
-
-                        // If appPin is still default 1234, offer to set custom PIN
-                        if (currentAppPin == '1234') {
-                          final setPin = await BiometricSecurityService.promptSetPin(
-                            context,
-                            title: 'Lock Note with PIN',
-                          );
-                          if (setPin != null) {
-                            chosenPin = setPin;
-                            ref.read(settingsProvider.notifier).setPin(setPin);
-                          }
-                        }
-
                         final updated = note.copyWith(
                           metadata: note.metadata.copyWith(
                             isLocked: true,
-                            lockPin: chosenPin,
+                            lockPin: currentAppPin,
                           ),
                         );
                         ref.read(notesLibraryProvider.notifier).saveNote(updated);
                         if (context.mounted) {
                           TopIslandToast.show(
                             context,
-                            message: 'Note locked (PIN: ${chosenPin ?? "1234"})',
+                            message: 'Note locked with Fingerprint & PIN',
                             icon: Icons.lock_outline_rounded,
                             color: AppColors.accentEmerald,
                           );
                         }
                       } else {
-                        bool isAuthed = await BiometricSecurityService.authenticate(reason: 'Verify fingerprint to unlock');
+                        bool isAuthed = await BiometricSecurityService.authenticate(
+                          reason: 'Scan fingerprint to unlock "${note.metadata.title}"',
+                        );
                         if (!isAuthed && context.mounted) {
                           final appPin = ref.read(settingsProvider).appPin;
                           isAuthed = await BiometricSecurityService.promptPin(
@@ -210,6 +198,7 @@ class NotesLibraryScreen extends ConsumerWidget {
                               '1234',
                             ],
                             title: 'Unlock Note',
+                            subtitle: 'Enter PIN or scan fingerprint',
                           );
                         }
                         if (isAuthed) {
@@ -794,33 +783,22 @@ body: Stack(
     final count = selectedNotes.length;
 
     if (hasUnlocked) {
-      // Lock all selected notes
+      // Lock all selected notes directly with Fingerprint & PIN protection
       final currentAppPin = ref.read(settingsProvider).appPin;
-      String? chosenPin = currentAppPin;
-
-      if (currentAppPin == '1234') {
-        final setPin = await BiometricSecurityService.promptSetPin(
-          context,
-          title: 'Lock $count Notes with PIN',
-        );
-        if (setPin != null) {
-          chosenPin = setPin;
-          ref.read(settingsProvider.notifier).setPin(setPin);
-        }
-      }
-
-      ref.read(notesLibraryProvider.notifier).batchSetLock(locked: true, lockPin: chosenPin);
+      ref.read(notesLibraryProvider.notifier).batchSetLock(locked: true, lockPin: currentAppPin);
       if (context.mounted) {
         TopIslandToast.show(
           context,
-          message: '$count notes locked (PIN: ${chosenPin ?? "1234"})',
+          message: '$count notes locked with Fingerprint & PIN',
           icon: Icons.lock_outline_rounded,
           color: AppColors.accentEmerald,
         );
       }
     } else {
       // Unlock all selected notes: verify auth first
-      bool isAuthed = await BiometricSecurityService.authenticate(reason: 'Verify fingerprint to unlock notes');
+      bool isAuthed = await BiometricSecurityService.authenticate(
+        reason: 'Scan fingerprint to unlock $count notes',
+      );
       if (!isAuthed && context.mounted) {
         final appPin = ref.read(settingsProvider).appPin;
         isAuthed = await BiometricSecurityService.promptPin(
@@ -828,6 +806,7 @@ body: Stack(
           correctPin: appPin,
           alternativePins: ['1234'],
           title: 'Unlock $count Notes',
+          subtitle: 'Enter PIN or scan fingerprint',
         );
       }
       if (isAuthed) {

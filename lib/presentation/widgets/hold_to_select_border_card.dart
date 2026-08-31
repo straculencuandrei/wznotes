@@ -37,6 +37,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
   late final AnimationController _controller;
   bool _isHolding = false;
   DateTime? _lastHoldCompletedTime;
+  Offset? _pointerDownPosition;
   Timer? _holdStartTimer;
 
   @override
@@ -73,9 +74,10 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
 
   void _onPointerDown(PointerDownEvent event) {
     if (widget.isSelectionMode) return;
+    _pointerDownPosition = event.position;
     _holdStartTimer?.cancel();
-    // 140ms grace period so quick taps to open a note never flicker or trigger hold state
-    _holdStartTimer = Timer(const Duration(milliseconds: 140), () {
+    // Grace period before starting hold animation
+    _holdStartTimer = Timer(const Duration(milliseconds: 160), () {
       if (mounted && !widget.isSelectionMode) {
         setState(() {
           _isHolding = true;
@@ -85,8 +87,27 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
     });
   }
 
+  void _onPointerMove(PointerMoveEvent event) {
+    if (_pointerDownPosition == null) return;
+    final delta = (event.position - _pointerDownPosition!).distance;
+    // If the finger moves more than 10 pixels (scrolling/swiping up, down, left, right), cancel hold immediately!
+    if (delta > 10.0) {
+      _holdStartTimer?.cancel();
+      _pointerDownPosition = null;
+      if (_isHolding) {
+        if (mounted) {
+          setState(() {
+            _isHolding = false;
+          });
+        }
+        _controller.reverse();
+      }
+    }
+  }
+
   void _onPointerUp(PointerUpEvent event) {
     _holdStartTimer?.cancel();
+    _pointerDownPosition = null;
     if (!_isHolding) return;
     if (mounted) {
       setState(() {
@@ -100,6 +121,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
 
   void _onPointerCancel(PointerCancelEvent event) {
     _holdStartTimer?.cancel();
+    _pointerDownPosition = null;
     if (!_isHolding) return;
     if (mounted) {
       setState(() {
@@ -124,6 +146,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
       onPointerUp: _onPointerUp,
       onPointerCancel: _onPointerCancel,
       child: GestureDetector(

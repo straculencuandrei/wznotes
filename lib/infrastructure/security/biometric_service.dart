@@ -7,9 +7,23 @@ import '../../core/constants/app_colors.dart';
 class BiometricSecurityService {
   static final LocalAuthentication _auth = LocalAuthentication();
 
-  /// Prompts device fingerprint / face unlock with fallback to PIN on mobile platforms
+  /// Checks if the device has biometric authentication hardware and enrolled biometrics
+  static Future<bool> isBiometricsAvailable() async {
+    if (!Platform.isAndroid && !Platform.isIOS && !Platform.isWindows && !Platform.isMacOS) {
+      return false;
+    }
+    try {
+      final bool canCheck = await _auth.canCheckBiometrics;
+      final bool isDeviceSupported = await _auth.isDeviceSupported();
+      return canCheck || isDeviceSupported;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Prompts device fingerprint / face unlock with fallback to PIN
   static Future<bool> authenticate({String reason = 'Unlock note with fingerprint'}) async {
-    if (!Platform.isAndroid && !Platform.isIOS) {
+    if (!Platform.isAndroid && !Platform.isIOS && !Platform.isWindows && !Platform.isMacOS) {
       return false;
     }
 
@@ -27,9 +41,11 @@ class BiometricSecurityService {
           ),
         );
       }
-    } on PlatformException catch (_) {
-      // Fallback to PIN
-    } catch (_) {}
+    } on PlatformException catch (e) {
+      debugPrint('[BiometricSecurityService] PlatformException: $e');
+    } catch (e) {
+      debugPrint('[BiometricSecurityService] Error: $e');
+    }
 
     return false;
   }

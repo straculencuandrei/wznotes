@@ -91,10 +91,9 @@ if (Test-Path $updateServicePath) {
 
 # Create dist directory
 $DistDir = Join-Path $ProjectRoot "dist"
-if (Test-Path $DistDir) {
-    Remove-Item -Path $DistDir -Recurse -Force
+if (-not (Test-Path $DistDir)) {
+    New-Item -ItemType Directory -Path $DistDir | Out-Null
 }
-New-Item -ItemType Directory -Path $DistDir | Out-Null
 
 Write-Host "`n[2/5] Building Windows Desktop Release..." -ForegroundColor Green
 flutter build windows
