@@ -130,7 +130,25 @@ class SyncNotifier extends StateNotifier<SyncState> {
         isDiscovering: true,
         discoveredPeers: _discoveryService.peers,
       );
+
+      // Probe USB connection (when phone is plugged into laptop via USB)
+      _discoveryService.probeDirectPeer('127.0.0.1', 8484);
+
+      // Probe last known peer IP directly (bypasses router LAN-Wi-Fi isolation)
+      if (_lastKnownPeerIp != null) {
+        _discoveryService.probeDirectPeer(_lastKnownPeerIp!, _lastKnownPeerPort);
+      }
     } catch (_) {}
+  }
+
+  String? _lastKnownPeerIp;
+  int _lastKnownPeerPort = 8484;
+
+  /// Probes a specific IP directly (e.g. PC on Ethernet LAN cable)
+  Future<void> probeCustomIp(String ip, [int port = 8484]) async {
+    _lastKnownPeerIp = ip;
+    _lastKnownPeerPort = port;
+    await _discoveryService.probeDirectPeer(ip, port);
   }
 
   /// Stops zero-config auto-discovery
@@ -272,6 +290,8 @@ class SyncNotifier extends StateNotifier<SyncState> {
       );
 
       if (result.success) {
+        _lastKnownPeerIp = peerIp;
+        _lastKnownPeerPort = int.tryParse(peerPort) ?? 8484;
         state = state.copyWith(
           status: SyncStatus.success,
           lastResult: result,

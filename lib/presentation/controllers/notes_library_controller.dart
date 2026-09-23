@@ -5,7 +5,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../../domain/models/note_document.dart';
 import '../../infrastructure/sync/models/sync_models.dart';
-import '../widgets/export_dialog.dart';
 
 class NotesLibraryState {
   final List<NoteDocument> notes;
@@ -176,9 +175,6 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     }
 
     _persistNoteToDisk(docToSave);
-
-    // Pre-create the dedicated public WZNotes directory in phone storage
-    NoteExportService.ensureExportDirectoryCreated();
   }
 
   void _persistNoteToDisk(NoteDocument doc) {
@@ -186,7 +182,7 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     try {
       final file = File(p.join(_notesDir!.path, '${doc.metadata.id}.json'));
       final jsonString = json.encode(doc.toJson());
-      file.writeAsStringSync(jsonString);
+      file.writeAsString(jsonString); // Asynchronous background disk write
     } catch (_) {}
   }
 

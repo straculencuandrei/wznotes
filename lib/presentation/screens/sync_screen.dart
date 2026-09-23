@@ -204,6 +204,22 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               ] else ...[
                 ...state.discoveredPeers.map((peer) => _buildDiscoveredPeerCard(peer, notifier, isBusy)),
               ],
+
+              const SizedBox(height: 10),
+              Center(
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.amoledTextSecondary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                  icon: const Icon(Icons.lan_outlined, size: 16, color: AppColors.samsungOrange),
+                  label: const Text(
+                    'PC on Ethernet LAN cable? Tap to pair directly',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  onPressed: () => _showFindLanDeviceDialog(context, notifier),
+                ),
+              ),
             ],
           ),
         ),
@@ -655,6 +671,76 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFindLanDeviceDialog(BuildContext context, SyncNotifier notifier) {
+    final ipCtl = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.amoledSurfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.amoledBorder),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.lan_rounded, color: AppColors.samsungOrange, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Connect to PC on LAN',
+              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'If your PC uses an Ethernet cable, routers may block Wi-Fi to LAN broadcast. Enter the PC IP once to pair directly:',
+              style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12.5, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: ipCtl,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'e.g. 192.168.1.15',
+                hintStyle: const TextStyle(color: Colors.white30),
+                filled: true,
+                fillColor: const Color(0xFF1E1E1E),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF333333)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.samsungOrange,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              final ip = ipCtl.text.trim();
+              if (ip.isNotEmpty) {
+                notifier.probeCustomIp(ip);
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: const Text('Find & Pair', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

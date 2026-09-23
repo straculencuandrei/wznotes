@@ -77,10 +77,13 @@ class LocalSyncServer {
 
     try {
       if (path == '/api/status' && request.method == 'GET') {
+        final manifest = onGetManifest();
         _respondJson(request, {
           'status': 'online',
           'deviceName': deviceName,
           'version': '1.0.0',
+          'pin': pin,
+          'noteCount': manifest.notes.length,
         });
       } else if (path == '/api/manifest' && request.method == 'POST') {
         final bodyStr = await utf8.decoder.bind(request).join();

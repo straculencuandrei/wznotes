@@ -71,13 +71,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
     final wordCount = ref.watch(documentProvider.select((d) => d.metadata.wordCount));
     final inkingState = ref.watch(inkingProvider);
 
-    // Auto-save: Whenever the document content updates, debounce save to disk within 1.5s
+    // Auto-save: When document content updates, debounce save to disk within 2s
     ref.listen<NoteDocument>(documentProvider, (previous, next) {
       if (_isDeleting) return;
       _autoSaveDebouncer?.cancel();
-      _autoSaveDebouncer = Timer(const Duration(milliseconds: 1500), () {
+      _autoSaveDebouncer = Timer(const Duration(milliseconds: 2000), () {
         if (mounted && !_isDeleting) {
-          _flushAndSave();
+          ref.read(notesLibraryProvider.notifier).saveNote(next);
         }
       });
     });

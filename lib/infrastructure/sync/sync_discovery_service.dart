@@ -131,7 +131,45 @@ class SyncDiscoveryService {
       });
 
       final bytes = utf8.encode(payload);
+      // 1. General broadcast (255.255.255.255)
       _socket?.send(bytes, InternetAddress('255.255.255.255'), broadcastPort);
+
+      // 2. Subnet directed broadcast (e.g. 192.168.1.255) to cross LAN-Wi-Fi bridges on routers
+      final parts = _myIp!.split('.');
+      if (parts.length == 4) {
+        final subnetBroadcast = '${parts[0]}.${parts[1]}.${parts[2]}.255';
+        _socket?.send(bytes, InternetAddress(subnetBroadcast), broadcastPort);
+      }
+    } catch (_) {}
+  }
+
+  /// Probes an IP directly via HTTP (ideal for LAN cable, USB tethering, or when UDP broadcast is blocked by router)
+  Future<void> probeDirectPeer(String ip, [int port = 8484]) async {
+    if (ip == _myIp) return;
+    try {
+      final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 1400);
+      final req = await client.getUrl(Uri.parse('http://$ip:$port/api/status'));
+      final resp = await req.close();
+      if (resp.statusCode == 200) {
+        final bodyStr = await resp.transform(utf8.decoder).join();
+        final data = json.decode(bodyStr) as Map<String, dynamic>;
+        final peerName = (data['deviceName'] as String?) ?? 'Paired Device';
+        final peerCount = (data['noteCount'] as int?) ?? 0;
+        final peerPin = (data['pin'] as String?) ?? '';
+
+        final peer = DiscoveredPeer(
+          deviceName: peerName,
+          ip: ip,
+          port: port,
+          pin: peerPin,
+          noteCount: peerCount,
+          lastSeen: DateTime.now(),
+        );
+
+        _peers[ip] = peer;
+        _peersController.add(_peers.values.toList());
+      }
+      client.close();
     } catch (_) {}
   }
 

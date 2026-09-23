@@ -160,7 +160,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
   void _onBodyChanged(String text) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 60), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _flushSync();
     });
   }
@@ -214,6 +214,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       fontWeight: FontWeight.w900,
       color: AppColors.amoledTextPrimary,
       letterSpacing: -0.6,
+      height: 1.25,
     );
 
     final bodyStyle = TextStyle(
@@ -238,11 +239,13 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
             controller: _titleController,
             focusNode: _titleFocusNode,
             style: titleStyle,
+            maxLines: 1,
             hintText: 'Title',
             hintStyle: const TextStyle(
               color: Color(0xFF6E6E6E),
               fontWeight: FontWeight.w800,
               fontSize: 28,
+              height: 1.25,
             ),
             textCapitalization: TextCapitalization.sentences,
             onChanged: (val) => _onBodyChanged(_bodyController.text),
