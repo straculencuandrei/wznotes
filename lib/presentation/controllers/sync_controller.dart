@@ -143,25 +143,48 @@ class SyncNotifier extends StateNotifier<SyncState> {
 
   /// Instantly synchronizes notes over high-speed USB cable
   Future<void> syncViaUsb() async {
+    state = state.copyWith(
+      status: SyncStatus.connecting,
+      progressMessage: 'Connecting via USB cable...',
+      progressPercent: 0.1,
+      errorMessage: null,
+    );
+
     if (Platform.isWindows) {
       await SyncDiscoveryService.setupAdbForwarding();
+      // Try bringing WZNotes on phone to foreground so Android doesn't freeze sockets
+      await SyncDiscoveryService.wakePhoneApp();
+      await Future<void>.delayed(const Duration(milliseconds: 600));
     }
-    String targetPort = '8485';
+
+    // Check if phone server is responsive on port 8485
+    bool usbResponding = false;
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 500);
+      final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 1000);
       final req = await client.getUrl(Uri.parse('http://127.0.0.1:8485/api/status'));
-      final resp = await req.close().timeout(const Duration(milliseconds: 800));
-      if (resp.statusCode != 200) {
-        targetPort = '8484';
+      final resp = await req.close().timeout(const Duration(milliseconds: 1500));
+      if (resp.statusCode == 200) {
+        usbResponding = true;
       }
       client.close();
-    } catch (_) {
-      targetPort = '8484';
+    } catch (_) {}
+
+    if (!usbResponding) {
+      state = state.copyWith(
+        status: SyncStatus.error,
+        errorMessage: 'Cannot connect to WZNotes on your phone via USB.\n\n'
+            'Please ensure:\n'
+            '1. Your phone is plugged into this PC via USB cable.\n'
+            '2. USB Debugging is allowed on the phone.\n'
+            '3. WZNotes is open on your phone screen.',
+        progressPercent: 0.0,
+      );
+      return;
     }
 
     await syncWithPeer(
       peerIp: '127.0.0.1',
-      peerPort: targetPort,
+      peerPort: '8485',
       pin: '',
     );
   }

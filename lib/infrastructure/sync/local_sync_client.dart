@@ -5,7 +5,7 @@ import '../sync/models/sync_models.dart';
 import '../sync/sync_engine.dart';
 
 class LocalSyncClient {
-  final String serverAddress; // e.g. "192.168.1.50:8484"
+  final String serverAddress; // e.g. "192.168.1.50:8484" or "127.0.0.1:8485"
   final String pin;
 
   LocalSyncClient({
@@ -36,22 +36,15 @@ class LocalSyncClient {
     }
   }
 
-  /// Probes USB loopback endpoints to see if a phone is connected via ADB tunnel
+  /// Probes USB loopback endpoint (port 8485) to see if a phone is connected via ADB tunnel
   Future<String?> _detectUsbFallbackUrl() async {
-    for (final port in [8485, 8484]) {
-      try {
-        final uri = Uri.parse('http://127.0.0.1:$port/api/status');
-        final res = await http.get(uri).timeout(const Duration(milliseconds: 1000));
-        if (res.statusCode == 200) {
-          final data = json.decode(res.body) as Map<String, dynamic>;
-          final name = ((data['deviceName'] as String?) ?? '').toLowerCase();
-          // If port 8485 responded, or port 8484 isn't a Windows PC self-server
-          if (port == 8485 || (!name.contains('windows') && !name.contains('desktop'))) {
-            return 'http://127.0.0.1:$port';
-          }
-        }
-      } catch (_) {}
-    }
+    try {
+      final uri = Uri.parse('http://127.0.0.1:8485/api/status');
+      final res = await http.get(uri).timeout(const Duration(milliseconds: 1000));
+      if (res.statusCode == 200) {
+        return 'http://127.0.0.1:8485';
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -79,7 +72,7 @@ class LocalSyncClient {
             )
             .timeout(const Duration(milliseconds: 3500));
       } catch (e) {
-        // If Wi-Fi failed, check if USB loopback is online
+        // If Wi-Fi failed, check if USB loopback on port 8485 is online
         if (!activeBaseUrl.contains('127.0.0.1')) {
           final usbUrl = await _detectUsbFallbackUrl();
           if (usbUrl != null) {
@@ -98,13 +91,23 @@ class LocalSyncClient {
         }
 
         if (manifestRes == null) {
+          if (activeBaseUrl.contains('127.0.0.1')) {
+            return SyncResult.failure(
+              'Cannot reach WZNotes on your phone via USB.\n\n'
+              'Why this happened:\n'
+              '• WZNotes is not currently open on your phone screen.\n\n'
+              'Quick solution:\n'
+              '• Unlock your phone and open WZNotes.\n'
+              '• Keep WZNotes visible on screen and tap "Sync via USB Cable" again.',
+            );
+          }
           return SyncResult.failure(
             'Connection timed out connecting to $serverAddress.\n\n'
             'Your Wi-Fi router is blocking direct traffic between the PC (Ethernet cable) and Phone (Wi-Fi).\n\n'
             'Quick solutions:\n'
-            '• Plug phone into PC via USB cable and tap "⚡ Sync via USB"\n'
+            '• Plug phone into PC via USB cable and tap "Sync via USB Cable"\n'
             '• Connect PC to Wi-Fi instead of Ethernet cable\n'
-            '• Keep WZNotes open on the phone on the Sync screen\n'
+            '• Keep WZNotes open on the phone\n'
             '• Use 1-click "Export Vault" to transfer offline',
           );
         }
@@ -202,12 +205,26 @@ class LocalSyncClient {
       );
     } catch (e) {
       final msg = e.toString();
-      if (msg.contains('TimeoutException') || msg.contains('OS Error') || msg.contains('Failed host lookup')) {
+      final isLoopback = activeBaseUrl.contains('127.0.0.1');
+      if (msg.contains('TimeoutException') ||
+          msg.contains('OS Error') ||
+          msg.contains('Failed host lookup') ||
+          msg.contains('Connection refused')) {
+        if (isLoopback) {
+          return SyncResult.failure(
+            'Cannot reach WZNotes on your phone via USB.\n\n'
+            'Why this happened:\n'
+            '• WZNotes is not currently open on your phone screen.\n\n'
+            'Quick solution:\n'
+            '• Unlock your phone and open WZNotes.\n'
+            '• Keep WZNotes visible on screen and tap "Sync via USB Cable" again.',
+          );
+        }
         return SyncResult.failure(
           'Connection timed out connecting to $serverAddress.\n\n'
           'Your Wi-Fi router is blocking direct traffic between the PC (Ethernet) and Phone (Wi-Fi).\n\n'
           'Quick solutions:\n'
-          '• Plug phone into PC via USB cable and tap "⚡ Sync via USB"\n'
+          '• Plug phone into PC via USB cable and tap "Sync via USB Cable"\n'
           '• Connect PC to Wi-Fi instead of Ethernet cable\n'
           '• Keep WZNotes open on your phone\n'
           '• Use 1-click "Export Vault" to transfer offline',

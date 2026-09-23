@@ -62,28 +62,50 @@ class SyncDiscoveryService {
 
   bool get isRunning => _socket != null;
 
-  /// Automatically establishes ADB USB port forwarding on Windows
-  static Future<void> setupAdbForwarding() async {
-    if (!Platform.isWindows) return;
-    try {
-      String? adbPath;
+  /// Resolves the absolute path to adb.exe on Windows
+  static String getAdbPath() {
+    if (Platform.isWindows) {
       final localAppData = Platform.environment['LOCALAPPDATA'];
       if (localAppData != null) {
         final candidate = '$localAppData\\Android\\Sdk\\platform-tools\\adb.exe';
         if (File(candidate).existsSync()) {
-          adbPath = candidate;
+          return candidate;
         }
       }
-      adbPath ??= 'adb';
+    }
+    return 'adb';
+  }
 
+  /// Automatically establishes clean ADB USB port forwarding on Windows (Port 8485 -> Phone 8484)
+  static Future<void> setupAdbForwarding() async {
+    if (!Platform.isWindows) return;
+    try {
+      final adbPath = getAdbPath();
+
+      // Clean up any stale circular rules on 8484 that cause infinite loopbacks
+      await Process.run(adbPath, ['forward', '--remove', 'tcp:8484'])
+          .catchError((_) => ProcessResult(0, 0, '', ''));
+      await Process.run(adbPath, ['reverse', '--remove', 'tcp:8484'])
+          .catchError((_) => ProcessResult(0, 0, '', ''));
+
+      // Establish dedicated port 8485 tunnel: PC:8485 -> Phone:8484
       await Process.run(adbPath, ['forward', 'tcp:8485', 'tcp:8484'])
           .catchError((_) => ProcessResult(0, 0, '', ''));
-      await Process.run(adbPath, ['forward', 'tcp:8484', 'tcp:8484'])
-          .catchError((_) => ProcessResult(0, 0, '', ''));
-      await Process.run(adbPath, ['reverse', 'tcp:8485', 'tcp:8484'])
-          .catchError((_) => ProcessResult(0, 0, '', ''));
-      await Process.run(adbPath, ['reverse', 'tcp:8484', 'tcp:8484'])
-          .catchError((_) => ProcessResult(0, 0, '', ''));
+    } catch (_) {}
+  }
+
+  /// Wakes the phone screen and brings WZNotes to the foreground to unfreeze sockets
+  static Future<void> wakePhoneApp() async {
+    if (!Platform.isWindows) return;
+    try {
+      final adbPath = getAdbPath();
+      await Process.run(adbPath, [
+        'shell',
+        'am',
+        'start',
+        '-n',
+        'dev.opennotes.app/.MainActivity',
+      ]).catchError((_) => ProcessResult(0, 0, '', ''));
     } catch (_) {}
   }
 
@@ -179,44 +201,33 @@ class SyncDiscoveryService {
     } catch (_) {}
   }
 
-  /// Probes for a connected USB phone/device via local loopback
+  /// Probes for a connected USB phone/device via local loopback port 8485
   Future<void> probeUsbPeer() async {
-    for (final port in [8485, 8484]) {
-      try {
-        final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 800);
-        final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/api/status'));
-        final resp = await req.close().timeout(const Duration(milliseconds: 1200));
-        if (resp.statusCode == 200) {
-          final bodyStr = await resp.transform(utf8.decoder).join();
-          final data = json.decode(bodyStr) as Map<String, dynamic>;
-          final rawName = (data['deviceName'] as String?) ?? 'Paired Device';
+    try {
+      final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 800);
+      final req = await client.getUrl(Uri.parse('http://127.0.0.1:8485/api/status'));
+      final resp = await req.close().timeout(const Duration(milliseconds: 1200));
+      if (resp.statusCode == 200) {
+        final bodyStr = await resp.transform(utf8.decoder).join();
+        final data = json.decode(bodyStr) as Map<String, dynamic>;
+        final rawName = (data['deviceName'] as String?) ?? 'Phone';
+        final peerCount = (data['noteCount'] as int?) ?? 0;
+        final peerPin = (data['pin'] as String?) ?? '';
 
-          // Prevent discovering itself on loopback
-          if (port == 8484 && rawName.toLowerCase() == _deviceName.toLowerCase()) {
-            client.close();
-            continue;
-          }
+        final peer = DiscoveredPeer(
+          deviceName: '$rawName (USB Cable ⚡)',
+          ip: '127.0.0.1',
+          port: 8485,
+          pin: peerPin,
+          noteCount: peerCount,
+          lastSeen: DateTime.now(),
+        );
 
-          final peerCount = (data['noteCount'] as int?) ?? 0;
-          final peerPin = (data['pin'] as String?) ?? '';
-
-          final peer = DiscoveredPeer(
-            deviceName: '$rawName (USB Cable ⚡)',
-            ip: '127.0.0.1',
-            port: port,
-            pin: peerPin,
-            noteCount: peerCount,
-            lastSeen: DateTime.now(),
-          );
-
-          _peers['127.0.0.1:$port'] = peer;
-          _peersController.add(_peers.values.toList());
-          client.close();
-          return;
-        }
-        client.close();
-      } catch (_) {}
-    }
+        _peers['127.0.0.1:8485'] = peer;
+        _peersController.add(_peers.values.toList());
+      }
+      client.close();
+    } catch (_) {}
   }
 
   /// Probes an IP directly via HTTP (ideal for LAN cable, USB tethering, or when UDP broadcast is blocked by router)

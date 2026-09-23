@@ -780,7 +780,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.bolt_rounded, size: 16, color: Colors.black),
-                  label: const Text('⚡ Sync via USB Cable', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  label: const Text('Sync via USB Cable', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   onPressed: () => notifier.syncViaUsb(),
                 ),
                 OutlinedButton.icon(
