@@ -39,12 +39,13 @@ class DiscoveredPeer {
   }
 }
 
-/// Zero-Config Local Wi-Fi Discovery Service using UDP Broadcast Beacons
+/// Zero-Config Local Wi-Fi Discovery Service using UDP Broadcast Beacons + USB Tunnel Detection
 class SyncDiscoveryService {
   static const int broadcastPort = 8488;
   RawDatagramSocket? _socket;
   Timer? _beaconTimer;
   Timer? _cleanupTimer;
+  int _tickCount = 0;
 
   String? _myIp;
   String _deviceName = 'Device';
@@ -61,6 +62,31 @@ class SyncDiscoveryService {
 
   bool get isRunning => _socket != null;
 
+  /// Automatically establishes ADB USB port forwarding on Windows
+  static Future<void> setupAdbForwarding() async {
+    if (!Platform.isWindows) return;
+    try {
+      String? adbPath;
+      final localAppData = Platform.environment['LOCALAPPDATA'];
+      if (localAppData != null) {
+        final candidate = '$localAppData\\Android\\Sdk\\platform-tools\\adb.exe';
+        if (File(candidate).existsSync()) {
+          adbPath = candidate;
+        }
+      }
+      adbPath ??= 'adb';
+
+      await Process.run(adbPath, ['forward', 'tcp:8485', 'tcp:8484'])
+          .catchError((_) => ProcessResult(0, 0, '', ''));
+      await Process.run(adbPath, ['forward', 'tcp:8484', 'tcp:8484'])
+          .catchError((_) => ProcessResult(0, 0, '', ''));
+      await Process.run(adbPath, ['reverse', 'tcp:8485', 'tcp:8484'])
+          .catchError((_) => ProcessResult(0, 0, '', ''));
+      await Process.run(adbPath, ['reverse', 'tcp:8484', 'tcp:8484'])
+          .catchError((_) => ProcessResult(0, 0, '', ''));
+    } catch (_) {}
+  }
+
   /// Starts advertising this device and listening for nearby peers on local network
   Future<void> start({
     required String deviceName,
@@ -75,6 +101,11 @@ class SyncDiscoveryService {
     _pin = pin;
     _noteCount = noteCount;
     _myIp = await NetworkHelper.getLocalIpAddress();
+
+    // Auto setup ADB tunnel if on Windows
+    if (Platform.isWindows) {
+      unawaited(setupAdbForwarding());
+    }
 
     try {
       _socket = await RawDatagramSocket.bind(
@@ -95,10 +126,15 @@ class SyncDiscoveryService {
 
       // Send initial announcement immediately
       _broadcastBeacon();
+      probeUsbPeer();
 
       // Recurring beacon every 1.5 seconds
       _beaconTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+        _tickCount++;
         _broadcastBeacon();
+        if (_tickCount % 2 == 0) {
+          probeUsbPeer();
+        }
       });
 
       // Prune inactive peers every 3 seconds
@@ -143,22 +179,68 @@ class SyncDiscoveryService {
     } catch (_) {}
   }
 
+  /// Probes for a connected USB phone/device via local loopback
+  Future<void> probeUsbPeer() async {
+    for (final port in [8485, 8484]) {
+      try {
+        final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 800);
+        final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/api/status'));
+        final resp = await req.close().timeout(const Duration(milliseconds: 1200));
+        if (resp.statusCode == 200) {
+          final bodyStr = await resp.transform(utf8.decoder).join();
+          final data = json.decode(bodyStr) as Map<String, dynamic>;
+          final rawName = (data['deviceName'] as String?) ?? 'Paired Device';
+
+          // Prevent discovering itself on loopback
+          if (port == 8484 && rawName.toLowerCase() == _deviceName.toLowerCase()) {
+            client.close();
+            continue;
+          }
+
+          final peerCount = (data['noteCount'] as int?) ?? 0;
+          final peerPin = (data['pin'] as String?) ?? '';
+
+          final peer = DiscoveredPeer(
+            deviceName: '$rawName (USB Cable ⚡)',
+            ip: '127.0.0.1',
+            port: port,
+            pin: peerPin,
+            noteCount: peerCount,
+            lastSeen: DateTime.now(),
+          );
+
+          _peers['127.0.0.1:$port'] = peer;
+          _peersController.add(_peers.values.toList());
+          client.close();
+          return;
+        }
+        client.close();
+      } catch (_) {}
+    }
+  }
+
   /// Probes an IP directly via HTTP (ideal for LAN cable, USB tethering, or when UDP broadcast is blocked by router)
   Future<void> probeDirectPeer(String ip, [int port = 8484]) async {
     if (ip == _myIp) return;
     try {
       final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 1400);
       final req = await client.getUrl(Uri.parse('http://$ip:$port/api/status'));
-      final resp = await req.close();
+      final resp = await req.close().timeout(const Duration(milliseconds: 2000));
       if (resp.statusCode == 200) {
         final bodyStr = await resp.transform(utf8.decoder).join();
         final data = json.decode(bodyStr) as Map<String, dynamic>;
         final peerName = (data['deviceName'] as String?) ?? 'Paired Device';
+
+        if (ip == '127.0.0.1' && peerName.toLowerCase() == _deviceName.toLowerCase()) {
+          client.close();
+          return;
+        }
+
         final peerCount = (data['noteCount'] as int?) ?? 0;
         final peerPin = (data['pin'] as String?) ?? '';
 
         final peer = DiscoveredPeer(
-          deviceName: peerName,
+          deviceName: ip == '127.0.0.1' ? '$peerName (USB Cable ⚡)' : peerName,
           ip: ip,
           port: port,
           pin: peerPin,
@@ -166,7 +248,7 @@ class SyncDiscoveryService {
           lastSeen: DateTime.now(),
         );
 
-        _peers[ip] = peer;
+        _peers['$ip:$port'] = peer;
         _peersController.add(_peers.values.toList());
       }
       client.close();
@@ -198,7 +280,7 @@ class SyncDiscoveryService {
         lastSeen: DateTime.now(),
       );
 
-      _peers[peerIp] = peer;
+      _peers['$peerIp:$peerPort'] = peer;
       _peersController.add(_peers.values.toList());
     } catch (_) {}
   }

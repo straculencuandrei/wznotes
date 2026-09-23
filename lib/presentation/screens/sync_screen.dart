@@ -129,6 +129,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
     return ListView(
       padding: const EdgeInsets.all(20.0),
       children: [
+        // 0. High-Speed USB Cable Sync Card
+        _buildUsbQuickSyncCard(state, notifier, isBusy),
+
         // 1. Nearby Devices Section
         Container(
           padding: const EdgeInsets.all(16),
@@ -382,13 +385,93 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
 
         // 3. Progress Card
         if (state.progressMessage.isNotEmpty || state.errorMessage != null)
-          _buildProgressCard(state, isBusy),
+          _buildProgressCard(state, notifier, isBusy),
       ],
     );
   }
 
+  Widget _buildUsbQuickSyncCard(SyncState state, SyncNotifier notifier, bool isBusy) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.samsungOrange.withValues(alpha: 0.16),
+            const Color(0xFF1A1A1A),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.4), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.samsungOrange.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.usb_rounded, color: AppColors.samsungOrange, size: 24),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '1-Tap USB Cable Sync',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.5),
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      '⚡ Instant',
+                      style: TextStyle(color: AppColors.samsungOrange, fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Bypasses Wi-Fi router isolation. Plug phone to PC via USB.',
+                  style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 11.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.samsungOrange,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+            icon: isBusy
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                  )
+                : const Icon(Icons.bolt_rounded, size: 16, color: Colors.black),
+            label: Text(
+              isBusy ? 'Syncing...' : 'Sync USB',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.black),
+            ),
+            onPressed: isBusy ? null : () => notifier.syncViaUsb(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDiscoveredPeerCard(DiscoveredPeer peer, SyncNotifier notifier, bool isBusy) {
-    final isMobile = peer.deviceName.toLowerCase().contains('phone') || peer.deviceName.toLowerCase().contains('android');
+    final isUsb = peer.ip == '127.0.0.1' || peer.deviceName.contains('USB');
+    final isMobile = !isUsb && (peer.deviceName.toLowerCase().contains('phone') || peer.deviceName.toLowerCase().contains('android'));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -396,19 +479,24 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
       decoration: BoxDecoration(
         color: const Color(0xFF1B1B1B),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.5), width: 1.2),
+        border: Border.all(
+          color: isUsb ? AppColors.accentEmerald.withValues(alpha: 0.6) : AppColors.samsungOrange.withValues(alpha: 0.5),
+          width: 1.2,
+        ),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.samsungOrange.withValues(alpha: 0.15),
+              color: isUsb ? AppColors.accentEmerald.withValues(alpha: 0.15) : AppColors.samsungOrange.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              isMobile ? Icons.phone_android_rounded : Icons.laptop_windows_rounded,
-              color: AppColors.samsungOrange,
+              isUsb
+                  ? Icons.usb_rounded
+                  : (isMobile ? Icons.phone_android_rounded : Icons.laptop_windows_rounded),
+              color: isUsb ? AppColors.accentEmerald : AppColors.samsungOrange,
               size: 26,
             ),
           ),
@@ -417,13 +505,31 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  peer.deviceName,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        peer.deviceName,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isUsb) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentEmerald.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('⚡ FAST', style: TextStyle(color: AppColors.accentEmerald, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${peer.ip} • ${peer.noteCount} notes',
+                  isUsb ? 'USB Cable Loopback • ${peer.noteCount} notes' : '${peer.ip} • ${peer.noteCount} notes',
                   style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12),
                 ),
               ],
@@ -431,7 +537,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.samsungOrange,
+              backgroundColor: isUsb ? AppColors.accentEmerald : AppColors.samsungOrange,
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -443,9 +549,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                   )
-                : const Icon(Icons.sync_rounded, size: 18, color: Colors.black),
+                : Icon(isUsb ? Icons.bolt_rounded : Icons.sync_rounded, size: 18, color: Colors.black),
             label: Text(
-              isBusy ? 'Syncing...' : '1-Tap Sync',
+              isBusy ? 'Syncing...' : (isUsb ? '1-Tap USB' : '1-Tap Sync'),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black),
             ),
             onPressed: isBusy ? null : () => notifier.syncWithDiscoveredPeer(peer),
@@ -600,44 +706,52 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
 
         const SizedBox(height: 20),
         if (state.progressMessage.isNotEmpty || state.errorMessage != null)
-          _buildProgressCard(state, isBusy),
+          _buildProgressCard(state, notifier, isBusy),
       ],
     );
   }
 
-  Widget _buildProgressCard(SyncState state, bool isBusy) {
+  Widget _buildProgressCard(SyncState state, SyncNotifier notifier, bool isBusy) {
+    final isError = state.status == SyncStatus.error;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.amoledSurfaceElevated,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: state.status == SyncStatus.error ? Colors.redAccent : AppColors.amoledBorder,
+          color: isError ? Colors.redAccent.withValues(alpha: 0.8) : AppColors.amoledBorder,
+          width: isError ? 1.4 : 1.0,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (isBusy)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.samsungOrange),
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.samsungOrange),
+                  ),
                 )
               else if (state.status == SyncStatus.success)
                 const Icon(Icons.check_circle, color: AppColors.accentEmerald, size: 20)
-              else if (state.status == SyncStatus.error)
+              else if (isError)
                 const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   state.errorMessage ?? state.progressMessage,
                   style: TextStyle(
-                    color: state.status == SyncStatus.error ? Colors.redAccent : Colors.white,
+                    color: isError ? const Color(0xFFFF6B6B) : Colors.white,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
+                    height: 1.4,
                   ),
                 ),
               ),
@@ -650,6 +764,56 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               backgroundColor: AppColors.amoledBorder,
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.samsungOrange),
               borderRadius: BorderRadius.circular(4),
+            ),
+          ],
+          if (isError) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.samsungOrange,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.bolt_rounded, size: 16, color: Colors.black),
+                  label: const Text('⚡ Sync via USB Cable', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  onPressed: () => notifier.syncViaUsb(),
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: AppColors.amoledBorder),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.upload_file_rounded, size: 16, color: AppColors.samsungOrange),
+                  label: const Text('Export Vault', style: TextStyle(fontSize: 12)),
+                  onPressed: () async {
+                    final res = await notifier.exportVault();
+                    if (mounted) {
+                      TopIslandToast.show(
+                        context,
+                        message: res.message,
+                        icon: res.success ? Icons.check_circle_rounded : Icons.error_outline,
+                        color: res.success ? AppColors.accentEmerald : Colors.redAccent,
+                      );
+                      _scanLocalVaultBackups();
+                    }
+                  },
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white54,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  onPressed: () => notifier.resetStatus(),
+                  child: const Text('Dismiss', style: TextStyle(fontSize: 12)),
+                ),
+              ],
             ),
           ],
         ],
@@ -692,7 +856,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             Icon(Icons.lan_rounded, color: AppColors.samsungOrange, size: 22),
             SizedBox(width: 10),
             Text(
-              'Connect to PC on LAN',
+              'Connect to PC or Phone',
               style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
             ),
           ],
@@ -702,15 +866,29 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'If your PC uses an Ethernet cable, routers may block Wi-Fi to LAN broadcast. Enter the PC IP once to pair directly:',
+              'Enter the direct IP address or tap a quick preset:',
               style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12.5, height: 1.4),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                ActionChip(
+                  label: const Text('⚡ USB (127.0.0.1)', style: TextStyle(fontSize: 11.5, color: AppColors.samsungOrange)),
+                  backgroundColor: AppColors.samsungOrange.withValues(alpha: 0.15),
+                  side: const BorderSide(color: AppColors.samsungOrange),
+                  onPressed: () {
+                    ipCtl.text = '127.0.0.1';
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: ipCtl,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'e.g. 192.168.1.15',
+                hintText: 'e.g. 192.168.1.15 or 127.0.0.1',
                 hintStyle: const TextStyle(color: Colors.white30),
                 filled: true,
                 fillColor: const Color(0xFF1E1E1E),

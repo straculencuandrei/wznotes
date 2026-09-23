@@ -132,13 +132,38 @@ class SyncNotifier extends StateNotifier<SyncState> {
       );
 
       // Probe USB connection (when phone is plugged into laptop via USB)
-      _discoveryService.probeDirectPeer('127.0.0.1', 8484);
+      _discoveryService.probeUsbPeer();
 
       // Probe last known peer IP directly (bypasses router LAN-Wi-Fi isolation)
       if (_lastKnownPeerIp != null) {
         _discoveryService.probeDirectPeer(_lastKnownPeerIp!, _lastKnownPeerPort);
       }
     } catch (_) {}
+  }
+
+  /// Instantly synchronizes notes over high-speed USB cable
+  Future<void> syncViaUsb() async {
+    if (Platform.isWindows) {
+      await SyncDiscoveryService.setupAdbForwarding();
+    }
+    String targetPort = '8485';
+    try {
+      final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 500);
+      final req = await client.getUrl(Uri.parse('http://127.0.0.1:8485/api/status'));
+      final resp = await req.close().timeout(const Duration(milliseconds: 800));
+      if (resp.statusCode != 200) {
+        targetPort = '8484';
+      }
+      client.close();
+    } catch (_) {
+      targetPort = '8484';
+    }
+
+    await syncWithPeer(
+      peerIp: '127.0.0.1',
+      peerPort: targetPort,
+      pin: '',
+    );
   }
 
   String? _lastKnownPeerIp;
@@ -307,9 +332,20 @@ class SyncNotifier extends StateNotifier<SyncState> {
         );
       }
     } catch (e) {
+      final err = e.toString();
+      String friendlyMessage = err;
+      if (err.contains('TimeoutException') || err.contains('OS Error') || err.contains('Failed host lookup')) {
+        friendlyMessage = 'Connection timed out connecting to $peerIp:$peerPort.\n\n'
+            'Your Wi-Fi router is blocking direct traffic between the PC (Ethernet cable) and Phone (Wi-Fi).\n\n'
+            'Quick solutions:\n'
+            '• Plug phone into PC via USB cable and tap "⚡ Sync via USB"\n'
+            '• Connect PC to Wi-Fi instead of Ethernet cable\n'
+            '• Keep WZNotes open on your phone\n'
+            '• Use 1-click "Export Vault" to transfer offline';
+      }
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: friendlyMessage,
         progressPercent: 0.0,
       );
     }

@@ -36,6 +36,25 @@ class LocalSyncClient {
     }
   }
 
+  /// Probes USB loopback endpoints to see if a phone is connected via ADB tunnel
+  Future<String?> _detectUsbFallbackUrl() async {
+    for (final port in [8485, 8484]) {
+      try {
+        final uri = Uri.parse('http://127.0.0.1:$port/api/status');
+        final res = await http.get(uri).timeout(const Duration(milliseconds: 1000));
+        if (res.statusCode == 200) {
+          final data = json.decode(res.body) as Map<String, dynamic>;
+          final name = ((data['deviceName'] as String?) ?? '').toLowerCase();
+          // If port 8485 responded, or port 8484 isn't a Windows PC self-server
+          if (port == 8485 || (!name.contains('windows') && !name.contains('desktop'))) {
+            return 'http://127.0.0.1:$port';
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
   /// Runs full bidirectional synchronization against host
   Future<SyncResult> performSync({
     required SyncManifest localManifest,
@@ -44,18 +63,52 @@ class LocalSyncClient {
     required void Function(List<String> deletedIds) onDeleteLocalNotes,
     void Function(String status, double progress)? onProgress,
   }) async {
+    String activeBaseUrl = _baseUrl;
     try {
       onProgress?.call('Connecting to peer...', 0.1);
 
-      // Step 1: Exchange manifests
-      final manifestUri = Uri.parse('$_baseUrl/api/manifest');
-      final manifestRes = await http
-          .post(
-            manifestUri,
-            headers: _headers,
-            body: json.encode(localManifest.toJson()),
-          )
-          .timeout(const Duration(seconds: 8));
+      // Step 1: Exchange manifests with snappy 3.5s timeout
+      http.Response? manifestRes;
+      try {
+        final manifestUri = Uri.parse('$activeBaseUrl/api/manifest');
+        manifestRes = await http
+            .post(
+              manifestUri,
+              headers: _headers,
+              body: json.encode(localManifest.toJson()),
+            )
+            .timeout(const Duration(milliseconds: 3500));
+      } catch (e) {
+        // If Wi-Fi failed, check if USB loopback is online
+        if (!activeBaseUrl.contains('127.0.0.1')) {
+          final usbUrl = await _detectUsbFallbackUrl();
+          if (usbUrl != null) {
+            onProgress?.call('Switching to fast USB connection...', 0.15);
+            activeBaseUrl = usbUrl;
+            try {
+              manifestRes = await http
+                  .post(
+                    Uri.parse('$activeBaseUrl/api/manifest'),
+                    headers: _headers,
+                    body: json.encode(localManifest.toJson()),
+                  )
+                  .timeout(const Duration(seconds: 4));
+            } catch (_) {}
+          }
+        }
+
+        if (manifestRes == null) {
+          return SyncResult.failure(
+            'Connection timed out connecting to $serverAddress.\n\n'
+            'Your Wi-Fi router is blocking direct traffic between the PC (Ethernet cable) and Phone (Wi-Fi).\n\n'
+            'Quick solutions:\n'
+            '• Plug phone into PC via USB cable and tap "⚡ Sync via USB"\n'
+            '• Connect PC to Wi-Fi instead of Ethernet cable\n'
+            '• Keep WZNotes open on the phone on the Sync screen\n'
+            '• Use 1-click "Export Vault" to transfer offline',
+          );
+        }
+      }
 
       if (manifestRes.statusCode != 200) {
         return SyncResult.failure('Failed to exchange manifests (${manifestRes.statusCode})');
@@ -80,14 +133,16 @@ class LocalSyncClient {
       if (delta.notesToSend.isNotEmpty) {
         onProgress?.call('Uploading ${delta.notesToSend.length} notes...', 0.5);
         final notesToSendDocs = getLocalNotes(delta.notesToSend);
-        final pushUri = Uri.parse('$_baseUrl/api/push');
-        final pushRes = await http.post(
-          pushUri,
-          headers: _headers,
-          body: json.encode({
-            'notes': notesToSendDocs.map((n) => n.toJson()).toList(),
-          }),
-        );
+        final pushUri = Uri.parse('$activeBaseUrl/api/push');
+        final pushRes = await http
+            .post(
+              pushUri,
+              headers: _headers,
+              body: json.encode({
+                'notes': notesToSendDocs.map((n) => n.toJson()).toList(),
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
         if (pushRes.statusCode == 200) {
           uploadedCount = notesToSendDocs.length;
         }
@@ -96,12 +151,14 @@ class LocalSyncClient {
       // Step 4: Fetch notes needed locally (Pull)
       if (delta.notesToFetch.isNotEmpty) {
         onProgress?.call('Downloading ${delta.notesToFetch.length} notes...', 0.7);
-        final pullUri = Uri.parse('$_baseUrl/api/pull');
-        final pullRes = await http.post(
-          pullUri,
-          headers: _headers,
-          body: json.encode({'ids': delta.notesToFetch}),
-        );
+        final pullUri = Uri.parse('$activeBaseUrl/api/pull');
+        final pullRes = await http
+            .post(
+              pullUri,
+              headers: _headers,
+              body: json.encode({'ids': delta.notesToFetch}),
+            )
+            .timeout(const Duration(seconds: 15));
         if (pullRes.statusCode == 200) {
           final data = json.decode(pullRes.body) as Map<String, dynamic>;
           final incomingRaw = data['notes'] as List<dynamic>? ?? [];
@@ -125,12 +182,14 @@ class LocalSyncClient {
 
       // Step 6: Send local tombstones to peer
       if (delta.tombstonesToSend.isNotEmpty) {
-        final tombUri = Uri.parse('$_baseUrl/api/tombstones');
-        await http.post(
-          tombUri,
-          headers: _headers,
-          body: json.encode({'ids': delta.tombstonesToSend}),
-        );
+        final tombUri = Uri.parse('$activeBaseUrl/api/tombstones');
+        await http
+            .post(
+              tombUri,
+              headers: _headers,
+              body: json.encode({'ids': delta.tombstonesToSend}),
+            )
+            .timeout(const Duration(seconds: 10));
       }
 
       onProgress?.call('Sync complete!', 1.0);
@@ -142,7 +201,19 @@ class LocalSyncClient {
         notesDeleted: deletedCount,
       );
     } catch (e) {
-      return SyncResult.failure(e.toString());
+      final msg = e.toString();
+      if (msg.contains('TimeoutException') || msg.contains('OS Error') || msg.contains('Failed host lookup')) {
+        return SyncResult.failure(
+          'Connection timed out connecting to $serverAddress.\n\n'
+          'Your Wi-Fi router is blocking direct traffic between the PC (Ethernet) and Phone (Wi-Fi).\n\n'
+          'Quick solutions:\n'
+          '• Plug phone into PC via USB cable and tap "⚡ Sync via USB"\n'
+          '• Connect PC to Wi-Fi instead of Ethernet cable\n'
+          '• Keep WZNotes open on your phone\n'
+          '• Use 1-click "Export Vault" to transfer offline',
+        );
+      }
+      return SyncResult.failure(msg);
     }
   }
 }
