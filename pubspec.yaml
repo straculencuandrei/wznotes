@@ -1,7 +1,7 @@
 name: wznotes
 description: "wznotes: High-performance cross-platform vector inking & keyboard-first note-taking engine."
 publish_to: 'none'
-version: 0.8.1+18
+version: 0.8.2+19
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

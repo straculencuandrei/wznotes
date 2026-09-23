@@ -4,8 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Centered Minimalist White Pen -->
+    <!-- Perfectly Centered Minimalist White Stylus Pen (Centroid at 54, 54) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M37.5,67.5 L40.5,70.5 L67.2,43.8 C68.8,42.2 68.8,39.6 67.2,38.0 L66.0,36.8 C64.4,35.2 61.8,35.2 60.2,36.8 L33.5,63.5 L36.5,66.5 Z M31.5,73.5 L36.0,72.0 L33.0,69.0 L31.5,73.5 Z" />
+        android:pathData="M41.35,67.15 L44.35,70.15 L71.05,43.45 C72.65,41.85 72.65,39.25 71.05,37.65 L69.85,36.45 C68.25,34.85 65.65,34.85 64.05,36.45 L37.35,63.15 L40.35,66.15 Z M35.35,73.15 L39.85,71.65 L36.85,68.65 L35.35,73.15 Z" />
 </vector>

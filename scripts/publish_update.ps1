@@ -89,8 +89,8 @@ if (Test-Path $updateServicePath) {
     Set-Content $updateServicePath -Value $rawService
 }
 
-# Create dist directory
-$DistDir = Join-Path $ProjectRoot "dist"
+# Create releases directory
+$DistDir = Join-Path $ProjectRoot "releases"
 if (-not (Test-Path $DistDir)) {
     New-Item -ItemType Directory -Path $DistDir | Out-Null
 }
@@ -100,6 +100,10 @@ flutter build windows
 
 $WinReleaseDir = "build\windows\x64\runner\Release"
 if (Test-Path $WinReleaseDir) {
+    $winFolder = Join-Path $DistDir "wznotes-windows"
+    if (Test-Path $winFolder) { Remove-Item $winFolder -Recurse -Force }
+    Copy-Item -Path $WinReleaseDir -Destination $winFolder -Recurse -Force
+
     $ZipPath = Join-Path $DistDir "wznotes-windows-v$NewVersion.zip"
     Write-Host "Compressing Windows release to $ZipPath..." -ForegroundColor Cyan
     if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
@@ -153,6 +157,9 @@ Write-Host "================================================" -ForegroundColor Y
 Get-ChildItem $DistDir | Select-Object Name, Length
 
 Write-Host "`nTo publish binaries to your users:" -ForegroundColor Cyan
-Write-Host "Upload files in dist/ to: https://github.com/straculencuandrei/wznotes/releases/new?tag=v$NewVersion" -ForegroundColor Gray
+Write-Host "Upload files in releases/ to: https://github.com/straculencuandrei/wznotes/releases/new?tag=v$NewVersion" -ForegroundColor Gray
 Write-Host "All running PC and Mobile wznotes apps will automatically detect this update!`n" -ForegroundColor Green
+
+# Automatically open Windows Explorer directly into releases folder
+Invoke-Item $DistDir
 

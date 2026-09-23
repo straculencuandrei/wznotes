@@ -84,6 +84,7 @@ android/.kotlin/
 
 # Distribution and release binaries
 /dist/
+/releases/
 *.apk
 *.aab
 *.zip

@@ -153,7 +153,7 @@ $nextBuild = $currentBuild + 1
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Name="btnOpenDist" Content="Open 'dist' Folder" Background="#262626" Foreground="#FFFFFF"/>
+            <Button Grid.Column="0" Name="btnOpenDist" Content="Open 'releases' Folder" Background="#262626" Foreground="#FFFFFF"/>
             <Grid Grid.Column="1" Margin="16,0">
                 <ProgressBar Name="prgBar" Height="14" Minimum="0" Maximum="100" Value="0" IsIndeterminate="False" Visibility="Hidden" Foreground="#FF8C00" Background="#1E1E1E" BorderThickness="0"/>
                 <TextBlock Name="lblProgressPercent" Text="0%" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" Visibility="Hidden"/>
@@ -285,7 +285,7 @@ $btnClearLog.Add_Click({
 })
 
 $btnOpenDist.Add_Click({
-    $distPath = Join-Path $ProjectRoot "dist"
+    $distPath = Join-Path $ProjectRoot "releases"
     if (-not (Test-Path $distPath)) {
         New-Item -ItemType Directory -Path $distPath | Out-Null
     }
@@ -384,7 +384,7 @@ $btnStart.Add_Click({
             Set-Content $updateServicePath -Value $serviceRaw
         }
 
-        $distDir = Join-Path $ProjectRoot "dist"
+        $distDir = Join-Path $ProjectRoot "releases"
         if (-not (Test-Path $distDir)) {
             New-Item -ItemType Directory -Path $distDir | Out-Null
         }
@@ -400,6 +400,10 @@ $btnStart.Add_Click({
                 Write-DashboardLog "[FAIL] Windows Desktop Build Failed!" "Windows build failed"
             } else {
                 $winReleaseDir = "build\windows\x64\runner\Release"
+                $winFolder = Join-Path $distDir "wznotes-windows"
+                if (Test-Path $winFolder) { Remove-Item $winFolder -Recurse -Force }
+                Copy-Item -Path $winReleaseDir -Destination $winFolder -Recurse -Force
+
                 $zipPath = Join-Path $distDir "wznotes-windows-v$ver.zip"
                 Write-DashboardLog "[PACKAGE] Compressing release into $zipPath..."
                 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -479,6 +483,7 @@ $btnStart.Add_Click({
         Set-PipelineProgress 100 "All steps completed successfully!"
         Write-DashboardLog "========================================"
         Write-DashboardLog "[COMPLETE] All selected pipeline steps finished successfully!" "Build & Update Ready!"
+        Invoke-Item $distDir
     } catch {
         Write-DashboardLog "[ERROR] $($_.Exception.Message)" "Error encountered"
         Write-DashboardLog "[ERROR] $($_.ScriptStackTrace)"
