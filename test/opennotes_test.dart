@@ -12,10 +12,12 @@ import 'package:wznotes/domain/models/pen_tool.dart';
 import 'package:wznotes/domain/models/text_block.dart';
 import 'package:wznotes/domain/models/note_document.dart';
 import 'package:wznotes/domain/serialization/stroke_binary_codec.dart';
-import 'package:wznotes/domain/serialization/note_json_codec.dart';
 import 'package:wznotes/domain/serialization/note_archive_manager.dart';
 import 'package:wznotes/infrastructure/export/markdown_exporter.dart';
 import 'package:wznotes/infrastructure/export/svg_exporter.dart';
+import 'package:wznotes/infrastructure/export/text_exporter.dart';
+import 'package:wznotes/infrastructure/export/pdf_exporter.dart';
+import 'package:archive/archive.dart';
 
 void main() {
   group('1. Binary & JSON Serialization Tests', () {
@@ -102,6 +104,7 @@ void main() {
       final filter = StylusPressureFilter(alpha: 0.35);
 
       final p1 = filter.filter(position: const Offset(10, 10), rawPressure: 1.0, timestampMs: 0);
+      expect(p1, 1.0);
       final p2 = filter.filter(position: const Offset(20, 20), rawPressure: 0.2, timestampMs: 16);
 
       // Second filtered sample should be smoothly blended: 0.35 * 0.2 + 0.65 * 1.0 = 0.72
@@ -173,6 +176,64 @@ void main() {
       expect(svg.startsWith('<?xml version="1.0" encoding="UTF-8"?>'), true);
       expect(svg.contains('<svg'), true);
       expect(svg.contains('<path'), true);
+    });
+
+    test('Plain text exporter formats headings, lists and checklists accurately', () {
+      final doc = NoteDocument.initial(title: 'Grocery List');
+      doc.blocks.addAll([
+        const TextBlock(id: 'h1', type: TextBlockType.heading1, rawText: 'Weekly Shopping'),
+        const TextBlock(id: 'c1', type: TextBlockType.checklist, rawText: 'Oat Milk', isChecked: true),
+        const TextBlock(id: 'c2', type: TextBlockType.checklist, rawText: 'Dark Chocolate', isChecked: false),
+        const TextBlock(id: 'b1', type: TextBlockType.bulletList, rawText: 'Honey crisp apples'),
+      ]);
+
+      final txt = TextExporter.exportToPlainText(doc);
+      expect(txt.contains('Grocery List'), true);
+      expect(txt.contains('WEEKLY SHOPPING'), true);
+      expect(txt.contains('[x] Oat Milk'), true);
+      expect(txt.contains('[ ] Dark Chocolate'), true);
+      expect(txt.contains('• Honey crisp apples'), true);
+    });
+
+    test('Vector PDF exporter creates non-empty valid PDF byte stream', () async {
+      final doc = NoteDocument.initial(title: 'Meeting Minutes');
+      doc.blocks.addAll([
+        const TextBlock(id: 'h1', type: TextBlockType.heading1, rawText: 'Architecture Review'),
+        const TextBlock(id: 'p1', type: TextBlockType.paragraph, rawText: 'Reviewed offline sync algorithms.'),
+      ]);
+
+      final pdfBytes = await PdfExporter.exportToPdf(doc);
+      expect(pdfBytes.isNotEmpty, true);
+      // PDF standard magic header %PDF-
+      final header = String.fromCharCodes(pdfBytes.take(5));
+      expect(header.startsWith('%PDF'), true);
+    });
+
+    test('Backup ZIP archive creates valid ZIP with all notes formatted as .txt', () async {
+      final note1 = NoteDocument.initial(title: 'Alpha Note');
+      note1.blocks.add(const TextBlock(id: 'b1', type: TextBlockType.paragraph, rawText: 'Content of Alpha'));
+      final note2 = NoteDocument.initial(title: 'Beta Note');
+      note2.blocks.add(const TextBlock(id: 'b2', type: TextBlockType.paragraph, rawText: 'Content of Beta'));
+
+      final zipBytes = await NoteArchiveManager.createBackupZip([note1, note2], format: 'txt');
+      expect(zipBytes.isNotEmpty, true);
+
+      final archive = ZipDecoder().decodeBytes(zipBytes);
+      final fileNames = archive.files.map((f) => f.name).toList();
+      expect(fileNames.contains('Alpha Note.txt'), true);
+      expect(fileNames.contains('Beta Note.txt'), true);
+    });
+
+    test('Backup ZIP archive creates valid ZIP with all notes formatted as .pdf', () async {
+      final note1 = NoteDocument.initial(title: 'Design Specs');
+      note1.blocks.add(const TextBlock(id: 'b1', type: TextBlockType.paragraph, rawText: 'Specs content'));
+
+      final zipBytes = await NoteArchiveManager.createBackupZip([note1], format: 'pdf');
+      expect(zipBytes.isNotEmpty, true);
+
+      final archive = ZipDecoder().decodeBytes(zipBytes);
+      final fileNames = archive.files.map((f) => f.name).toList();
+      expect(fileNames.contains('Design Specs.pdf'), true);
     });
   });
 }

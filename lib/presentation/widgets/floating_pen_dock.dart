@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../domain/models/pen_tool.dart';
 import '../controllers/inking_controller.dart';
 import '../controllers/document_controller.dart';
+import 'spectrum_color_picker_dialog.dart';
 
 /// Modern floating stylus dock with tool selector, color palette, and thickness slider
 /// Fully responsive with horizontal scrolling to prevent any screen overflow
@@ -106,7 +107,7 @@ class FloatingPenDock extends ConsumerWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 4),
               ),
 
-              // Color Palette Selector
+              // Color Palette Selector & Spectrum Picker
               ...AppColors.inkPalette.take(4).map((c) {
                 final isSelected = inkingState.toolConfig.color == c;
                 return GestureDetector(
@@ -126,6 +127,60 @@ class FloatingPenDock extends ConsumerWidget {
                   ),
                 );
               }),
+
+              // Rainbow Spectrum Trigger Button
+              Tooltip(
+                message: 'Custom Color Spectrum',
+                child: GestureDetector(
+                  onTap: () {
+                    SpectrumColorPickerDialog.show(
+                      context,
+                      initialColor: inkingState.toolConfig.color,
+                      onColorConfirmed: (chosen) {
+                        inkingNotifier.setPenColor(chosen);
+                      },
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const SweepGradient(
+                        colors: [
+                          Colors.red,
+                          Colors.orange,
+                          Colors.yellow,
+                          Colors.green,
+                          Colors.cyan,
+                          Colors.blue,
+                          Colors.purple,
+                          Colors.red,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: inkingState.toolConfig.color.withValues(alpha: 0.4),
+                          blurRadius: 4,
+                          spreadRadius: 0.5,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: inkingState.toolConfig.color,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
               Container(
                 width: 1,

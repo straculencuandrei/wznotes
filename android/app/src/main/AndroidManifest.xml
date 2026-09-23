@@ -1,13 +1,36 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="dev.opennotes.app">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesCondition" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <queries>
+        <package android:name="com.sec.android.app.myfiles" />
+        <package android:name="com.google.android.apps.nbu.files" />
+        <package android:name="com.google.android.documentsui" />
+        <package android:name="com.android.documentsui" />
+        <package android:name="com.mi.android.globalFileexplorer" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="resource/folder" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="vnd.android.document/directory" />
+        </intent>
+    </queries>
 
     <!-- Google Pixel & Stylus Hardware Features -->
     <uses-feature android:name="android.hardware.touchscreen.multitouch" android:required="true" />
@@ -19,7 +42,8 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
-        android:largeHeap="true">
+        android:largeHeap="true"
+        android:requestLegacyExternalStorage="true">
         
         <activity
             android:name=".MainActivity"
@@ -40,6 +64,16 @@
             </intent-filter>
         </activity>
         
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

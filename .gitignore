@@ -38,6 +38,7 @@ migrate_working_dir/
 **/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
+android/build/
 .gradle/
 
 # iOS/macOS related

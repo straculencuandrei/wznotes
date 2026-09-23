@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/models/note_document.dart';
 import '../../infrastructure/export/markdown_exporter.dart';
-import '../../infrastructure/export/pdf_exporter.dart';
 import '../../infrastructure/export/svg_exporter.dart';
+import '../widgets/export_dialog.dart';
+import '../widgets/infinite_rich_text_layer.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/notes_library_controller.dart';
 import '../controllers/inking_controller.dart';
@@ -19,32 +21,72 @@ class NoteEditorScreen extends ConsumerStatefulWidget {
   ConsumerState<NoteEditorScreen> createState() => _NoteEditorScreenState();
 }
 
-class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
+class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
+  bool _isDeleting = false;
+  Timer? _autoSaveDebouncer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _autoSaveDebouncer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _saveAndPop() {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      if (!_isDeleting) {
+        _flushAndSave();
+      }
+    }
+  }
+
+  void _flushAndSave() {
+    if (_isDeleting) return;
+    InfiniteRichTextLayer.flushActive();
     final currentDoc = ref.read(documentProvider);
     ref.read(notesLibraryProvider.notifier).saveNote(currentDoc);
+  }
+
+  void _saveAndPop() {
+    if (!_isDeleting) {
+      _flushAndSave();
+    }
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final doc = ref.watch(documentProvider);
+    final wordCount = ref.watch(documentProvider.select((d) => d.metadata.wordCount));
     final inkingState = ref.watch(inkingProvider);
+
+    // Auto-save: Whenever the document content updates, debounce save to disk within 1.5s
+    ref.listen<NoteDocument>(documentProvider, (previous, next) {
+      if (_isDeleting) return;
+      _autoSaveDebouncer?.cancel();
+      _autoSaveDebouncer = Timer(const Duration(milliseconds: 1500), () {
+        if (mounted && !_isDeleting) {
+          _flushAndSave();
+        }
+      });
+    });
 
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) {
-          final currentDoc = ref.read(documentProvider);
-          ref.read(notesLibraryProvider.notifier).saveNote(currentDoc);
+        if (didPop && !_isDeleting) {
+          _flushAndSave();
         }
       },
       child: Scaffold(
@@ -58,7 +100,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             onPressed: _saveAndPop,
           ),
           title: Text(
-            doc.metadata.wordCount > 0 ? '${doc.metadata.wordCount} words' : '',
+            wordCount > 0 ? '$wordCount words' : '',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -67,6 +109,16 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
           ),
           centerTitle: false,
           actions: [
+            // Quick direct delete button inside note header
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, size: 22, color: AppColors.accentRose),
+              tooltip: 'Delete Note',
+              onPressed: () {
+                final currentDoc = ref.read(documentProvider);
+                _confirmDelete(context, currentDoc);
+              },
+            ),
+
             // Export & Options Menu
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, size: 24, color: Colors.white),
@@ -77,24 +129,53 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                 side: const BorderSide(color: AppColors.amoledBorder),
               ),
               onSelected: (action) {
+                final currentDoc = ref.read(documentProvider);
                 if (action == 'delete') {
-                  _confirmDelete(context, doc);
+                  _confirmDelete(context, currentDoc);
                 } else {
-                  _handleExport(context, action, doc);
+                  _handleExport(context, action, currentDoc);
                 }
               },
               itemBuilder: (context) => [
                 const PopupMenuItem(
+                  value: 'txt',
+                  child: Row(
+                    children: [
+                      Icon(Icons.article_outlined, color: Colors.blueAccent, size: 18),
+                      SizedBox(width: 8),
+                      Text('Export to Plain Text (.txt)', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
                   value: 'pdf',
-                  child: Text('Export to Vector PDF', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.picture_as_pdf_outlined, color: AppColors.accentRose, size: 18),
+                      SizedBox(width: 8),
+                      Text('Export to Vector PDF (.pdf)', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    ],
+                  ),
                 ),
                 const PopupMenuItem(
                   value: 'markdown',
-                  child: Text('Export to Markdown (.md)', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.code_rounded, color: Colors.white70, size: 18),
+                      SizedBox(width: 8),
+                      Text('Export to Markdown (.md)', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    ],
+                  ),
                 ),
                 const PopupMenuItem(
                   value: 'svg',
-                  child: Text('Export to SVG Vector', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.draw_outlined, color: AppColors.samsungOrange, size: 18),
+                      SizedBox(width: 8),
+                      Text('Export to SVG Vector', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    ],
+                  ),
                 ),
                 const PopupMenuDivider(height: 1),
                 const PopupMenuItem(
@@ -137,7 +218,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   void _confirmDelete(BuildContext context, NoteDocument doc) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.amoledSurfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -150,13 +231,15 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
             child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
           ),
           TextButton(
             onPressed: () {
+              _isDeleting = true;
+              _autoSaveDebouncer?.cancel();
               ref.read(notesLibraryProvider.notifier).deleteNote(doc.metadata.id);
-              Navigator.of(context).pop(); // dismiss dialog
+              Navigator.of(dialogCtx).pop(); // dismiss dialog
               Navigator.of(context).pop(); // exit editor
             },
             child: const Text('Delete', style: TextStyle(color: AppColors.accentRose, fontWeight: FontWeight.bold)),
@@ -166,31 +249,17 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     );
   }
 
-  void _handleExport(BuildContext context, String format, NoteDocument doc) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Exporting note to ${format.toUpperCase()}...'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: AppColors.amoledSurfaceElevated,
-      ),
-    );
-
-    if (format == 'markdown') {
+  Future<void> _handleExport(BuildContext context, String format, NoteDocument doc) async {
+    if (format == 'txt') {
+      await NoteExportService.exportSingleNote(context, doc, format: ExportFormat.txt);
+    } else if (format == 'pdf') {
+      await NoteExportService.exportSingleNote(context, doc, format: ExportFormat.pdf);
+    } else if (format == 'markdown') {
       final md = MarkdownExporter.exportToMarkdown(doc);
       _showExportPreview(context, 'Markdown Export', md);
     } else if (format == 'svg') {
       final svg = SvgExporter.exportToSvg(doc);
       _showExportPreview(context, 'SVG Vector Export', svg);
-    } else if (format == 'pdf') {
-      final pdfBytes = await PdfExporter.exportToPdf(doc);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Vector PDF generated (${pdfBytes.length} bytes)!'),
-            backgroundColor: AppColors.accentEmerald,
-          ),
-        );
-      }
     }
   }
 

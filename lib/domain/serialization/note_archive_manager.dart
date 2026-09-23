@@ -6,6 +6,8 @@ import '../models/note_document.dart';
 import '../models/text_block.dart';
 import '../models/vector_stroke.dart';
 import '../models/canvas_template.dart';
+import '../../infrastructure/export/pdf_exporter.dart';
+import '../../infrastructure/export/text_exporter.dart';
 import 'stroke_binary_codec.dart';
 import 'note_json_codec.dart';
 
@@ -123,5 +125,50 @@ class NoteArchiveManager {
     final File file = File(filePath);
     final Uint8List zipBytes = await file.readAsBytes();
     return extractNoteFromZip(zipBytes, outAssets: outAssets);
+  }
+
+  /// Creates a backup ZIP archive containing all given [notes] exported as either
+  /// plain text files (.txt) or PDF documents (.pdf).
+  static Future<Uint8List> createBackupZip(
+    List<NoteDocument> notes, {
+    required String format, // 'txt' or 'pdf'
+  }) async {
+    final Archive archive = Archive();
+    final isPdf = format.toLowerCase() == 'pdf';
+    final Set<String> usedFileNames = {};
+
+    for (int i = 0; i < notes.length; i++) {
+      final doc = notes[i];
+      // Sanitize note title for file systems
+      String rawTitle = doc.metadata.title.trim();
+      if (rawTitle.isEmpty) rawTitle = 'Untitled Note';
+      String safeTitle = rawTitle.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+      if (safeTitle.isEmpty) safeTitle = 'Note_${i + 1}';
+
+      final ext = isPdf ? 'pdf' : 'txt';
+      String filename = '$safeTitle.$ext';
+
+      // Deduplicate file names
+      int counter = 1;
+      while (usedFileNames.contains(filename.toLowerCase())) {
+        filename = '$safeTitle ($counter).$ext';
+        counter++;
+      }
+      usedFileNames.add(filename.toLowerCase());
+
+      List<int> fileBytes;
+      if (isPdf) {
+        fileBytes = await PdfExporter.exportToPdf(doc);
+      } else {
+        final text = TextExporter.exportToPlainText(doc);
+        fileBytes = utf8.encode(text);
+      }
+
+      archive.addFile(ArchiveFile(filename, fileBytes.length, fileBytes));
+    }
+
+    final ZipEncoder encoder = ZipEncoder();
+    final List<int>? compressed = encoder.encode(archive);
+    return Uint8List.fromList(compressed ?? []);
   }
 }

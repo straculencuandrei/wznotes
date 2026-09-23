@@ -11,6 +11,7 @@ import '../controllers/update_controller.dart';
 import '../widgets/update_dialog.dart';
 import '../widgets/hold_to_select_border_card.dart';
 import '../widgets/top_island_toast.dart';
+import '../widgets/export_dialog.dart';
 import 'note_editor_screen.dart';
 import 'settings_screen.dart';
 import 'sync_screen.dart';
@@ -56,27 +57,16 @@ class NotesLibraryScreen extends ConsumerWidget {
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) => const NoteEditorScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curvedAnim = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          );
           return FadeTransition(
-            opacity: curvedAnim,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.94, end: 1.0).animate(curvedAnim),
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.0, 0.06),
-                  end: Offset.zero,
-                ).animate(curvedAnim),
-                child: child,
-              ),
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
             ),
+            child: child,
           );
         },
-        transitionDuration: const Duration(milliseconds: 250),
-        reverseTransitionDuration: const Duration(milliseconds: 200),
+        transitionDuration: const Duration(milliseconds: 140),
+        reverseTransitionDuration: const Duration(milliseconds: 110),
       ),
     );
   }
@@ -85,6 +75,9 @@ class NotesLibraryScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
+      elevation: 0,
+      barrierColor: Colors.black54,
+      isScrollControlled: true,
       builder: (context) {
         final isFav = note.metadata.folderId == 'favorites';
         final isLocked = note.metadata.isLocked;
@@ -98,9 +91,9 @@ class NotesLibraryScreen extends ConsumerWidget {
             border: Border.all(color: const Color(0xFF282828), width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.6),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -231,7 +224,33 @@ class NotesLibraryScreen extends ConsumerWidget {
                     },
                   ),
 
-                  // 4. Delete
+                  // 4. Export (.txt / .pdf)
+                  _buildCompactActionRow(
+                    icon: Icons.file_download_outlined,
+                    iconColor: const Color(0xFF38BDF8),
+                    iconBg: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                    title: 'Export note (.txt / .pdf)',
+                    subtitle: 'Save as text or print-ready PDF',
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final format = await ExportChoiceDialog.show(
+                        context,
+                        title: 'Export Note',
+                        subtitle: 'Choose format for "${note.metadata.title}"',
+                        confirmLabel: 'Export',
+                        initialFormat: ExportFormat.txt,
+                      );
+                      if (format != null && context.mounted) {
+                        await NoteExportService.exportSingleNote(
+                          context,
+                          note,
+                          format: format,
+                        );
+                      }
+                    },
+                  ),
+
+                  // 5. Delete
                   _buildCompactActionRow(
                     icon: Icons.delete_outline_rounded,
                     iconColor: AppColors.accentRose,
@@ -749,6 +768,31 @@ body: Stack(
                     : () => _handleBatchLock(context, ref, state),
               ),
 
+              // Export Selected Notes (.txt / .pdf)
+              IconButton(
+                icon: const Icon(Icons.file_download_outlined, color: Color(0xFF38BDF8), size: 23),
+                tooltip: 'Export Selected',
+                onPressed: selectedCount == 0
+                    ? null
+                    : () async {
+                        final selectedNotes = state.notes.where((n) => state.selectedNoteIds.contains(n.metadata.id)).toList();
+                        final format = await ExportChoiceDialog.show(
+                          context,
+                          title: 'Export Selected Notes',
+                          subtitle: 'Create a backup archive with $selectedCount selected notes',
+                          confirmLabel: 'Export Archive',
+                          initialFormat: ExportFormat.txt,
+                        );
+                        if (format != null && context.mounted) {
+                          await NoteExportService.exportNotesBackupArchive(
+                            context,
+                            selectedNotes,
+                            format: format,
+                          );
+                        }
+                      },
+              ),
+
               // Delete
               IconButton(
                 icon: const Icon(Icons.delete_outline_rounded, color: AppColors.accentRose, size: 23),
@@ -964,11 +1008,21 @@ body: Stack(
                   _formatDate(note.metadata.modifiedAt),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF666666), fontWeight: FontWeight.w500),
                 ),
-                if (note.metadata.wordCount > 0)
-                  Text(
-                    '${note.metadata.wordCount}w',
-                    style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
-                  ),
+                Row(
+                  children: [
+                    if (note.metadata.wordCount > 0) ...[
+                      Text(
+                        '${note.metadata.wordCount}w',
+                        style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    GestureDetector(
+                      onTap: () => _showNoteActions(context, ref, note),
+                      child: const Icon(Icons.more_horiz, size: 18, color: Colors.white38),
+                    ),
+                  ],
+                ),
               ],
             ),
           ],
@@ -1059,13 +1113,23 @@ body: Stack(
                 ),
               ),
             ],
-            if (note.metadata.wordCount > 0) ...[
-              const SizedBox(height: 8),
-              Text(
-                '${note.metadata.wordCount} words',
-                style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
-              ),
-            ],
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (note.metadata.wordCount > 0)
+                  Text(
+                    '${note.metadata.wordCount} words',
+                    style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
+                  )
+                else
+                  const SizedBox.shrink(),
+                GestureDetector(
+                  onTap: () => _showNoteActions(context, ref, note),
+                  child: const Icon(Icons.more_horiz, size: 20, color: Colors.white38),
+                ),
+              ],
+            ),
           ],
         ),
       ),

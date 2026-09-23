@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,8 @@ import '../../infrastructure/sync/local_sync_client.dart';
 import '../../infrastructure/sync/local_sync_server.dart';
 import '../../infrastructure/sync/models/sync_models.dart';
 import '../../infrastructure/sync/network_helper.dart';
+import '../../infrastructure/sync/sync_discovery_service.dart';
+import '../../infrastructure/sync/vault_backup_service.dart';
 import 'notes_library_controller.dart';
 
 enum SyncStatus {
@@ -27,6 +30,8 @@ class SyncState {
   final double progressPercent;
   final SyncResult? lastResult;
   final String? errorMessage;
+  final List<DiscoveredPeer> discoveredPeers;
+  final bool isDiscovering;
 
   const SyncState({
     this.status = SyncStatus.idle,
@@ -39,6 +44,8 @@ class SyncState {
     this.progressPercent = 0.0,
     this.lastResult,
     this.errorMessage,
+    this.discoveredPeers = const [],
+    this.isDiscovering = false,
   });
 
   String get qrPayload => 'opennotes://sync?ip=${localIp ?? ""}&port=$port&pin=$pin';
@@ -54,6 +61,8 @@ class SyncState {
     double? progressPercent,
     SyncResult? lastResult,
     String? errorMessage,
+    List<DiscoveredPeer>? discoveredPeers,
+    bool? isDiscovering,
   }) {
     return SyncState(
       status: status ?? this.status,
@@ -66,6 +75,8 @@ class SyncState {
       progressPercent: progressPercent ?? this.progressPercent,
       lastResult: lastResult ?? this.lastResult,
       errorMessage: errorMessage ?? this.errorMessage,
+      discoveredPeers: discoveredPeers ?? this.discoveredPeers,
+      isDiscovering: isDiscovering ?? this.isDiscovering,
     );
   }
 }
@@ -73,6 +84,8 @@ class SyncState {
 class SyncNotifier extends StateNotifier<SyncState> {
   final Ref _ref;
   LocalSyncServer? _server;
+  final SyncDiscoveryService _discoveryService = SyncDiscoveryService();
+  StreamSubscription<List<DiscoveredPeer>>? _discoverySubscription;
 
   SyncNotifier(this._ref) : super(const SyncState()) {
     _initDefaults();
@@ -90,6 +103,69 @@ class SyncNotifier extends StateNotifier<SyncState> {
     if (Platform.isMacOS) return 'Mac';
     if (Platform.isLinux) return 'Linux PC';
     return 'OpenNotes Device';
+  }
+
+  /// Starts zero-config local Wi-Fi auto-discovery and readies the device for 1-tap sync
+  Future<void> startAutoDiscovery() async {
+    try {
+      // 1. Start host server in background if not already started
+      if (_server == null) {
+        await startHostServer();
+      }
+
+      final notes = _ref.read(notesLibraryProvider).notes;
+      await _discoveryService.start(
+        deviceName: _deviceName,
+        port: state.port,
+        pin: state.pin,
+        noteCount: notes.length,
+      );
+
+      _discoverySubscription?.cancel();
+      _discoverySubscription = _discoveryService.peersStream.listen((peers) {
+        state = state.copyWith(discoveredPeers: peers);
+      });
+
+      state = state.copyWith(
+        isDiscovering: true,
+        discoveredPeers: _discoveryService.peers,
+      );
+    } catch (_) {}
+  }
+
+  /// Stops zero-config auto-discovery
+  Future<void> stopAutoDiscovery() async {
+    await _discoveryService.stop();
+    _discoverySubscription?.cancel();
+    _discoverySubscription = null;
+    state = state.copyWith(isDiscovering: false, discoveredPeers: []);
+  }
+
+  /// Performs effortless 1-tap sync with an auto-discovered peer device
+  Future<void> syncWithDiscoveredPeer(DiscoveredPeer peer) async {
+    await syncWithPeer(
+      peerIp: peer.ip,
+      peerPort: peer.port.toString(),
+      pin: peer.pin,
+    );
+  }
+
+  /// Exports all notes as a single .wzbackup file for offline/cloud/USB sync
+  Future<VaultBackupResult> exportVault() async {
+    final notes = _ref.read(notesLibraryProvider).notes;
+    return await VaultBackupService.exportVault(
+      notes: notes,
+      deviceName: _deviceName,
+    );
+  }
+
+  /// Imports and merges notes from a .wzbackup archive file
+  Future<int> importVault(File file) async {
+    final docs = await VaultBackupService.importVaultFromFile(file);
+    if (docs.isNotEmpty) {
+      _ref.read(notesLibraryProvider.notifier).importSyncedNotes(docs);
+    }
+    return docs.length;
   }
 
   /// Starts the local Wi-Fi sync server (Host Mode)
@@ -245,6 +321,8 @@ class SyncNotifier extends StateNotifier<SyncState> {
 
   @override
   void dispose() {
+    _discoverySubscription?.cancel();
+    _discoveryService.dispose();
     _server?.stop();
     super.dispose();
   }

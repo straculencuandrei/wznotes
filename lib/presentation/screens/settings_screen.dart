@@ -9,6 +9,7 @@ import '../../infrastructure/update/update_service.dart';
 import '../controllers/update_controller.dart';
 import '../widgets/update_dialog.dart';
 import '../widgets/top_island_toast.dart';
+import '../widgets/export_dialog.dart';
 import 'sync_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -165,14 +166,22 @@ class SettingsScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.folder_zip_outlined, color: AppColors.samsungOrange),
               title: const Text('Export Backup Archive', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Save all notes as a compressed .zip container', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
-              onTap: () {
-                TopIslandToast.show(
+              subtitle: const Text('Save all notes as a compressed .zip (.txt / .pdf)', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+              onTap: () async {
+                final format = await ExportChoiceDialog.show(
                   context,
-                  message: 'Backup archive created with ${libraryState.notes.length} notes!',
-                  icon: Icons.check_circle_outline_rounded,
-                  color: AppColors.accentEmerald,
+                  title: 'Export Backup Archive',
+                  subtitle: 'Choose format to save all ${libraryState.notes.length} notes inside the .zip',
+                  confirmLabel: 'Create Backup',
+                  initialFormat: ExportFormat.txt,
                 );
+                if (format != null && context.mounted) {
+                  await NoteExportService.exportNotesBackupArchive(
+                    context,
+                    libraryState.notes,
+                    format: format,
+                  );
+                }
               },
             ),
           ]),

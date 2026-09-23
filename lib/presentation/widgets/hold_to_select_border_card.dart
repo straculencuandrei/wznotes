@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
@@ -154,6 +153,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
         onTap: _handleTap,
         child: AnimatedBuilder(
           animation: _controller,
+          child: widget.child,
           builder: (context, child) {
             final progress = _controller.value;
 
@@ -171,7 +171,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
                           ? Border.all(color: widget.glowColor, width: 2.0)
                           : null,
                     ),
-                    child: widget.child,
+                    child: child,
                   ),
                 ),
 

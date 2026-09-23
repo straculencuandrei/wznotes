@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/canvas_dimensions.dart';
 import '../../domain/models/pen_tool.dart';
 import '../controllers/infinite_canvas_controller.dart';
 import '../controllers/inking_controller.dart';
@@ -44,13 +43,12 @@ class _InfiniteCanvasViewportState extends ConsumerState<InfiniteCanvasViewport>
 
   @override
   Widget build(BuildContext context) {
-    final viewportState = ref.watch(canvasViewportProvider);
-    final doc = ref.watch(documentProvider);
+    ref.watch(canvasViewportProvider);
+    final strokes = ref.watch(documentProvider.select((d) => d.strokes));
     final inkingState = ref.watch(inkingProvider);
     final inkingNotifier = ref.read(inkingProvider.notifier);
     final double screenWidth = MediaQuery.of(context).size.width;
     final double docWidth = screenWidth < 820.0 ? screenWidth : 820.0;
-    final double docHeight = viewportState.canvasHeight;
 
     return Container(
       color: AppColors.amoledBlack,
@@ -74,12 +72,12 @@ class _InfiniteCanvasViewportState extends ConsumerState<InfiniteCanvasViewport>
                 ),
 
                 // 2. Committed Inking Vector Strokes (Transparent overlay)
-                if (doc.strokes.isNotEmpty)
+                if (strokes.isNotEmpty)
                   Positioned.fill(
                     child: IgnorePointer(
                       child: RepaintBoundary(
                         child: CustomPaint(
-                          painter: TileStrokePainter(strokes: doc.strokes),
+                          painter: TileStrokePainter(strokes: strokes),
                         ),
                       ),
                     ),

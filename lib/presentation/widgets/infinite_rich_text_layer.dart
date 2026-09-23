@@ -18,11 +18,23 @@ class InfiniteRichTextLayer extends ConsumerStatefulWidget {
     required this.width,
   });
 
+  /// Flushes any pending debounced text changes into documentProvider immediately
+  static void flushActive() {
+    _InfiniteRichTextLayerState.flushActive();
+  }
+
   @override
   ConsumerState<InfiniteRichTextLayer> createState() => _InfiniteRichTextLayerState();
 }
 
 class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
+  static void Function()? _activeFlushCallback;
+
+  /// Immediately forces any active text editing instance to flush into documentProvider
+  static void flushActive() {
+    _activeFlushCallback?.call();
+  }
+
   late TextEditingController _titleController;
   late RichSpanEditingController _bodyController;
   late FocusNode _titleFocusNode;
@@ -34,6 +46,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   @override
   void initState() {
     super.initState();
+    _activeFlushCallback = _flushSync;
     final doc = ref.read(documentProvider);
     final settings = ref.read(settingsProvider);
     _formattingBridge = ref.read(editorFormattingBridgeProvider);
@@ -98,11 +111,26 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
       focusNode: _bodyFocusNode,
       onUpdate: () => _onBodyChanged(_bodyController.text),
     );
+
+    // Instant focus when creating a brand new empty note
+    if (doc.metadata.title.isEmpty && doc.blocks.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _titleFocusNode.requestFocus();
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+      _flushSync();
+    }
+    if (_activeFlushCallback == _flushSync) {
+      _activeFlushCallback = null;
+    }
     _formattingBridge.unbind();
     _titleController.dispose();
     _bodyController.dispose();
@@ -181,7 +209,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
 
-    final titleStyle = const TextStyle(
+    const titleStyle = TextStyle(
       fontSize: 28,
       fontWeight: FontWeight.w900,
       color: AppColors.amoledTextPrimary,
