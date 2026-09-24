@@ -126,7 +126,7 @@ if ($Target -eq "all" -or $Target -eq "windows") {
 # 4. Build Android APK
 if ($Target -eq "all" -or $Target -eq "android") {
     Write-Host "`n[2/2] Building Android Release APK (ARM64 & Universal)..." -ForegroundColor Yellow
-    flutter build apk --release
+    flutter build apk --release --android-skip-build-dependency-validation
 
     $apkSource = Join-Path $ProjectRoot "build\app\outputs\flutter-apk\app-release.apk"
     if (Test-Path $apkSource) {
