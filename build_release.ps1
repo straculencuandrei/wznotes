@@ -177,7 +177,7 @@ if (-not $NoGit) {
     git add .
     $statusCheck = (git status --porcelain)
     if ($statusCheck) {
-        $commitMsg = if ($ReleaseNotes) { "Release $gitTag: $ReleaseNotes" } else { "Release $gitTag (v${ver}+${build})" }
+        $commitMsg = if ($ReleaseNotes) { "Release ${gitTag}: $ReleaseNotes" } else { "Release ${gitTag} (v${ver}+${build})" }
         git commit -m $commitMsg
         Write-Host "[GIT] Committed changes: $commitMsg" -ForegroundColor Green
     } else {
@@ -194,7 +194,7 @@ if (-not $NoGit) {
 
     Write-Host "`n[SUCCESS] Tag $gitTag successfully published to GitHub!" -ForegroundColor Green
     Write-Host "`nTo attach release binaries (APK / ZIP) to your GitHub Release:" -ForegroundColor Yellow
-    Write-Host "👉 https://github.com/straculencuandrei/wznotes/releases/new?tag=$gitTag`n" -ForegroundColor Cyan
+    Write-Host "-> https://github.com/straculencuandrei/wznotes/releases/new?tag=$gitTag`n" -ForegroundColor Cyan
 }
 
 # 8. Automatically open Windows Explorer directly in releases folder!
