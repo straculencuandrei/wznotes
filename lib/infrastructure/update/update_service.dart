@@ -5,8 +5,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'models/app_update_info.dart';
 
 class UpdateService {
-  static const String defaultFallbackVersion = '0.8.2';
-  static const int defaultFallbackBuildNumber = 19;
+  static const String defaultFallbackVersion = '0.8.5';
+  static const int defaultFallbackBuildNumber = 20;
 
   static String _currentVersion = defaultFallbackVersion;
   static int _currentBuildNumber = defaultFallbackBuildNumber;
@@ -96,6 +96,7 @@ class UpdateService {
     }
   }
 }
+
 
 
 
