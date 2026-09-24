@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,12 +7,25 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
+import '../../infrastructure/sync/deep_link_service.dart';
 import '../../infrastructure/sync/sync_discovery_service.dart';
 import '../controllers/sync_controller.dart';
 import '../widgets/top_island_toast.dart';
+import 'qr_scanner_screen.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
-  const SyncScreen({super.key});
+  final String? initialPeerIp;
+  final String? initialPeerPort;
+  final String? initialPeerPin;
+  final bool autoConnect;
+
+  const SyncScreen({
+    super.key,
+    this.initialPeerIp,
+    this.initialPeerPort,
+    this.initialPeerPin,
+    this.autoConnect = false,
+  });
 
   @override
   ConsumerState<SyncScreen> createState() => _SyncScreenState();
@@ -23,29 +37,105 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
   final TextEditingController _portController = TextEditingController(text: '8484');
   final TextEditingController _pinController = TextEditingController();
 
+  StreamSubscription<Map<String, String>>? _deepLinkSubscription;
   List<File> _availableBackups = [];
 
   @override
   void initState() {
     super.initState();
+    DeepLinkService.isSyncScreenActive = true;
     _tabController = TabController(length: 2, vsync: this);
+
+    if (widget.initialPeerIp != null && widget.initialPeerIp!.isNotEmpty) {
+      _ipController.text = widget.initialPeerIp!;
+      _portController.text = widget.initialPeerPort ?? '8484';
+      _pinController.text = widget.initialPeerPin ?? '';
+      _tabController.index = 1;
+    }
+
+    _deepLinkSubscription = DeepLinkService.syncPayloadStream.listen((payload) {
+      final ip = payload['ip'];
+      if (ip != null && ip.isNotEmpty && mounted) {
+        setState(() {
+          _ipController.text = ip;
+          _portController.text = payload['port'] ?? '8484';
+          _pinController.text = payload['pin'] ?? '';
+        });
+        _tabController.animateTo(1);
+        final pin = payload['pin'] ?? '';
+        final port = payload['port'] ?? '8484';
+        ref.read(syncProvider.notifier).syncWithPeer(
+          peerIp: ip,
+          peerPort: port,
+          pin: pin,
+        );
+        TopIslandToast.show(
+          context,
+          message: 'Scanned PC QR: $ip (PIN $pin)',
+          icon: Icons.qr_code_scanner_rounded,
+        );
+      }
+    });
 
     // Automatically start local network discovery upon entering
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(syncProvider.notifier).startAutoDiscovery();
+      final notifier = ref.read(syncProvider.notifier);
+      notifier.startAutoDiscovery();
       _scanLocalVaultBackups();
+
+      if (widget.autoConnect && widget.initialPeerIp != null && widget.initialPeerIp!.isNotEmpty) {
+        notifier.syncWithPeer(
+          peerIp: widget.initialPeerIp!,
+          peerPort: widget.initialPeerPort ?? '8484',
+          pin: widget.initialPeerPin ?? '',
+        );
+      }
     });
   }
 
   @override
   void dispose() {
-    // Stop discovery
+    DeepLinkService.isSyncScreenActive = false;
+    _deepLinkSubscription?.cancel();
     ref.read(syncProvider.notifier).stopAutoDiscovery();
     _tabController.dispose();
     _ipController.dispose();
     _portController.dispose();
     _pinController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openQrScanner(SyncNotifier notifier) async {
+    final result = await QrScannerScreen.scan(
+      context,
+      parser: notifier.parseQrPayload,
+    );
+
+    if (result != null && mounted) {
+      final ip = result['ip'] ?? '';
+      final port = result['port'] ?? '8484';
+      final pin = result['pin'] ?? '';
+
+      setState(() {
+        _ipController.text = ip;
+        _portController.text = port;
+        _pinController.text = pin;
+      });
+
+      _tabController.animateTo(1);
+
+      TopIslandToast.show(
+        context,
+        message: 'Scanned PC QR: $ip (PIN $pin)',
+        icon: Icons.qr_code_scanner_rounded,
+      );
+
+      notifier.syncWithPeer(
+        peerIp: ip,
+        peerPort: port,
+        pin: pin,
+      );
+    }
   }
 
   Future<void> _scanLocalVaultBackups() async {
@@ -208,6 +298,26 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 ...state.discoveredPeers.map((peer) => _buildDiscoveredPeerCard(peer, notifier, isBusy)),
               ],
 
+              if (Platform.isAndroid || Platform.isIOS) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.samsungOrange,
+                      side: BorderSide(color: AppColors.samsungOrange.withValues(alpha: 0.6), width: 1.2),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: AppColors.samsungOrange),
+                    label: const Text(
+                      'Scan PC Screen QR Code',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                    ),
+                    onPressed: () => _openQrScanner(notifier),
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Center(
                 child: TextButton.icon(
@@ -421,18 +531,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      '1-Tap USB Cable Sync',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.5),
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      '⚡ Instant',
-                      style: TextStyle(color: AppColors.samsungOrange, fontWeight: FontWeight.bold, fontSize: 11),
-                    ),
-                  ],
+                Text(
+                  '1-Tap USB Cable Sync',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.5),
                 ),
                 SizedBox(height: 3),
                 Text(
@@ -522,7 +623,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                           color: AppColors.accentEmerald.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text('⚡ FAST', style: TextStyle(color: AppColors.accentEmerald, fontSize: 10, fontWeight: FontWeight.bold)),
+                        child: const Text('FAST', style: TextStyle(color: AppColors.accentEmerald, fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ],
@@ -609,6 +710,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
+                const Center(
+                  child: Text(
+                    'Scan with phone camera or WZNotes scanner to pair instantly',
+                    style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 11.5),
+                  ),
+                ),
               ],
             ],
           ),
@@ -627,10 +735,49 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Connect to IP Directly',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Connect to IP Directly',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  if (Platform.isAndroid || Platform.isIOS)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.samsungOrange,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      ),
+                      icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                      label: const Text('Scan QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                      onPressed: () => _openQrScanner(notifier),
+                    ),
+                ],
               ),
+              if (Platform.isAndroid || Platform.isIOS) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF222222),
+                      foregroundColor: AppColors.samsungOrange,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: AppColors.samsungOrange.withValues(alpha: 0.6), width: 1.2),
+                      ),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: AppColors.samsungOrange),
+                    label: const Text(
+                      'Scan PC Screen QR Code',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white),
+                    ),
+                    onPressed: () => _openQrScanner(notifier),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               TextField(
                 controller: _ipController,
@@ -874,7 +1021,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               spacing: 8,
               children: [
                 ActionChip(
-                  label: const Text('⚡ USB (127.0.0.1)', style: TextStyle(fontSize: 11.5, color: AppColors.samsungOrange)),
+                  label: const Text('USB (127.0.0.1)', style: TextStyle(fontSize: 11.5, color: AppColors.samsungOrange)),
                   backgroundColor: AppColors.samsungOrange.withValues(alpha: 0.15),
                   side: const BorderSide(color: AppColors.samsungOrange),
                   onPressed: () {

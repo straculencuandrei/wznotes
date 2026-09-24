@@ -215,7 +215,7 @@ class SyncDiscoveryService {
         final peerPin = (data['pin'] as String?) ?? '';
 
         final peer = DiscoveredPeer(
-          deviceName: '$rawName (USB Cable ⚡)',
+          deviceName: '$rawName (USB Cable)',
           ip: '127.0.0.1',
           port: 8485,
           pin: peerPin,
@@ -251,7 +251,7 @@ class SyncDiscoveryService {
         final peerPin = (data['pin'] as String?) ?? '';
 
         final peer = DiscoveredPeer(
-          deviceName: ip == '127.0.0.1' ? '$peerName (USB Cable ⚡)' : peerName,
+          deviceName: ip == '127.0.0.1' ? '$peerName (USB Cable)' : peerName,
           ip: ip,
           port: port,
           pin: peerPin,

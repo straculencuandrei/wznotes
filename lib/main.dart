@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'infrastructure/sync/deep_link_service.dart';
 import 'infrastructure/update/update_service.dart';
 import 'presentation/controllers/sync_controller.dart';
 import 'presentation/controllers/theme_controller.dart';
@@ -28,9 +29,11 @@ class _WzNotesAppState extends ConsumerState<WzNotesApp> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Background-ready: start sync listener and auto-discovery as soon as app opens
+    // Background-ready: start sync listener, deep link handler, and auto-discovery as soon as app opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(syncProvider.notifier).startAutoDiscovery();
+      final notifier = ref.read(syncProvider.notifier);
+      notifier.startAutoDiscovery();
+      DeepLinkService.init(notifier);
     });
   }
 
@@ -52,6 +55,7 @@ class _WzNotesAppState extends ConsumerState<WzNotesApp> with WidgetsBindingObse
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
+      navigatorKey: rootNavigatorKey,
       title: 'wznotes',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

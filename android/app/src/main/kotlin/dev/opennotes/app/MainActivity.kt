@@ -3,6 +3,7 @@ package dev.opennotes.app
 import android.app.DownloadManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -12,12 +13,38 @@ import java.io.File
 import android.util.Log
 
 class MainActivity: FlutterFragmentActivity() {
-    private val CHANNEL = "dev.opennotes.app/file_manager"
+    private val FILE_CHANNEL = "dev.opennotes.app/file_manager"
+    private val DEEP_LINK_CHANNEL = "dev.opennotes.app/deep_link"
     private val TAG = "MainActivity"
+
+    private var initialDeepLink: String? = null
+    private var deepLinkChannel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val uri: Uri? = intent?.data
+        if (uri != null) {
+            val urlString = uri.toString()
+            Log.d(TAG, "Received deep link: $urlString")
+            initialDeepLink = urlString
+            deepLinkChannel?.invokeMethod("onDeepLink", urlString)
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FILE_CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "openFolder") {
                 val folderPath = call.argument<String>("folderPath")
                 val filePath = call.argument<String>("filePath")
@@ -30,6 +57,22 @@ class MainActivity: FlutterFragmentActivity() {
             } else {
                 result.notImplemented()
             }
+        }
+
+        deepLinkChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEEP_LINK_CHANNEL).apply {
+            setMethodCallHandler { call, result ->
+                if (call.method == "getInitialLink") {
+                    val link = initialDeepLink
+                    initialDeepLink = null
+                    result.success(link)
+                } else {
+                    result.notImplemented()
+                }
+            }
+        }
+
+        initialDeepLink?.let { link ->
+            deepLinkChannel?.invokeMethod("onDeepLink", link)
         }
     }
 

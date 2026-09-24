@@ -48,7 +48,7 @@ class SyncState {
     this.isDiscovering = false,
   });
 
-  String get qrPayload => 'opennotes://sync?ip=${localIp ?? ""}&port=$port&pin=$pin';
+  String get qrPayload => 'https://wznotes.app/sync?ip=${localIp ?? ""}&port=$port&pin=$pin';
 
   SyncState copyWith({
     SyncStatus? status,
@@ -361,7 +361,7 @@ class SyncNotifier extends StateNotifier<SyncState> {
         friendlyMessage = 'Connection timed out connecting to $peerIp:$peerPort.\n\n'
             'Your Wi-Fi router is blocking direct traffic between the PC (Ethernet cable) and Phone (Wi-Fi).\n\n'
             'Quick solutions:\n'
-            '• Plug phone into PC via USB cable and tap "⚡ Sync via USB"\n'
+            '• Plug phone into PC via USB cable and tap "Sync USB"\n'
             '• Connect PC to Wi-Fi instead of Ethernet cable\n'
             '• Keep WZNotes open on your phone\n'
             '• Use 1-click "Export Vault" to transfer offline';
@@ -374,18 +374,57 @@ class SyncNotifier extends StateNotifier<SyncState> {
     }
   }
 
-  /// Parses a scanned QR payload (e.g. opennotes://sync?ip=192.168.1.5&port=8484&pin=1234)
+  /// Parses a scanned QR payload (supports https://wznotes.app/sync, opennotes://sync, wznotes://sync, etc.)
   Map<String, String>? parseQrPayload(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
     try {
-      final uri = Uri.parse(raw);
-      if (uri.scheme == 'opennotes' && uri.host == 'sync') {
-        return {
-          'ip': uri.queryParameters['ip'] ?? '',
-          'port': uri.queryParameters['port'] ?? '8484',
-          'pin': uri.queryParameters['pin'] ?? '',
-        };
+      final uri = Uri.parse(trimmed);
+      // Support custom scheme (opennotes://sync or wznotes://sync)
+      if ((uri.scheme == 'opennotes' || uri.scheme == 'wznotes') && uri.host == 'sync') {
+        final ip = uri.queryParameters['ip'] ?? '';
+        final pin = uri.queryParameters['pin'] ?? '';
+        if (ip.isNotEmpty) {
+          return {
+            'ip': ip,
+            'port': uri.queryParameters['port'] ?? '8484',
+            'pin': pin,
+          };
+        }
+      }
+
+      // Support universal web links (https://wznotes.app/sync or https://opennotes.dev/sync)
+      if (uri.scheme == 'http' || uri.scheme == 'https') {
+        final ip = uri.queryParameters['ip'] ?? '';
+        final pin = uri.queryParameters['pin'] ?? '';
+        if (ip.isNotEmpty) {
+          return {
+            'ip': ip,
+            'port': uri.queryParameters['port'] ?? '8484',
+            'pin': pin,
+          };
+        }
       }
     } catch (_) {}
+
+    // Fallback: check query parameter strings
+    if (trimmed.contains('ip=') && (trimmed.contains('pin=') || trimmed.contains('port='))) {
+      try {
+        final queryIndex = trimmed.indexOf('?');
+        final queryStr = queryIndex != -1 ? trimmed.substring(queryIndex + 1) : trimmed;
+        final params = Uri.splitQueryString(queryStr);
+        final ip = params['ip'] ?? '';
+        if (ip.isNotEmpty) {
+          return {
+            'ip': ip,
+            'port': params['port'] ?? '8484',
+            'pin': params['pin'] ?? '',
+          };
+        }
+      } catch (_) {}
+    }
+
     return null;
   }
 
