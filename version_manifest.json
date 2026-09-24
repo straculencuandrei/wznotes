@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9/wznotes-android-v0.9.apk",
-    "release_notes":  "Centered sleek AMOLED app icons, clean dual-target compiler, instant QR deep link sync, zero router isolation issues",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9/wznotes-windows-v0.9.zip",
-    "title":  "wznotes v0.9 Update",
-    "published_at":  "2026-09-25T02:34:34Z",
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9.0/wznotes-android-v0.9.0.apk",
+    "release_notes":  "Trash bin with 30-day auto-purge and restoration, 6 curated AMOLED themes, show word count fix, streamlined Wi-Fi sync",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9.0/wznotes-windows-v0.9.0.zip",
+    "title":  "wznotes v0.9.0 Update",
+    "published_at":  "2026-09-25T02:44:44Z",
     "is_mandatory":  false,
     "build_number":  23,
-    "version":  "0.9"
+    "version":  "0.9.0"
 }

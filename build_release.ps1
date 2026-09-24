@@ -208,6 +208,14 @@ if ($cleanVersion -match "^([0-9\.]+)\+([0-9]+)$") {
     $build = $detectedBuild + 1
 }
 
+# Flutter/pubspec.yaml strictly requires 3-segment Semantic Versioning (e.g. 0.9 -> 0.9.0, 1 -> 1.0.0)
+$vParts = $ver.Split('.')
+if ($vParts.Count -eq 1) {
+    $ver = "$ver.0.0"
+} elseif ($vParts.Count -eq 2) {
+    $ver = "$ver.0"
+}
+
 $gitTag = "v$ver"
 
 # Update pubspec.yaml if changed
@@ -369,11 +377,15 @@ if ($Mode -eq "clean") {
 
 # ----------------- WINDOWS BUILD -----------------
 if ($Target -eq "all" -or $Target -eq "windows") {
+    $winBuildDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
+    $winExe = Join-Path $winBuildDir "wznotes.exe"
+    if (Test-Path $winExe) { Remove-Item $winExe -Force -ErrorAction SilentlyContinue }
+
     if ($Mode -eq "clean") {
         $dashState.WinStage = "Starting Windows compiler..."
         Update-LiveBars $dashState
 
-        $tempLog = Join-Path $ProjectRoot ".build_win.log"
+        $tempLog = ".build_win.log"
         if (Test-Path $tempLog) { Remove-Item $tempLog -Force -ErrorAction SilentlyContinue }
 
         $winSw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -381,7 +393,7 @@ if ($Target -eq "all" -or $Target -eq "windows") {
 
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "cmd.exe"
-        $psi.Arguments = "/c flutter build windows --release > `"$tempLog`" 2>&1"
+        $psi.Arguments = "/c flutter build windows --release > $tempLog 2>&1"
         $psi.WorkingDirectory = $ProjectRoot
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
@@ -437,50 +449,45 @@ if ($Target -eq "all" -or $Target -eq "windows") {
         $proc.WaitForExit()
         $winSw.Stop()
 
-        $winBuildDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
-        $winExe = Join-Path $winBuildDir "wznotes.exe"
-
-        if ($proc.ExitCode -eq 0 -or (Test-Path $winExe)) {
+        if ($proc.ExitCode -eq 0 -and (Test-Path $winExe)) {
             if (Test-Path $tempLog) { Remove-Item $tempLog -Force -ErrorAction SilentlyContinue }
 
             $dashState.WinStage = "Compressing portable ZIP..."
             $dashState.WinPercent = 97
             Update-LiveBars $dashState
 
-            $winBuildDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
-            if (Test-Path $winBuildDir) {
-                $winDestFolder = Join-Path $ReleaseDir "wznotes-windows"
-                if (Test-Path $winDestFolder) { Remove-Item $winDestFolder -Recurse -Force -ErrorAction SilentlyContinue }
-                Copy-Item -Path $winBuildDir -Destination $winDestFolder -Recurse -Force
+            $winDestFolder = Join-Path $ReleaseDir "wznotes-windows"
+            if (Test-Path $winDestFolder) { Remove-Item $winDestFolder -Recurse -Force -ErrorAction SilentlyContinue }
+            New-Item -ItemType Directory -Path $winDestFolder -Force | Out-Null
+            Copy-Item -Path "$winBuildDir\*" -Destination $winDestFolder -Recurse -Force
 
-                $winZipName = "wznotes-windows-v$ver.zip"
-                $winZipPath = Join-Path $ReleaseDir $winZipName
-                if (Test-Path $winZipPath) { Remove-Item $winZipPath -Force -ErrorAction SilentlyContinue }
+            $winZipName = "wznotes-windows-v$ver.zip"
+            $winZipPath = Join-Path $ReleaseDir $winZipName
+            if (Test-Path $winZipPath) { Remove-Item $winZipPath -Force -ErrorAction SilentlyContinue }
 
-                Compress-Archive -Path "$winBuildDir\*" -DestinationPath $winZipPath -Force
+            Compress-Archive -Path "$winBuildDir\*" -DestinationPath $winZipPath -Force
 
-                $zipSizeMb = [math]::Round((Get-Item $winZipPath).Length / 1MB, 2)
-                $exePath = Join-Path $winDestFolder "wznotes.exe"
-                $exeSizeMb = if (Test-Path $exePath) { [math]::Round((Get-Item $exePath).Length / 1MB, 2) } else { 0 }
+            $zipSizeMb = [math]::Round((Get-Item $winZipPath).Length / 1MB, 2)
+            $exePath = Join-Path $winDestFolder "wznotes.exe"
+            $exeSizeMb = if (Test-Path $exePath) { [math]::Round((Get-Item $exePath).Length / 1MB, 2) } else { 0 }
 
-                $dashState.WinPercent = 100
-                $dashState.WinDone = $true
-                $dashState.WinSize = "$zipSizeMb MB"
-                $dashState.WinStage = "Ready"
-                Update-LiveBars $dashState
+            $dashState.WinPercent = 100
+            $dashState.WinDone = $true
+            $dashState.WinSize = "$zipSizeMb MB"
+            $dashState.WinStage = "Ready"
+            Update-LiveBars $dashState
 
-                $generatedFiles += [PSCustomObject]@{
-                    File = $winZipName
-                    Type = "Windows Portable ZIP"
-                    SizeMB = $zipSizeMb
-                    Path = $winZipPath
-                }
-                $generatedFiles += [PSCustomObject]@{
-                    File = "wznotes-windows\wznotes.exe"
-                    Type = "Windows Executable"
-                    SizeMB = $exeSizeMb
-                    Path = $exePath
-                }
+            $generatedFiles += [PSCustomObject]@{
+                File = $winZipName
+                Type = "Windows Portable ZIP"
+                SizeMB = $zipSizeMb
+                Path = $winZipPath
+            }
+            $generatedFiles += [PSCustomObject]@{
+                File = "wznotes-windows\wznotes.exe"
+                Type = "Windows Executable"
+                SizeMB = $exeSizeMb
+                Path = $exePath
             }
         } else {
             Finish-LiveBars
@@ -501,45 +508,51 @@ if ($Target -eq "all" -or $Target -eq "windows") {
         Write-Host ("  " + ([string]::new($cH, 64))) -ForegroundColor DarkCyan
         flutter build windows --release
 
-        $winBuildDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
-        if (Test-Path $winBuildDir) {
-            $winDestFolder = Join-Path $ReleaseDir "wznotes-windows"
-            if (Test-Path $winDestFolder) { Remove-Item $winDestFolder -Recurse -Force -ErrorAction SilentlyContinue }
-            Copy-Item -Path $winBuildDir -Destination $winDestFolder -Recurse -Force
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $winExe)) {
+            Write-Host "  $cCross [ERROR] Windows Desktop build failed (Exit Code: $LASTEXITCODE)" -ForegroundColor Red
+            exit 1
+        }
 
-            $winZipName = "wznotes-windows-v$ver.zip"
-            $winZipPath = Join-Path $ReleaseDir $winZipName
-            if (Test-Path $winZipPath) { Remove-Item $winZipPath -Force -ErrorAction SilentlyContinue }
+        $winDestFolder = Join-Path $ReleaseDir "wznotes-windows"
+        if (Test-Path $winDestFolder) { Remove-Item $winDestFolder -Recurse -Force -ErrorAction SilentlyContinue }
+        New-Item -ItemType Directory -Path $winDestFolder -Force | Out-Null
+        Copy-Item -Path "$winBuildDir\*" -Destination $winDestFolder -Recurse -Force
 
-            Compress-Archive -Path "$winBuildDir\*" -DestinationPath $winZipPath -Force
+        $winZipName = "wznotes-windows-v$ver.zip"
+        $winZipPath = Join-Path $ReleaseDir $winZipName
+        if (Test-Path $winZipPath) { Remove-Item $winZipPath -Force -ErrorAction SilentlyContinue }
 
-            $zipSizeMb = [math]::Round((Get-Item $winZipPath).Length / 1MB, 2)
-            $exePath = Join-Path $winDestFolder "wznotes.exe"
-            $exeSizeMb = if (Test-Path $exePath) { [math]::Round((Get-Item $exePath).Length / 1MB, 2) } else { 0 }
+        Compress-Archive -Path "$winBuildDir\*" -DestinationPath $winZipPath -Force
 
-            $generatedFiles += [PSCustomObject]@{
-                File = $winZipName
-                Type = "Windows Portable ZIP"
-                SizeMB = $zipSizeMb
-                Path = $winZipPath
-            }
-            $generatedFiles += [PSCustomObject]@{
-                File = "wznotes-windows\wznotes.exe"
-                Type = "Windows Executable"
-                SizeMB = $exeSizeMb
-                Path = $exePath
-            }
+        $zipSizeMb = [math]::Round((Get-Item $winZipPath).Length / 1MB, 2)
+        $exePath = Join-Path $winDestFolder "wznotes.exe"
+        $exeSizeMb = if (Test-Path $exePath) { [math]::Round((Get-Item $exePath).Length / 1MB, 2) } else { 0 }
+
+        $generatedFiles += [PSCustomObject]@{
+            File = $winZipName
+            Type = "Windows Portable ZIP"
+            SizeMB = $zipSizeMb
+            Path = $winZipPath
+        }
+        $generatedFiles += [PSCustomObject]@{
+            File = "wznotes-windows\wznotes.exe"
+            Type = "Windows Executable"
+            SizeMB = $exeSizeMb
+            Path = $exePath
         }
     }
 }
 
 # ----------------- ANDROID BUILD -----------------
 if ($Target -eq "all" -or $Target -eq "android") {
+    $apkSource = Join-Path $ProjectRoot "build\app\outputs\flutter-apk\app-release.apk"
+    if (Test-Path $apkSource) { Remove-Item $apkSource -Force -ErrorAction SilentlyContinue }
+
     if ($Mode -eq "clean") {
         $dashState.ApkStage = "Starting Gradle daemon..."
         Update-LiveBars $dashState
 
-        $tempLogApk = Join-Path $ProjectRoot ".build_apk.log"
+        $tempLogApk = ".build_apk.log"
         if (Test-Path $tempLogApk) { Remove-Item $tempLogApk -Force -ErrorAction SilentlyContinue }
 
         $apkSw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -547,7 +560,7 @@ if ($Target -eq "all" -or $Target -eq "android") {
 
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "cmd.exe"
-        $psi.Arguments = "/c flutter build apk --release --android-skip-build-dependency-validation > `"$tempLogApk`" 2>&1"
+        $psi.Arguments = "/c flutter build apk --release --android-skip-build-dependency-validation > $tempLogApk 2>&1"
         $psi.WorkingDirectory = $ProjectRoot
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
@@ -606,31 +619,26 @@ if ($Target -eq "all" -or $Target -eq "android") {
         $proc.WaitForExit()
         $apkSw.Stop()
 
-        $apkSource = Join-Path $ProjectRoot "build\app\outputs\flutter-apk\app-release.apk"
-
-        if ($proc.ExitCode -eq 0 -or (Test-Path $apkSource)) {
+        if ($proc.ExitCode -eq 0 -and (Test-Path $apkSource)) {
             if (Test-Path $tempLogApk) { Remove-Item $tempLogApk -Force -ErrorAction SilentlyContinue }
 
-            $apkSource = Join-Path $ProjectRoot "build\app\outputs\flutter-apk\app-release.apk"
-            if (Test-Path $apkSource) {
-                $apkDestName = "wznotes-android-v$ver.apk"
-                $apkDestPath = Join-Path $ReleaseDir $apkDestName
-                Copy-Item -Path $apkSource -Destination $apkDestPath -Force
+            $apkDestName = "wznotes-android-v$ver.apk"
+            $apkDestPath = Join-Path $ReleaseDir $apkDestName
+            Copy-Item -Path $apkSource -Destination $apkDestPath -Force
 
-                $apkSizeMb = [math]::Round((Get-Item $apkDestPath).Length / 1MB, 2)
+            $apkSizeMb = [math]::Round((Get-Item $apkDestPath).Length / 1MB, 2)
 
-                $dashState.ApkPercent = 100
-                $dashState.ApkDone = $true
-                $dashState.ApkSize = "$apkSizeMb MB"
-                $dashState.ApkStage = "Ready"
-                Update-LiveBars $dashState
+            $dashState.ApkPercent = 100
+            $dashState.ApkDone = $true
+            $dashState.ApkSize = "$apkSizeMb MB"
+            $dashState.ApkStage = "Ready"
+            Update-LiveBars $dashState
 
-                $generatedFiles += [PSCustomObject]@{
-                    File = $apkDestName
-                    Type = "Android Universal APK"
-                    SizeMB = $apkSizeMb
-                    Path = $apkDestPath
-                }
+            $generatedFiles += [PSCustomObject]@{
+                File = $apkDestName
+                Type = "Android Universal APK"
+                SizeMB = $apkSizeMb
+                Path = $apkDestPath
             }
         } else {
             Finish-LiveBars
@@ -651,20 +659,22 @@ if ($Target -eq "all" -or $Target -eq "android") {
         Write-Host ("  " + ([string]::new($cH, 64))) -ForegroundColor DarkCyan
         flutter build apk --release --android-skip-build-dependency-validation
 
-        $apkSource = Join-Path $ProjectRoot "build\app\outputs\flutter-apk\app-release.apk"
-        if (Test-Path $apkSource) {
-            $apkDestName = "wznotes-android-v$ver.apk"
-            $apkDestPath = Join-Path $ReleaseDir $apkDestName
-            Copy-Item -Path $apkSource -Destination $apkDestPath -Force
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $apkSource)) {
+            Write-Host "  $cCross [ERROR] Android APK build failed (Exit Code: $LASTEXITCODE)" -ForegroundColor Red
+            exit 1
+        }
 
-            $apkSizeMb = [math]::Round((Get-Item $apkDestPath).Length / 1MB, 2)
+        $apkDestName = "wznotes-android-v$ver.apk"
+        $apkDestPath = Join-Path $ReleaseDir $apkDestName
+        Copy-Item -Path $apkSource -Destination $apkDestPath -Force
 
-            $generatedFiles += [PSCustomObject]@{
-                File = $apkDestName
-                Type = "Android Universal APK"
-                SizeMB = $apkSizeMb
-                Path = $apkDestPath
-            }
+        $apkSizeMb = [math]::Round((Get-Item $apkDestPath).Length / 1MB, 2)
+
+        $generatedFiles += [PSCustomObject]@{
+            File = $apkDestName
+            Type = "Android Universal APK"
+            SizeMB = $apkSizeMb
+            Path = $apkDestPath
         }
     }
 }
@@ -684,7 +694,7 @@ try {
         version = $ver
         build_number = $build
         title = "wznotes $gitTag Update"
-        release_notes = if ($ReleaseNotes) { $ReleaseNotes } else { "Centered sleek AMOLED app icons, clean dual-target compiler, instant QR deep link sync, zero router isolation issues" }
+        release_notes = if ($ReleaseNotes) { $ReleaseNotes } else { "Trash bin with 30-day auto-purge and restoration, 6 curated AMOLED themes, show word count fix, streamlined Wi-Fi sync" }
         windows_url = "https://github.com/straculencuandrei/wznotes/releases/download/$gitTag/wznotes-windows-v$ver.zip"
         android_url = "https://github.com/straculencuandrei/wznotes/releases/download/$gitTag/wznotes-android-v$ver.apk"
         is_mandatory = $false
