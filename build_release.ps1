@@ -9,7 +9,9 @@
 param(
     [ValidateSet("all", "windows", "android")]
     [string]$Target = "all",
-    [switch]$NoExplorer = $false
+    [switch]$NoExplorer = $false,
+    [switch]$NoGit = $false,
+    [string]$ReleaseNotes = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,6 +25,15 @@ $build = 19
 if ($rawPubspec -match "version:\s*([0-9\.]+)\+([0-9]+)") {
     $ver = $Matches[1]
     $build = [int]$Matches[2]
+}
+
+# Update update_service.dart fallbacks to stay in sync
+$updateServicePath = "lib/infrastructure/update/update_service.dart"
+if (Test-Path $updateServicePath) {
+    $serviceRaw = Get-Content $updateServicePath -Raw
+    $serviceRaw = $serviceRaw -replace "defaultFallbackVersion = '[0-9\.]+';", "defaultFallbackVersion = '$ver';"
+    $serviceRaw = $serviceRaw -replace "defaultFallbackBuildNumber = [0-9]+;", "defaultFallbackBuildNumber = $build;"
+    Set-Content $updateServicePath -Value $serviceRaw
 }
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
@@ -99,7 +110,7 @@ $manifest = @{
     version = $ver
     build_number = $build
     title = "wznotes v$ver Update"
-    release_notes = "Centered sleek AMOLED app icons for PC and Android, ultra-lean build, zero-config sync, and VS Code smooth caret"
+    release_notes = if ($ReleaseNotes) { $ReleaseNotes } else { "Centered sleek AMOLED app icons for PC and Android, ultra-lean build, zero-config sync, and VS Code smooth caret" }
     windows_url = "https://github.com/straculencuandrei/wznotes/releases/download/v$ver/wznotes-windows-v$ver.zip"
     android_url = "https://github.com/straculencuandrei/wznotes/releases/download/v$ver/wznotes-android-v$ver.apk"
     is_mandatory = $false
@@ -117,7 +128,36 @@ $generatedFiles | Format-Table File, Type, SizeMB -AutoSize
 
 Write-Host "Release Directory: $ReleaseDir`n" -ForegroundColor Cyan
 
-# 7. Automatically open Windows Explorer directly in releases folder!
+# 7. Git Commit, Tag & Push to GitHub
+if (-not $NoGit) {
+    Write-Host "`n========================================================" -ForegroundColor Yellow
+    Write-Host "   Sending Release to GitHub & Creating Tag v$ver        " -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Yellow
+
+    git add .
+    $statusCheck = (git status --porcelain)
+    if ($statusCheck) {
+        $commitMsg = if ($ReleaseNotes) { "Release v${ver}+${build}: $ReleaseNotes" } else { "Release v${ver}+${build}" }
+        git commit -m $commitMsg
+        Write-Host "[GIT] Committed changes: $commitMsg" -ForegroundColor Green
+    } else {
+        Write-Host "[GIT] Working tree clean, nothing to commit." -ForegroundColor Gray
+    }
+
+    Write-Host "[GIT] Creating Git tag: v$ver..." -ForegroundColor Cyan
+    git tag -f -a "v$ver" -m "wznotes Release v$ver"
+
+    Write-Host "[GIT] Pushing main and tag v$ver to GitHub..." -ForegroundColor Cyan
+    git push origin main
+    git push origin "v$ver" --force
+    git push origin --tags
+
+    Write-Host "`n[SUCCESS] Tag v$ver successfully published to GitHub!" -ForegroundColor Green
+    Write-Host "`nTo attach release binaries (APK / ZIP) to your GitHub Release:" -ForegroundColor Yellow
+    Write-Host "👉 https://github.com/straculencuandrei/wznotes/releases/new?tag=v$ver`n" -ForegroundColor Cyan
+}
+
+# 8. Automatically open Windows Explorer directly in releases folder!
 if (-not $NoExplorer) {
     Write-Host "Opening Windows Explorer to releases folder..." -ForegroundColor Gray
     Invoke-Item $ReleaseDir
