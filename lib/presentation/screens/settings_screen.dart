@@ -88,6 +88,7 @@ class SettingsScreen extends ConsumerWidget {
                   );
                   if (newPin != null && context.mounted) {
                     settingsNotifier.setPin(newPin);
+                    ref.read(notesLibraryProvider.notifier).updateLockPinForLockedNotes(newPin);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Master PIN updated to $newPin'),

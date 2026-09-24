@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,20 +26,22 @@ class NotesLibraryScreen extends ConsumerWidget {
       final settings = ref.read(settingsProvider);
       bool isUnlocked = false;
 
-      isUnlocked = await BiometricSecurityService.authenticate(
-        reason: 'Scan fingerprint to unlock "${note.metadata.title}"',
-      );
+      // 1. Google fingerprint pop-up on mobile if biometrics is enabled in settings
+      if ((Platform.isAndroid || Platform.isIOS) && settings.isBiometricEnabled) {
+        isUnlocked = await BiometricSecurityService.authenticate(
+          reason: 'Scan fingerprint to unlock "${note.metadata.title}"',
+        );
+      }
 
+      // 2. PIN Entry dialog (PC goes directly here; mobile falls back here if fingerprint cancelled/fails)
       if (!isUnlocked && context.mounted) {
-        final pinToMatch = note.metadata.lockPin ?? settings.appPin;
+        final pinToMatch = (note.metadata.lockPin != null && note.metadata.lockPin!.isNotEmpty)
+            ? note.metadata.lockPin!
+            : settings.appPin;
+
         isUnlocked = await BiometricSecurityService.promptPin(
           context,
           correctPin: pinToMatch,
-          alternativePins: [
-            if (note.metadata.lockPin != null) note.metadata.lockPin!,
-            settings.appPin,
-            '1234',
-          ],
           title: 'Unlock Note',
           subtitle: 'Enter 4-digit PIN to open "${note.metadata.title}"',
         );
@@ -165,6 +168,7 @@ class NotesLibraryScreen extends ConsumerWidget {
                           metadata: note.metadata.copyWith(
                             isLocked: true,
                             lockPin: currentAppPin,
+                            modifiedAt: DateTime.now(),
                           ),
                         );
                         ref.read(notesLibraryProvider.notifier).saveNote(updated);
@@ -177,26 +181,39 @@ class NotesLibraryScreen extends ConsumerWidget {
                           );
                         }
                       } else {
-                        bool isAuthed = await BiometricSecurityService.authenticate(
-                          reason: 'Scan fingerprint to unlock "${note.metadata.title}"',
-                        );
+                        // Allow bottom sheet pop animation to finish cleanly before showing auth
+                        await Future<void>.delayed(const Duration(milliseconds: 150));
+                        if (!context.mounted) return;
+
+                        final settings = ref.read(settingsProvider);
+                        bool isAuthed = false;
+
+                        if ((Platform.isAndroid || Platform.isIOS) && settings.isBiometricEnabled) {
+                          isAuthed = await BiometricSecurityService.authenticate(
+                            reason: 'Scan fingerprint to unlock "${note.metadata.title}"',
+                          );
+                        }
+
                         if (!isAuthed && context.mounted) {
-                          final appPin = ref.read(settingsProvider).appPin;
+                          final pinToMatch = (note.metadata.lockPin != null && note.metadata.lockPin!.isNotEmpty)
+                              ? note.metadata.lockPin!
+                              : settings.appPin;
+
                           isAuthed = await BiometricSecurityService.promptPin(
                             context,
-                            correctPin: note.metadata.lockPin ?? appPin,
-                            alternativePins: [
-                              if (note.metadata.lockPin != null) note.metadata.lockPin!,
-                              appPin,
-                              '1234',
-                            ],
+                            correctPin: pinToMatch,
                             title: 'Unlock Note',
                             subtitle: 'Enter PIN or scan fingerprint',
                           );
                         }
+
                         if (isAuthed) {
                           final updated = note.copyWith(
-                            metadata: note.metadata.copyWith(isLocked: false),
+                            metadata: note.metadata.copyWith(
+                              isLocked: false,
+                              clearLockPin: true,
+                              modifiedAt: DateTime.now(),
+                            ),
                           );
                           ref.read(notesLibraryProvider.notifier).saveNote(updated);
                           if (context.mounted) {
@@ -840,17 +857,21 @@ body: Stack(
       }
     } else {
       // Unlock all selected notes: verify auth first
-      bool isAuthed = await BiometricSecurityService.authenticate(
-        reason: 'Scan fingerprint to unlock $count notes',
-      );
+      final settings = ref.read(settingsProvider);
+      bool isAuthed = false;
+
+      if ((Platform.isAndroid || Platform.isIOS) && settings.isBiometricEnabled) {
+        isAuthed = await BiometricSecurityService.authenticate(
+          reason: 'Scan fingerprint to unlock $count notes',
+        );
+      }
+
       if (!isAuthed && context.mounted) {
-        final appPin = ref.read(settingsProvider).appPin;
         isAuthed = await BiometricSecurityService.promptPin(
           context,
-          correctPin: appPin,
-          alternativePins: ['1234'],
+          correctPin: settings.appPin,
           title: 'Unlock $count Notes',
-          subtitle: 'Enter PIN or scan fingerprint',
+          subtitle: 'Enter PIN to unlock selected notes',
         );
       }
       if (isAuthed) {

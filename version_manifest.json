@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.5/wznotes-android-v0.8.5.apk",
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.6/wznotes-android-v0.8.6.apk",
     "release_notes":  "Centered sleek AMOLED app icons for PC and Android, ultra-lean build, zero-config sync, and VS Code smooth caret",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.5/wznotes-windows-v0.8.5.zip",
-    "title":  "wznotes v0.8.5 Update",
-    "published_at":  "2026-09-24T04:40:11Z",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.6/wznotes-windows-v0.8.6.zip",
+    "title":  "wznotes v0.8.6 Update",
+    "published_at":  "2026-09-24T19:51:08Z",
     "is_mandatory":  false,
-    "build_number":  20,
-    "version":  "0.8.5"
+    "build_number":  21,
+    "version":  "0.8.6"
 }

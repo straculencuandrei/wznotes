@@ -66,7 +66,7 @@ class NoteMetadata {
       totalHeight: totalHeight ?? this.totalHeight,
       hasAudio: hasAudio ?? this.hasAudio,
       isLocked: isLocked ?? this.isLocked,
-      lockPin: clearLockPin ? null : (lockPin ?? this.lockPin),
+      lockPin: (clearLockPin || (isLocked == false)) ? null : (lockPin ?? this.lockPin),
     );
   }
 

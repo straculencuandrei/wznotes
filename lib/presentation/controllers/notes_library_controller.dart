@@ -261,6 +261,29 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     clearSelection();
   }
 
+  /// Updates the lock PIN on all currently locked notes to match the new Master PIN
+  void updateLockPinForLockedNotes(String newPin) {
+    bool hasChanges = false;
+    final updatedList = state.notes.map((note) {
+      if (note.metadata.isLocked) {
+        hasChanges = true;
+        final updated = note.copyWith(
+          metadata: note.metadata.copyWith(
+            lockPin: newPin,
+            modifiedAt: DateTime.now(),
+          ),
+        );
+        _persistNoteToDisk(updated);
+        return updated;
+      }
+      return note;
+    }).toList();
+
+    if (hasChanges) {
+      state = state.copyWith(notes: updatedList);
+    }
+  }
+
   void deleteNote(String noteId) {
     state = state.copyWith(
       notes: state.notes.where((n) => n.metadata.id != noteId).toList(),

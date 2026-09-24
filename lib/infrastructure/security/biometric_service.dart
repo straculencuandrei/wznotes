@@ -7,9 +7,9 @@ import '../../core/constants/app_colors.dart';
 class BiometricSecurityService {
   static final LocalAuthentication _auth = LocalAuthentication();
 
-  /// Checks if the device has biometric authentication hardware and enrolled biometrics
+  /// Checks if the device has biometric authentication hardware and enrolled biometrics (mobile only)
   static Future<bool> isBiometricsAvailable() async {
-    if (!Platform.isAndroid && !Platform.isIOS && !Platform.isWindows && !Platform.isMacOS) {
+    if (!Platform.isAndroid && !Platform.isIOS) {
       return false;
     }
     try {
@@ -21,9 +21,9 @@ class BiometricSecurityService {
     }
   }
 
-  /// Prompts device fingerprint / face unlock with fallback to PIN
+  /// Prompts device fingerprint / face unlock with fallback to PIN (mobile only)
   static Future<bool> authenticate({String reason = 'Unlock note with fingerprint'}) async {
-    if (!Platform.isAndroid && !Platform.isIOS && !Platform.isWindows && !Platform.isMacOS) {
+    if (!Platform.isAndroid && !Platform.isIOS) {
       return false;
     }
 
@@ -58,11 +58,11 @@ class BiometricSecurityService {
     String title = 'Enter PIN',
     String? subtitle,
   }) async {
+    final pin = correctPin.isNotEmpty ? correctPin : '1234';
     final validPins = <String>{
-      correctPin,
-      if (alternativePins != null) ...alternativePins,
-      '1234', // fallback default PIN
-    }.where((p) => p.isNotEmpty).toList();
+      pin,
+      if (alternativePins != null) ...alternativePins.where((p) => p.isNotEmpty),
+    }.toList();
 
     final result = await showDialog<bool>(
       context: context,
@@ -164,7 +164,9 @@ class _PinEntryDialogState extends State<_PinEntryDialog> with SingleTickerProvi
   void _validatePin() {
     final entered = _enteredPin;
     if (widget.validPins.contains(entered)) {
-      Navigator.of(context).pop(true);
+      Future<void>.delayed(const Duration(milliseconds: 120), () {
+        if (mounted) Navigator.of(context).pop(true);
+      });
     } else {
       _shakeController.forward(from: 0.0);
       setState(() {
@@ -181,28 +183,28 @@ class _PinEntryDialogState extends State<_PinEntryDialog> with SingleTickerProvi
         Navigator.of(context).pop(false);
       } else if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) {
         _handleBackspace();
+      } else if (key == LogicalKeyboardKey.digit0 || key == LogicalKeyboardKey.numpad0) {
+        _handleInput('0');
+      } else if (key == LogicalKeyboardKey.digit1 || key == LogicalKeyboardKey.numpad1) {
+        _handleInput('1');
+      } else if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) {
+        _handleInput('2');
+      } else if (key == LogicalKeyboardKey.digit3 || key == LogicalKeyboardKey.numpad3) {
+        _handleInput('3');
+      } else if (key == LogicalKeyboardKey.digit4 || key == LogicalKeyboardKey.numpad4) {
+        _handleInput('4');
+      } else if (key == LogicalKeyboardKey.digit5 || key == LogicalKeyboardKey.numpad5) {
+        _handleInput('5');
+      } else if (key == LogicalKeyboardKey.digit6 || key == LogicalKeyboardKey.numpad6) {
+        _handleInput('6');
+      } else if (key == LogicalKeyboardKey.digit7 || key == LogicalKeyboardKey.numpad7) {
+        _handleInput('7');
+      } else if (key == LogicalKeyboardKey.digit8 || key == LogicalKeyboardKey.numpad8) {
+        _handleInput('8');
+      } else if (key == LogicalKeyboardKey.digit9 || key == LogicalKeyboardKey.numpad9) {
+        _handleInput('9');
       } else if (key.keyLabel.isNotEmpty && RegExp(r'^[0-9]$').hasMatch(key.keyLabel)) {
         _handleInput(key.keyLabel);
-      } else if (key == LogicalKeyboardKey.numpad0) {
-        _handleInput('0');
-      } else if (key == LogicalKeyboardKey.numpad1) {
-        _handleInput('1');
-      } else if (key == LogicalKeyboardKey.numpad2) {
-        _handleInput('2');
-      } else if (key == LogicalKeyboardKey.numpad3) {
-        _handleInput('3');
-      } else if (key == LogicalKeyboardKey.numpad4) {
-        _handleInput('4');
-      } else if (key == LogicalKeyboardKey.numpad5) {
-        _handleInput('5');
-      } else if (key == LogicalKeyboardKey.numpad6) {
-        _handleInput('6');
-      } else if (key == LogicalKeyboardKey.numpad7) {
-        _handleInput('7');
-      } else if (key == LogicalKeyboardKey.numpad8) {
-        _handleInput('8');
-      } else if (key == LogicalKeyboardKey.numpad9) {
-        _handleInput('9');
       }
     }
   }
@@ -459,7 +461,9 @@ class _SetPinDialogState extends State<_SetPinDialog> with SingleTickerProviderS
       });
     } else {
       if (_currentPin == _firstPin) {
-        Navigator.of(context).pop(_currentPin);
+        Future<void>.delayed(const Duration(milliseconds: 120), () {
+          if (mounted) Navigator.of(context).pop(_currentPin);
+        });
       } else {
         _shakeController.forward(from: 0.0);
         setState(() {
@@ -480,28 +484,28 @@ class _SetPinDialogState extends State<_SetPinDialog> with SingleTickerProviderS
         Navigator.of(context).pop(null);
       } else if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) {
         _handleBackspace();
+      } else if (key == LogicalKeyboardKey.digit0 || key == LogicalKeyboardKey.numpad0) {
+        _handleInput('0');
+      } else if (key == LogicalKeyboardKey.digit1 || key == LogicalKeyboardKey.numpad1) {
+        _handleInput('1');
+      } else if (key == LogicalKeyboardKey.digit2 || key == LogicalKeyboardKey.numpad2) {
+        _handleInput('2');
+      } else if (key == LogicalKeyboardKey.digit3 || key == LogicalKeyboardKey.numpad3) {
+        _handleInput('3');
+      } else if (key == LogicalKeyboardKey.digit4 || key == LogicalKeyboardKey.numpad4) {
+        _handleInput('4');
+      } else if (key == LogicalKeyboardKey.digit5 || key == LogicalKeyboardKey.numpad5) {
+        _handleInput('5');
+      } else if (key == LogicalKeyboardKey.digit6 || key == LogicalKeyboardKey.numpad6) {
+        _handleInput('6');
+      } else if (key == LogicalKeyboardKey.digit7 || key == LogicalKeyboardKey.numpad7) {
+        _handleInput('7');
+      } else if (key == LogicalKeyboardKey.digit8 || key == LogicalKeyboardKey.numpad8) {
+        _handleInput('8');
+      } else if (key == LogicalKeyboardKey.digit9 || key == LogicalKeyboardKey.numpad9) {
+        _handleInput('9');
       } else if (key.keyLabel.isNotEmpty && RegExp(r'^[0-9]$').hasMatch(key.keyLabel)) {
         _handleInput(key.keyLabel);
-      } else if (key == LogicalKeyboardKey.numpad0) {
-        _handleInput('0');
-      } else if (key == LogicalKeyboardKey.numpad1) {
-        _handleInput('1');
-      } else if (key == LogicalKeyboardKey.numpad2) {
-        _handleInput('2');
-      } else if (key == LogicalKeyboardKey.numpad3) {
-        _handleInput('3');
-      } else if (key == LogicalKeyboardKey.numpad4) {
-        _handleInput('4');
-      } else if (key == LogicalKeyboardKey.numpad5) {
-        _handleInput('5');
-      } else if (key == LogicalKeyboardKey.numpad6) {
-        _handleInput('6');
-      } else if (key == LogicalKeyboardKey.numpad7) {
-        _handleInput('7');
-      } else if (key == LogicalKeyboardKey.numpad8) {
-        _handleInput('8');
-      } else if (key == LogicalKeyboardKey.numpad9) {
-        _handleInput('9');
       }
     }
   }
