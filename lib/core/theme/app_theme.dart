@@ -1,52 +1,8 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
+import 'app_themes.dart';
 
 class AppTheme {
-  static ThemeData get darkTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.samsungOrange,
-        secondary: AppColors.primaryBlue,
-        surface: AppColors.amoledSurface,
-        outline: AppColors.amoledBorder,
-      ),
-      scaffoldBackgroundColor: AppColors.amoledBlack,
-      canvasColor: AppColors.amoledBlack,
-      fontFamily: 'Inter',
-      textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: Color(0xFFFF9100),
-        selectionColor: Color(0x44FF9100),
-        selectionHandleColor: Color(0xFFFF9100),
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.amoledBlack,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.amoledTextPrimary, size: 26),
-        titleTextStyle: TextStyle(
-          color: AppColors.amoledTextPrimary,
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Inter',
-        ),
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.amoledSurface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.amoledBorder, width: 1.2),
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.amoledBorder,
-        thickness: 1,
-        space: 1,
-      ),
-    );
-  }
-
+  static ThemeData get darkTheme => AppThemes.getThemeData('amoled');
+  static ThemeData getThemeData(String themeId) => AppThemes.getThemeData(themeId);
   static ThemeData get lightTheme => darkTheme;
 }

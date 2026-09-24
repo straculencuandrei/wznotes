@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'infrastructure/sync/deep_link_service.dart';
 import 'infrastructure/update/update_service.dart';
+import 'presentation/controllers/settings_controller.dart';
 import 'presentation/controllers/sync_controller.dart';
-import 'presentation/controllers/theme_controller.dart';
 import 'presentation/screens/notes_library_screen.dart';
 
 void main() async {
@@ -52,15 +52,16 @@ class _WzNotesAppState extends ConsumerState<WzNotesApp> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(themeProvider);
+    final themeId = ref.watch(settingsProvider.select((s) => s.themeId));
+    final themeData = AppTheme.getThemeData(themeId);
 
     return MaterialApp(
       navigatorKey: rootNavigatorKey,
       title: 'wznotes',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
+      theme: themeData,
+      darkTheme: themeData,
+      themeMode: ThemeMode.dark,
       home: const NotesLibraryScreen(),
     );
   }

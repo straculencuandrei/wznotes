@@ -17,7 +17,7 @@ void main() {
     });
 
     test('qrPayload generates standard https universal link format', () {
-      final state = const SyncState(
+      const state = SyncState(
         localIp: '192.168.1.50',
         port: 8484,
         pin: '4321',

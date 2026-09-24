@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/theme/app_themes.dart';
 import '../../domain/models/note_document.dart';
 import '../controllers/notes_library_controller.dart';
 import '../controllers/document_controller.dart';
@@ -22,6 +23,11 @@ class NotesLibraryScreen extends ConsumerWidget {
   const NotesLibraryScreen({super.key});
 
   Future<void> _handleNoteTap(BuildContext context, WidgetRef ref, NoteDocument note) async {
+    if (note.metadata.isDeleted) {
+      _showTrashNoteDialog(context, ref, note);
+      return;
+    }
+
     if (note.metadata.isLocked) {
       final settings = ref.read(settingsProvider);
       bool isUnlocked = false;
@@ -74,6 +80,150 @@ class NotesLibraryScreen extends ConsumerWidget {
     );
   }
 
+  void _confirmPermanentDeleteSingle(BuildContext context, WidgetRef ref, NoteDocument note) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181818),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF2E2E2E)),
+        ),
+        title: const Text('Delete Permanently?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Permanently delete "${note.metadata.title.isNotEmpty ? note.metadata.title : 'this note'}"? This action cannot be undone.',
+          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentRose,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(notesLibraryProvider.notifier).permanentlyDeleteNote(note.metadata.id);
+              TopIslandToast.show(
+                context,
+                message: 'Note permanently deleted',
+                icon: Icons.delete_forever_rounded,
+                color: AppColors.accentRose,
+              );
+            },
+            child: const Text('Delete Forever', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmEmptyTrash(BuildContext context, WidgetRef ref, int count) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181818),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF2E2E2E)),
+        ),
+        title: const Text('Empty Trash?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Permanently delete all $count ${count == 1 ? 'note' : 'notes'} in Trash? This action cannot be undone.',
+          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentRose,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(notesLibraryProvider.notifier).emptyTrash();
+              TopIslandToast.show(
+                context,
+                message: 'Trash emptied',
+                icon: Icons.delete_sweep_rounded,
+                color: AppColors.accentRose,
+              );
+            },
+            child: const Text('Empty Trash', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTrashNoteDialog(BuildContext context, WidgetRef ref, NoteDocument note) {
+    final daysLeft = note.metadata.daysUntilPermanentDeletion;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181818),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF2E2E2E)),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_outline_rounded, color: AppColors.accentRose, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                note.metadata.title.isNotEmpty ? note.metadata.title : 'Deleted Note',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'This note is currently in Trash ($daysLeft days until automatic permanent deletion).\n\nRestore this note to view and edit it.',
+          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _confirmPermanentDeleteSingle(context, ref, note);
+            },
+            child: const Text('Delete Forever', style: TextStyle(color: AppColors.accentRose)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentEmerald,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.restore_rounded, size: 18),
+            label: const Text('Restore Note', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(notesLibraryProvider.notifier).restoreNote(note.metadata.id);
+              TopIslandToast.show(
+                context,
+                message: '"${note.metadata.title.isNotEmpty ? note.metadata.title : 'Note'}" restored',
+                icon: Icons.restore_rounded,
+                color: AppColors.accentEmerald,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showNoteActions(BuildContext context, WidgetRef ref, NoteDocument note) {
     showModalBottomSheet<void>(
       context: context,
@@ -122,16 +272,30 @@ class NotesLibraryScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF222222),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${note.metadata.wordCount}w • ${_formatDate(note.metadata.modifiedAt)}',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF999999), fontWeight: FontWeight.w500),
-                        ),
+                      Builder(
+                        builder: (context) {
+                          final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
+                          final wordCountPart = (showWordCount && note.metadata.wordCount > 0)
+                              ? '${note.metadata.wordCount}w • '
+                              : '';
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF222222),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              note.metadata.isDeleted
+                                  ? '${note.metadata.daysUntilPermanentDeletion}d left in Trash'
+                                  : '$wordCountPart${_formatDate(note.metadata.modifiedAt)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: note.metadata.isDeleted ? AppColors.accentRose : const Color(0xFF999999),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -139,8 +303,40 @@ class NotesLibraryScreen extends ConsumerWidget {
                   const Divider(color: Color(0xFF262626), height: 1),
                   const SizedBox(height: 8),
 
-                  // Compact Action Rows
-                  // 1. Select Multiple Notes
+                  if (note.metadata.isDeleted) ...[
+                    // Trash actions: Restore or Delete Forever
+                    _buildCompactActionRow(
+                      icon: Icons.restore_rounded,
+                      iconColor: AppColors.accentEmerald,
+                      iconBg: AppColors.accentEmerald.withValues(alpha: 0.15),
+                      title: 'Restore note',
+                      subtitle: 'Move back to active notes',
+                      onTap: () {
+                        ref.read(notesLibraryProvider.notifier).restoreNote(note.metadata.id);
+                        Navigator.of(context).pop();
+                        TopIslandToast.show(
+                          context,
+                          message: '"$title" restored',
+                          icon: Icons.restore_rounded,
+                          color: AppColors.accentEmerald,
+                        );
+                      },
+                    ),
+                    _buildCompactActionRow(
+                      icon: Icons.delete_forever_rounded,
+                      iconColor: AppColors.accentRose,
+                      iconBg: AppColors.accentRose.withValues(alpha: 0.15),
+                      title: 'Delete permanently',
+                      subtitle: 'Cannot be undone',
+                      titleColor: AppColors.accentRose,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _confirmPermanentDeleteSingle(context, ref, note);
+                      },
+                    ),
+                  ] else ...[
+                    // Compact Action Rows
+                    // 1. Select Multiple Notes
                   _buildCompactActionRow(
                     icon: Icons.checklist_rounded,
                     iconColor: Colors.white,
@@ -267,25 +463,27 @@ class NotesLibraryScreen extends ConsumerWidget {
                     },
                   ),
 
-                  // 5. Delete
+                  // 5. Move to Trash
                   _buildCompactActionRow(
                     icon: Icons.delete_outline_rounded,
                     iconColor: AppColors.accentRose,
                     iconBg: AppColors.accentRose.withValues(alpha: 0.15),
-                    title: 'Delete note',
+                    title: 'Move to Trash',
+                    subtitle: 'Can be restored within 30 days',
                     titleColor: AppColors.accentRose,
                     onTap: () {
                       ref.read(notesLibraryProvider.notifier).deleteNote(note.metadata.id);
                       Navigator.of(context).pop();
                       TopIslandToast.show(
                         context,
-                        message: 'Note deleted',
+                        message: 'Note moved to Trash',
                         icon: Icons.delete_outline_rounded,
                         color: AppColors.accentRose,
                       );
                     },
                   ),
                 ],
+              ],
               ),
             ),
           ),
@@ -358,6 +556,8 @@ class NotesLibraryScreen extends ConsumerWidget {
     final libraryState = ref.watch(notesLibraryProvider);
     final libraryNotifier = ref.read(notesLibraryProvider.notifier);
     final notes = libraryState.filteredNotes;
+    final activeTheme = ref.watch(appThemeProvider);
+    final isTrash = libraryState.selectedCategory == 'Trash';
 
     final screenWidth = MediaQuery.of(context).size.width;
     final gridColumns = screenWidth > 1200 ? 5 : (screenWidth > 900 ? 4 : (screenWidth > 600 ? 3 : 2));
@@ -375,13 +575,13 @@ class NotesLibraryScreen extends ConsumerWidget {
       },
       child: CallbackShortcuts(
         bindings: <ShortcutActivator, VoidCallback>{
-          SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
+          const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
             if (!isSelectionMode) {
               final newDoc = ref.read(notesLibraryProvider.notifier).createNewNote();
               _openNote(context, ref, newDoc);
             }
           },
-          SingleActivator(LogicalKeyboardKey.keyS, control: true, shift: true): () {
+          const SingleActivator(LogicalKeyboardKey.keyS, control: true, shift: true): () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
             );
@@ -390,7 +590,7 @@ class NotesLibraryScreen extends ConsumerWidget {
         child: Focus(
           autofocus: true,
           child: Scaffold(
-            backgroundColor: AppColors.amoledBlack,
+            backgroundColor: activeTheme.background,
 body: Stack(
               children: [
                 SafeArea(
@@ -468,21 +668,25 @@ body: Stack(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            const Text(
-                                              'All notes',
+                                            Text(
+                                              isTrash
+                                                  ? 'Trash'
+                                                  : (libraryState.selectedCategory == 'Favorites' ? 'Favorites' : 'All notes'),
                                               style: TextStyle(
                                                 fontSize: 28,
                                                 fontWeight: FontWeight.w900,
-                                                color: AppColors.amoledTextPrimary,
+                                                color: activeTheme.textPrimary,
                                                 letterSpacing: -0.8,
                                               ),
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              '${libraryState.notes.length} ${libraryState.notes.length == 1 ? 'note' : 'notes'}',
-                                              style: const TextStyle(
+                                              isTrash
+                                                  ? '${notes.length} deleted • 30-day auto-purge'
+                                                  : '${notes.length} ${notes.length == 1 ? 'note' : 'notes'}',
+                                              style: TextStyle(
                                                 fontSize: 13,
-                                                color: AppColors.amoledTextSecondary,
+                                                color: isTrash ? AppColors.accentRose : activeTheme.textSecondary,
                                                 fontWeight: FontWeight.w600,
                                               ),
                                             ),
@@ -490,26 +694,39 @@ body: Stack(
                                         ),
                                         Row(
                                           children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.sync_alt_rounded, color: AppColors.samsungOrange, size: 24),
-                                              tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
-                                              onPressed: () {
-                                                Navigator.of(context).push(
-                                                  MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
-                                                );
-                                              },
-                                            ),
+                                            if (isTrash) ...[
+                                              if (notes.isNotEmpty)
+                                                TextButton.icon(
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor: AppColors.accentRose,
+                                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                                                  ),
+                                                  icon: const Icon(Icons.delete_sweep_rounded, size: 20),
+                                                  label: const Text('Empty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                                  onPressed: () => _confirmEmptyTrash(context, ref, notes.length),
+                                                ),
+                                            ] else ...[
+                                              IconButton(
+                                                icon: Icon(Icons.sync_alt_rounded, color: activeTheme.accent, size: 24),
+                                                tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
+                                                onPressed: () {
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
+                                                  );
+                                                },
+                                              ),
+                                            ],
                                             IconButton(
                                               icon: Icon(
                                                 libraryState.isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                                                color: AppColors.amoledTextPrimary,
+                                                color: activeTheme.textPrimary,
                                                 size: 24,
                                               ),
                                               tooltip: libraryState.isGridView ? 'List View' : 'Grid View',
                                               onPressed: () => libraryNotifier.toggleViewLayout(),
                                             ),
                                             IconButton(
-                                              icon: const Icon(Icons.settings_outlined, color: AppColors.amoledTextPrimary, size: 24),
+                                              icon: Icon(Icons.settings_outlined, color: activeTheme.textPrimary, size: 24),
                                               tooltip: 'Settings',
                                               onPressed: () {
                                                 Navigator.of(context).push(
@@ -604,7 +821,7 @@ body: Stack(
                         },
                       ),
 
-                      // 2. Big AMOLED Search Bar (Stable layout with smooth dimming in selection mode)
+                      // 2. AMOLED Search Bar with dynamic Theme
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -615,16 +832,16 @@ body: Stack(
                               ignoring: isSelectionMode,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: AppColors.amoledSurface,
+                                  color: activeTheme.surface,
                                   borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: AppColors.amoledBorder, width: 1.2),
+                                  border: Border.all(color: activeTheme.border, width: 1.2),
                                 ),
                                 child: TextField(
-                                  style: const TextStyle(fontSize: 16, color: AppColors.amoledTextPrimary),
+                                  style: TextStyle(fontSize: 16, color: activeTheme.textPrimary),
                                   decoration: InputDecoration(
                                     hintText: 'Search notes...',
-                                    hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 15),
-                                    prefixIcon: const Icon(Icons.search, color: AppColors.samsungOrange, size: 24),
+                                    hintStyle: const TextStyle(color: Color(0xFF666666), fontSize: 15),
+                                    prefixIcon: Icon(Icons.search, color: activeTheme.accent, size: 24),
                                     suffixIcon: libraryState.searchQuery.isNotEmpty
                                         ? IconButton(
                                             icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
@@ -635,6 +852,53 @@ body: Stack(
                                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                                   ),
                                   onChanged: (val) => libraryNotifier.setSearchQuery(val),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 2.5. Category Navigation Chips (All, Favorites, Trash)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 8),
+                          child: AnimatedOpacity(
+                            opacity: isSelectionMode ? 0.35 : 1.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: IgnorePointer(
+                              ignoring: isSelectionMode,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                child: Row(
+                                  children: [
+                                    _buildCategoryChip(
+                                      label: 'All Notes',
+                                      count: libraryState.activeNotesCount,
+                                      isSelected: libraryState.selectedCategory == 'All',
+                                      activeTheme: activeTheme,
+                                      onTap: () => libraryNotifier.setSelectedCategory('All'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _buildCategoryChip(
+                                      label: 'Favorites',
+                                      icon: Icons.star_rounded,
+                                      count: libraryState.favoritesCount,
+                                      isSelected: libraryState.selectedCategory == 'Favorites',
+                                      activeTheme: activeTheme,
+                                      onTap: () => libraryNotifier.setSelectedCategory('Favorites'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _buildCategoryChip(
+                                      label: 'Trash',
+                                      icon: Icons.delete_outline_rounded,
+                                      count: libraryState.trashCount,
+                                      isSelected: libraryState.selectedCategory == 'Trash',
+                                      activeTheme: activeTheme,
+                                      onTap: () => libraryNotifier.setSelectedCategory('Trash'),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -700,18 +964,18 @@ body: Stack(
                 ),
               ],
             ),
-            // Samsung Notes Style Floating Action Button (Smooth scale and fade)
+            // Floating Action Button (Smooth scale and fade, hidden in selection mode or trash)
             floatingActionButton: AnimatedScale(
-              scale: isSelectionMode ? 0.0 : 1.0,
+              scale: (isSelectionMode || isTrash) ? 0.0 : 1.0,
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutBack,
               child: AnimatedOpacity(
-                opacity: isSelectionMode ? 0.0 : 1.0,
+                opacity: (isSelectionMode || isTrash) ? 0.0 : 1.0,
                 duration: const Duration(milliseconds: 180),
                 child: IgnorePointer(
-                  ignoring: isSelectionMode,
+                  ignoring: isSelectionMode || isTrash,
                   child: FloatingActionButton.extended(
-                    backgroundColor: AppColors.samsungOrange,
+                    backgroundColor: activeTheme.accent,
                     elevation: 8,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     icon: const Icon(Icons.edit, color: Colors.black, size: 24),
@@ -737,6 +1001,8 @@ body: Stack(
 
   Widget _buildBatchActionBar(BuildContext context, WidgetRef ref, NotesLibraryState state) {
     final selectedCount = state.selectedNoteIds.length;
+    final isTrash = state.selectedCategory == 'Trash';
+    final activeTheme = ref.watch(appThemeProvider);
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -745,9 +1011,9 @@ body: Stack(
           margin: const EdgeInsets.only(left: 16, right: 16, bottom: 18),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF181818),
+            color: activeTheme.surfaceElevated,
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.6), width: 1.3),
+            border: Border.all(color: activeTheme.accent.withValues(alpha: 0.6), width: 1.3),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.8),
@@ -759,65 +1025,93 @@ body: Stack(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Star / Favorite Toggle
-              IconButton(
-                icon: const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 24),
-                tooltip: 'Add to Favorites',
-                onPressed: selectedCount == 0
-                    ? null
-                    : () {
-                        ref.read(notesLibraryProvider.notifier).batchToggleFavorite(setAsFavorite: true);
-                        TopIslandToast.show(
-                          context,
-                          message: '$selectedCount notes marked as favorite',
-                          icon: Icons.star_rounded,
-                          color: const Color(0xFFFBBF24),
-                        );
-                      },
-              ),
-
-              // Lock / Unlock
-              IconButton(
-                icon: const Icon(Icons.lock_outline_rounded, color: AppColors.samsungOrange, size: 23),
-                tooltip: 'Lock / Unlock Notes',
-                onPressed: selectedCount == 0
-                    ? null
-                    : () => _handleBatchLock(context, ref, state),
-              ),
-
-              // Export Selected Notes (.txt / .pdf)
-              IconButton(
-                icon: const Icon(Icons.file_download_outlined, color: Color(0xFF38BDF8), size: 23),
-                tooltip: 'Export Selected',
-                onPressed: selectedCount == 0
-                    ? null
-                    : () async {
-                        final selectedNotes = state.notes.where((n) => state.selectedNoteIds.contains(n.metadata.id)).toList();
-                        final format = await ExportChoiceDialog.show(
-                          context,
-                          title: 'Export Selected Notes',
-                          subtitle: 'Create a backup archive with $selectedCount selected notes',
-                          confirmLabel: 'Export Archive',
-                          initialFormat: ExportFormat.txt,
-                        );
-                        if (format != null && context.mounted) {
-                          await NoteExportService.exportNotesBackupArchive(
+              if (isTrash) ...[
+                // Restore Selected
+                IconButton(
+                  icon: const Icon(Icons.restore_rounded, color: AppColors.accentEmerald, size: 24),
+                  tooltip: 'Restore Selected',
+                  onPressed: selectedCount == 0
+                      ? null
+                      : () {
+                          ref.read(notesLibraryProvider.notifier).batchRestoreSelected();
+                          TopIslandToast.show(
                             context,
-                            selectedNotes,
-                            format: format,
+                            message: '$selectedCount notes restored',
+                            icon: Icons.restore_rounded,
+                            color: AppColors.accentEmerald,
                           );
-                        }
-                      },
-              ),
+                        },
+                ),
 
-              // Delete
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.accentRose, size: 23),
-                tooltip: 'Delete Selected',
-                onPressed: selectedCount == 0
-                    ? null
-                    : () => _showBatchDeleteDialog(context, ref, selectedCount),
-              ),
+                // Delete Forever
+                IconButton(
+                  icon: const Icon(Icons.delete_forever_rounded, color: AppColors.accentRose, size: 23),
+                  tooltip: 'Delete Forever',
+                  onPressed: selectedCount == 0
+                      ? null
+                      : () => _showBatchDeleteDialog(context, ref, selectedCount),
+                ),
+              ] else ...[
+                // Star / Favorite Toggle
+                IconButton(
+                  icon: const Icon(Icons.star_rounded, color: Color(0xFFFBBF24), size: 24),
+                  tooltip: 'Add to Favorites',
+                  onPressed: selectedCount == 0
+                      ? null
+                      : () {
+                          ref.read(notesLibraryProvider.notifier).batchToggleFavorite(setAsFavorite: true);
+                          TopIslandToast.show(
+                            context,
+                            message: '$selectedCount notes marked as favorite',
+                            icon: Icons.star_rounded,
+                            color: const Color(0xFFFBBF24),
+                          );
+                        },
+                ),
+
+                // Lock / Unlock
+                IconButton(
+                  icon: Icon(Icons.lock_outline_rounded, color: activeTheme.accent, size: 23),
+                  tooltip: 'Lock / Unlock Notes',
+                  onPressed: selectedCount == 0
+                      ? null
+                      : () => _handleBatchLock(context, ref, state),
+                ),
+
+                // Export Selected Notes (.txt / .pdf)
+                IconButton(
+                  icon: const Icon(Icons.file_download_outlined, color: Color(0xFF38BDF8), size: 23),
+                  tooltip: 'Export Selected',
+                  onPressed: selectedCount == 0
+                      ? null
+                      : () async {
+                          final selectedNotes = state.notes.where((n) => state.selectedNoteIds.contains(n.metadata.id)).toList();
+                          final format = await ExportChoiceDialog.show(
+                            context,
+                            title: 'Export Selected Notes',
+                            subtitle: 'Create a backup archive with $selectedCount selected notes',
+                            confirmLabel: 'Export Archive',
+                            initialFormat: ExportFormat.txt,
+                          );
+                          if (format != null && context.mounted) {
+                            await NoteExportService.exportNotesBackupArchive(
+                              context,
+                              selectedNotes,
+                              format: format,
+                            );
+                          }
+                        },
+                ),
+
+                // Move to Trash
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.accentRose, size: 23),
+                  tooltip: 'Move to Trash',
+                  onPressed: selectedCount == 0
+                      ? null
+                      : () => _showBatchDeleteDialog(context, ref, selectedCount),
+                ),
+              ],
 
               const SizedBox(width: 6),
               Container(width: 1, height: 24, color: const Color(0xFF333333)),
@@ -889,6 +1183,7 @@ body: Stack(
   }
 
   void _showBatchDeleteDialog(BuildContext context, WidgetRef ref, int count) {
+    final isTrash = ref.read(notesLibraryProvider).selectedCategory == 'Trash';
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -898,11 +1193,15 @@ body: Stack(
           side: const BorderSide(color: Color(0xFF2E2E2E)),
         ),
         title: Text(
-          'Delete $count ${count == 1 ? 'Note' : 'Notes'}?',
+          isTrash
+              ? 'Permanently delete $count ${count == 1 ? 'Note' : 'Notes'}?'
+              : 'Move $count ${count == 1 ? 'Note' : 'Notes'} to Trash?',
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         content: Text(
-          'Are you sure you want to permanently delete $count selected ${count == 1 ? 'note' : 'notes'}? This action cannot be undone.',
+          isTrash
+              ? 'Permanently remove $count selected ${count == 1 ? 'note' : 'notes'} from device? This action cannot be undone.'
+              : '$count selected ${count == 1 ? 'note' : 'notes'} will be moved to Trash and can be restored within 30 days.',
           style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14),
         ),
         actions: [
@@ -921,12 +1220,14 @@ body: Stack(
               ref.read(notesLibraryProvider.notifier).batchDeleteSelected();
               TopIslandToast.show(
                 context,
-                message: '$count ${count == 1 ? 'note' : 'notes'} deleted',
-                icon: Icons.delete_outline_rounded,
+                message: isTrash
+                    ? '$count ${count == 1 ? 'note' : 'notes'} permanently deleted'
+                    : '$count ${count == 1 ? 'note' : 'notes'} moved to Trash',
+                icon: isTrash ? Icons.delete_forever_rounded : Icons.delete_outline_rounded,
                 color: AppColors.accentRose,
               );
             },
-            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(isTrash ? 'Delete Forever' : 'Move to Trash', style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -949,8 +1250,77 @@ body: Stack(
         .trim();
   }
 
+  static Widget _buildCategoryChip({
+    required String label,
+    IconData? icon,
+    required int count,
+    required bool isSelected,
+    required AppThemePalette activeTheme,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? activeTheme.accent.withValues(alpha: 0.18) : activeTheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? activeTheme.accent : activeTheme.border,
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 15,
+                  color: isSelected ? activeTheme.accent : activeTheme.textSecondary,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? activeTheme.accent : activeTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: isSelected ? activeTheme.accent.withValues(alpha: 0.25) : const Color(0xFF222222),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? activeTheme.accent : const Color(0xFF888888),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildGridCard(BuildContext context, WidgetRef ref, NoteDocument note, NotesLibraryState libraryState) {
     final isLocked = note.metadata.isLocked;
+    final isDeleted = note.metadata.isDeleted;
+    final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
+    final activeTheme = ref.watch(appThemeProvider);
     final previewText = _cleanPreviewText(note);
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
     final isSelected = libraryState.selectedNoteIds.contains(note.metadata.id);
@@ -966,19 +1336,19 @@ body: Stack(
         }
       },
       onHoldCompleted: () {
-        if (!libraryState.isSelectionMode) {
-          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
-        } else {
-          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
-        }
+        ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
       },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.amoledSurface,
+          color: activeTheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isLocked ? AppColors.samsungOrange.withValues(alpha: 0.5) : AppColors.amoledBorder,
-            width: 1.2,
+            color: isSelected
+                ? activeTheme.accent
+                : (isDeleted
+                    ? AppColors.accentRose.withValues(alpha: 0.4)
+                    : (isLocked ? activeTheme.accent.withValues(alpha: 0.5) : activeTheme.border)),
+            width: isSelected ? 2.0 : 1.2,
           ),
         ),
         padding: const EdgeInsets.all(16),
@@ -988,7 +1358,11 @@ body: Stack(
             Row(
               children: [
                 if (isLocked) ...[
-                  const Icon(Icons.lock, size: 16, color: AppColors.samsungOrange),
+                  Icon(Icons.lock, size: 16, color: activeTheme.accent),
+                  const SizedBox(width: 6),
+                ],
+                if (isDeleted) ...[
+                  const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.accentRose),
                   const SizedBox(width: 6),
                 ],
                 Expanded(
@@ -996,10 +1370,10 @@ body: Stack(
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.amoledTextPrimary,
+                      color: activeTheme.textPrimary,
                     ),
                   ),
                 ),
@@ -1015,7 +1389,7 @@ body: Stack(
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: isLocked ? Colors.white30 : AppColors.amoledTextSecondary,
+                  color: isLocked ? Colors.white30 : activeTheme.textSecondary,
                   letterSpacing: isLocked ? 2.0 : null,
                 ),
               ),
@@ -1025,16 +1399,29 @@ body: Stack(
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _formatDate(note.metadata.modifiedAt),
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF666666), fontWeight: FontWeight.w500),
-                ),
+                if (isDeleted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentRose.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${note.metadata.daysUntilPermanentDeletion}d left',
+                      style: const TextStyle(fontSize: 10.5, color: AppColors.accentRose, fontWeight: FontWeight.bold),
+                    ),
+                  )
+                else
+                  Text(
+                    _formatDate(note.metadata.modifiedAt),
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF666666), fontWeight: FontWeight.w500),
+                  ),
                 Row(
                   children: [
-                    if (note.metadata.wordCount > 0) ...[
+                    if (!isDeleted && showWordCount && note.metadata.wordCount > 0) ...[
                       Text(
                         '${note.metadata.wordCount}w',
-                        style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 11, color: activeTheme.accent, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -1054,6 +1441,9 @@ body: Stack(
 
   Widget _buildListCard(BuildContext context, WidgetRef ref, NoteDocument note, NotesLibraryState libraryState) {
     final isLocked = note.metadata.isLocked;
+    final isDeleted = note.metadata.isDeleted;
+    final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
+    final activeTheme = ref.watch(appThemeProvider);
     final previewText = _cleanPreviewText(note);
     final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
     final isSelected = libraryState.selectedNoteIds.contains(note.metadata.id);
@@ -1069,20 +1459,20 @@ body: Stack(
         }
       },
       onHoldCompleted: () {
-        if (!libraryState.isSelectionMode) {
-          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
-        } else {
-          ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
-        }
+        ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.amoledSurface,
+          color: activeTheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isLocked ? AppColors.samsungOrange.withValues(alpha: 0.5) : AppColors.amoledBorder,
-            width: 1.2,
+            color: isSelected
+                ? activeTheme.accent
+                : (isDeleted
+                    ? AppColors.accentRose.withValues(alpha: 0.4)
+                    : (isLocked ? activeTheme.accent.withValues(alpha: 0.5) : activeTheme.border)),
+            width: isSelected ? 2.0 : 1.2,
           ),
         ),
         padding: const EdgeInsets.all(16),
@@ -1096,7 +1486,11 @@ body: Stack(
                   child: Row(
                     children: [
                       if (isLocked) ...[
-                        const Icon(Icons.lock, size: 16, color: AppColors.samsungOrange),
+                        Icon(Icons.lock, size: 16, color: activeTheme.accent),
+                        const SizedBox(width: 6),
+                      ],
+                      if (isDeleted) ...[
+                        const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.accentRose),
                         const SizedBox(width: 6),
                       ],
                       Expanded(
@@ -1104,10 +1498,10 @@ body: Stack(
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.amoledTextPrimary,
+                            color: activeTheme.textPrimary,
                           ),
                         ),
                       ),
@@ -1129,7 +1523,7 @@ body: Stack(
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: isLocked ? Colors.white30 : AppColors.amoledTextSecondary,
+                  color: isLocked ? Colors.white30 : activeTheme.textSecondary,
                   letterSpacing: isLocked ? 2.0 : null,
                 ),
               ),
@@ -1138,10 +1532,22 @@ body: Stack(
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (note.metadata.wordCount > 0)
+                if (isDeleted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentRose.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${note.metadata.daysUntilPermanentDeletion} days left in Trash',
+                      style: const TextStyle(fontSize: 11, color: AppColors.accentRose, fontWeight: FontWeight.bold),
+                    ),
+                  )
+                else if (showWordCount && note.metadata.wordCount > 0)
                   Text(
                     '${note.metadata.wordCount} words',
-                    style: const TextStyle(fontSize: 11, color: AppColors.samsungOrange, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 11, color: activeTheme.accent, fontWeight: FontWeight.bold),
                   )
                 else
                   const SizedBox.shrink(),
@@ -1158,6 +1564,24 @@ body: Stack(
   }
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+    final libraryState = ref.watch(notesLibraryProvider);
+    final activeTheme = ref.watch(appThemeProvider);
+    final isTrash = libraryState.selectedCategory == 'Trash';
+    final isFav = libraryState.selectedCategory == 'Favorites';
+
+    final icon = isTrash
+        ? Icons.delete_outline_rounded
+        : (isFav ? Icons.star_border_rounded : Icons.edit_note_rounded);
+    final iconColor = isTrash ? AppColors.accentRose : (isFav ? const Color(0xFFFBBF24) : activeTheme.accent);
+    final title = isTrash
+        ? 'Trash is empty'
+        : (isFav ? 'No favorites yet' : 'No notes yet');
+    final subtitle = isTrash
+        ? 'Deleted notes stay here for 30 days before permanent auto-purge'
+        : (isFav
+            ? 'Star any note from its menu to see it here'
+            : 'Tap Write below to capture ideas or write a journal');
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1166,28 +1590,32 @@ body: Stack(
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-              color: AppColors.samsungOrange.withValues(alpha: 0.1),
+              color: iconColor.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.edit_note,
+            child: Icon(
+              icon,
               size: 48,
-              color: AppColors.samsungOrange,
+              color: iconColor,
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'No notes yet',
+          Text(
+            title,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: AppColors.amoledTextPrimary,
+              color: activeTheme.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Tap Write below to capture ideas or write a journal',
-            style: TextStyle(fontSize: 14, color: AppColors.amoledTextSecondary),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: activeTheme.textSecondary),
+            ),
           ),
         ],
       ),

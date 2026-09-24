@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.7/wznotes-android-v0.8.7.apk",
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9/wznotes-android-v0.9.apk",
     "release_notes":  "Centered sleek AMOLED app icons, clean dual-target compiler, instant QR deep link sync, zero router isolation issues",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.8.7/wznotes-windows-v0.8.7.zip",
-    "title":  "wznotes v0.8.7 Update",
-    "published_at":  "2026-09-25T01:44:50Z",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9/wznotes-windows-v0.9.zip",
+    "title":  "wznotes v0.9 Update",
+    "published_at":  "2026-09-25T02:34:34Z",
     "is_mandatory":  false,
-    "build_number":  22,
-    "version":  "0.8.7"
+    "build_number":  23,
+    "version":  "0.9"
 }

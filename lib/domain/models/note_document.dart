@@ -20,6 +20,7 @@ class NoteMetadata {
   final bool hasAudio;
   final bool isLocked;
   final String? lockPin;
+  final DateTime? deletedAt;
 
   const NoteMetadata({
     required this.id,
@@ -35,7 +36,16 @@ class NoteMetadata {
     this.hasAudio = false,
     this.isLocked = false,
     this.lockPin,
+    this.deletedAt,
   });
+
+  bool get isDeleted => deletedAt != null || folderId == 'trash';
+
+  int get daysUntilPermanentDeletion {
+    if (deletedAt == null) return 30;
+    final daysPassed = DateTime.now().difference(deletedAt!).inDays;
+    return (30 - daysPassed).clamp(0, 30);
+  }
 
   NoteMetadata copyWith({
     String? id,
@@ -52,6 +62,8 @@ class NoteMetadata {
     bool? isLocked,
     String? lockPin,
     bool clearLockPin = false,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
   }) {
     return NoteMetadata(
       id: id ?? this.id,
@@ -67,6 +79,7 @@ class NoteMetadata {
       hasAudio: hasAudio ?? this.hasAudio,
       isLocked: isLocked ?? this.isLocked,
       lockPin: (clearLockPin || (isLocked == false)) ? null : (lockPin ?? this.lockPin),
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
 
@@ -84,6 +97,7 @@ class NoteMetadata {
         'hasAudio': hasAudio,
         'isLocked': isLocked,
         if (lockPin != null) 'lockPin': lockPin,
+        if (deletedAt != null) 'deletedAt': deletedAt!.toIso8601String(),
       };
 
   factory NoteMetadata.initial({String title = 'Untitled Note'}) {
@@ -111,6 +125,11 @@ class NoteMetadata {
       hasAudio: json['hasAudio'] as bool? ?? false,
       isLocked: json['isLocked'] as bool? ?? false,
       lockPin: json['lockPin'] as String?,
+      deletedAt: json['deletedAt'] != null
+          ? DateTime.tryParse(json['deletedAt'] as String)
+          : (json['folderId'] == 'trash'
+              ? (DateTime.tryParse(json['modifiedAt'] as String? ?? '') ?? DateTime.now())
+              : null),
     );
   }
 }

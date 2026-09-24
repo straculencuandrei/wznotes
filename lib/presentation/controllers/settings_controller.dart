@@ -11,6 +11,7 @@ class AppSettingsState {
   final bool smoothCaretEnabled;
   final bool showWordCount;
   final bool autoSaveEnabled;
+  final String themeId;
 
   const AppSettingsState({
     this.isBiometricEnabled = false,
@@ -19,6 +20,7 @@ class AppSettingsState {
     this.smoothCaretEnabled = true,
     this.showWordCount = true,
     this.autoSaveEnabled = true,
+    this.themeId = 'amoled',
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +30,7 @@ class AppSettingsState {
         'smoothCaretEnabled': smoothCaretEnabled,
         'showWordCount': showWordCount,
         'autoSaveEnabled': autoSaveEnabled,
+        'themeId': themeId,
       };
 
   factory AppSettingsState.fromJson(Map<String, dynamic> json) {
@@ -38,6 +41,7 @@ class AppSettingsState {
       smoothCaretEnabled: json['smoothCaretEnabled'] as bool? ?? true,
       showWordCount: json['showWordCount'] as bool? ?? true,
       autoSaveEnabled: json['autoSaveEnabled'] as bool? ?? true,
+      themeId: json['themeId'] as String? ?? 'amoled',
     );
   }
 
@@ -48,6 +52,7 @@ class AppSettingsState {
     bool? smoothCaretEnabled,
     bool? showWordCount,
     bool? autoSaveEnabled,
+    String? themeId,
   }) {
     return AppSettingsState(
       isBiometricEnabled: isBiometricEnabled ?? this.isBiometricEnabled,
@@ -56,6 +61,7 @@ class AppSettingsState {
       smoothCaretEnabled: smoothCaretEnabled ?? this.smoothCaretEnabled,
       showWordCount: showWordCount ?? this.showWordCount,
       autoSaveEnabled: autoSaveEnabled ?? this.autoSaveEnabled,
+      themeId: themeId ?? this.themeId,
     );
   }
 }
@@ -114,6 +120,11 @@ class AppSettingsNotifier extends StateNotifier<AppSettingsState> {
 
   void toggleWordCount(bool enabled) {
     state = state.copyWith(showWordCount: enabled);
+    _persist();
+  }
+
+  void setTheme(String themeId) {
+    state = state.copyWith(themeId: themeId);
     _persist();
   }
 }

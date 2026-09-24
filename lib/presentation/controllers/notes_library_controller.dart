@@ -25,11 +25,25 @@ class NotesLibraryState {
 
   bool get isSelectionMode => selectedNoteIds.isNotEmpty;
 
+  int get trashCount => notes.where((n) => n.metadata.isDeleted).length;
+  int get activeNotesCount => notes.where((n) => !n.metadata.isDeleted).length;
+  int get favoritesCount => notes.where((n) => !n.metadata.isDeleted && n.metadata.folderId == 'favorites').length;
+
   List<NoteDocument> get filteredNotes {
+    final isTrashView = selectedCategory == 'Trash';
+
     return notes.where((note) {
+      if (isTrashView) {
+        if (!note.metadata.isDeleted) return false;
+      } else {
+        if (note.metadata.isDeleted) return false;
+      }
+
       final matchesSearch = searchQuery.isEmpty ||
           note.metadata.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
           note.blocks.any((b) => b.rawText.toLowerCase().contains(searchQuery.toLowerCase()));
+
+      if (isTrashView) return matchesSearch;
 
       final matchesCategory = selectedCategory == 'All' ||
           (selectedCategory == 'Favorites' && note.metadata.folderId == 'favorites') ||
@@ -112,6 +126,8 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
 
     final List<NoteDocument> loaded = [];
     final files = _notesDir!.listSync();
+    final now = DateTime.now();
+    bool tombstonesUpdated = false;
 
     for (final f in files) {
       if (f is File && f.path.endsWith('.json') && !p.basename(f.path).startsWith('tombstones')) {
@@ -119,9 +135,27 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
           final content = await f.readAsString();
           final Map<String, dynamic> jsonMap = json.decode(content) as Map<String, dynamic>;
           final doc = NoteDocument.fromJson(jsonMap);
+
+          // 30-Day Auto-Purge from Trash
+          if (doc.metadata.isDeleted) {
+            final deletedDate = doc.metadata.deletedAt ?? doc.metadata.modifiedAt;
+            if (now.difference(deletedDate).inDays >= 30) {
+              try {
+                f.deleteSync();
+              } catch (_) {}
+              _tombstones[doc.metadata.id] = now.millisecondsSinceEpoch;
+              tombstonesUpdated = true;
+              continue;
+            }
+          }
+
           loaded.add(doc);
         } catch (_) {}
       }
+    }
+
+    if (tombstonesUpdated) {
+      _persistTombstones();
     }
 
     // Sort by modified date descending
@@ -209,8 +243,22 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
 
   void batchDeleteSelected() {
     final toDelete = List<String>.from(state.selectedNoteIds);
-    for (final id in toDelete) {
-      deleteNote(id);
+    if (state.selectedCategory == 'Trash') {
+      for (final id in toDelete) {
+        permanentlyDeleteNote(id);
+      }
+    } else {
+      for (final id in toDelete) {
+        deleteNote(id);
+      }
+    }
+    clearSelection();
+  }
+
+  void batchRestoreSelected() {
+    final toRestore = List<String>.from(state.selectedNoteIds);
+    for (final id in toRestore) {
+      restoreNote(id);
     }
     clearSelection();
   }
@@ -284,9 +332,59 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     }
   }
 
+  /// Soft deletes a note by moving it to Trash. Can be restored within 30 days.
   void deleteNote(String noteId) {
+    final noteIndex = state.notes.indexWhere((n) => n.metadata.id == noteId);
+    if (noteIndex < 0) return;
+
+    final note = state.notes[noteIndex];
+    final updated = note.copyWith(
+      metadata: note.metadata.copyWith(
+        folderId: 'trash',
+        deletedAt: DateTime.now(),
+        modifiedAt: DateTime.now(),
+      ),
+    );
+
+    final updatedList = List<NoteDocument>.from(state.notes);
+    updatedList[noteIndex] = updated;
+    state = state.copyWith(
+      notes: updatedList,
+      selectedNoteIds: state.selectedNoteIds.where((id) => id != noteId).toSet(),
+    );
+
+    _persistNoteToDisk(updated);
+  }
+
+  /// Restores a soft-deleted note from Trash back to active notes.
+  void restoreNote(String noteId) {
+    final noteIndex = state.notes.indexWhere((n) => n.metadata.id == noteId);
+    if (noteIndex < 0) return;
+
+    final note = state.notes[noteIndex];
+    final updated = note.copyWith(
+      metadata: note.metadata.copyWith(
+        folderId: 'root',
+        clearDeletedAt: true,
+        modifiedAt: DateTime.now(),
+      ),
+    );
+
+    final updatedList = List<NoteDocument>.from(state.notes);
+    updatedList[noteIndex] = updated;
+    state = state.copyWith(
+      notes: updatedList,
+      selectedNoteIds: state.selectedNoteIds.where((id) => id != noteId).toSet(),
+    );
+
+    _persistNoteToDisk(updated);
+  }
+
+  /// Permanently removes the note file from disk and records a tombstone.
+  void permanentlyDeleteNote(String noteId) {
     state = state.copyWith(
       notes: state.notes.where((n) => n.metadata.id != noteId).toList(),
+      selectedNoteIds: state.selectedNoteIds.where((id) => id != noteId).toSet(),
     );
 
     // Record tombstone
@@ -300,6 +398,22 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
           file.deleteSync();
         }
       } catch (_) {}
+    }
+  }
+
+  /// Permanently empties all notes currently in Trash.
+  void emptyTrash() {
+    final trashNotes = state.notes.where((n) => n.metadata.isDeleted).toList();
+    for (final note in trashNotes) {
+      permanentlyDeleteNote(note.metadata.id);
+    }
+  }
+
+  /// Restores all notes currently in Trash.
+  void restoreAllTrash() {
+    final trashNotes = state.notes.where((n) => n.metadata.isDeleted).toList();
+    for (final note in trashNotes) {
+      restoreNote(note.metadata.id);
     }
   }
 
@@ -336,6 +450,7 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
 
     // Active notes
     for (final note in state.notes) {
+      if (note.metadata.isDeleted) continue;
       headers.add(SyncNoteHeader(
         id: note.metadata.id,
         modifiedAt: note.metadata.modifiedAt.millisecondsSinceEpoch,

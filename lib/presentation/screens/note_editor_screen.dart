@@ -10,6 +10,8 @@ import '../widgets/infinite_rich_text_layer.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/notes_library_controller.dart';
 import '../controllers/inking_controller.dart';
+import '../controllers/settings_controller.dart';
+import '../widgets/top_island_toast.dart';
 import '../canvas/infinite_canvas_viewport.dart';
 import '../widgets/text_formatting_toolbar.dart';
 import '../widgets/floating_pen_dock.dart';
@@ -69,6 +71,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
   @override
   Widget build(BuildContext context) {
     final wordCount = ref.watch(documentProvider.select((d) => d.metadata.wordCount));
+    final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
     final inkingState = ref.watch(inkingProvider);
 
     // Auto-save: When document content updates, debounce save to disk within 2s
@@ -100,7 +103,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
             onPressed: _saveAndPop,
           ),
           title: Text(
-            wordCount > 0 ? '$wordCount words' : '',
+            (showWordCount && wordCount > 0) ? '$wordCount words' : '',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -112,7 +115,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
             // Quick direct delete button inside note header
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded, size: 22, color: AppColors.accentRose),
-              tooltip: 'Delete Note',
+              tooltip: 'Move to Trash',
               onPressed: () {
                 final currentDoc = ref.read(documentProvider);
                 _confirmDelete(context, currentDoc);
@@ -226,9 +229,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: AppColors.amoledBorder),
         ),
-        title: const Text('Delete this note?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('Move to Trash?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text(
-          'This note will be permanently deleted.',
+          'This note will be moved to the Trash bin. You can restore it anytime within 30 days before it is permanently deleted.',
           style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
         ),
         actions: [
@@ -236,15 +239,26 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
             onPressed: () => Navigator.of(dialogCtx).pop(),
             child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentRose,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () {
               _isDeleting = true;
               _autoSaveDebouncer?.cancel();
               ref.read(notesLibraryProvider.notifier).deleteNote(doc.metadata.id);
               Navigator.of(dialogCtx).pop(); // dismiss dialog
               Navigator.of(context).pop(); // exit editor
+              TopIslandToast.show(
+                context,
+                message: 'Note moved to Trash',
+                icon: Icons.delete_outline_rounded,
+                color: AppColors.accentRose,
+              );
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.accentRose, fontWeight: FontWeight.bold)),
+            child: const Text('Move to Trash', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
