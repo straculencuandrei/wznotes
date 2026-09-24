@@ -195,6 +195,20 @@ void main() {
       expect(txt.contains('• Honey crisp apples'), true);
     });
 
+    test('Plain text exporter handles handwritten note with strokes only', () {
+      final doc = NoteDocument(
+        metadata: NoteMetadata.initial(title: 'Handwritten Sketch'),
+        strokes: [
+          VectorStroke(id: 's1', toolType: PenType.ballpoint, color: Colors.black, baseWidth: 2, opacity: 1, points: []),
+        ],
+      );
+
+      final txt = TextExporter.exportToPlainText(doc);
+      expect(txt.contains('Handwritten Sketch'), true);
+      expect(txt.contains('Handwritten Inking Note'), true);
+      expect(txt.contains('1 vector inking stroke'), true);
+    });
+
     test('Vector PDF exporter creates non-empty valid PDF byte stream', () async {
       final doc = NoteDocument.initial(title: 'Meeting Minutes');
       doc.blocks.addAll([

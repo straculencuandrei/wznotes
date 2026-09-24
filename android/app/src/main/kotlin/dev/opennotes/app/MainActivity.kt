@@ -20,8 +20,9 @@ class MainActivity: FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "openFolder") {
                 val folderPath = call.argument<String>("folderPath")
+                val filePath = call.argument<String>("filePath")
                 if (folderPath != null) {
-                    val success = openFolderInFileManager(folderPath)
+                    val success = openFolderInFileManager(folderPath, filePath)
                     result.success(success)
                 } else {
                     result.error("INVALID_PATH", "Folder path cannot be null", null)
@@ -32,7 +33,7 @@ class MainActivity: FlutterFragmentActivity() {
         }
     }
 
-    private fun openFolderInFileManager(folderPath: String): Boolean {
+    private fun openFolderInFileManager(folderPath: String, filePath: String?): Boolean {
         val folder = File(folderPath)
         if (!folder.exists()) {
             folder.mkdirs()
@@ -49,73 +50,59 @@ class MainActivity: FlutterFragmentActivity() {
                 putExtra("current_path", folder.absolutePath)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
-            startActivity(samsungIntent)
-            Log.d(TAG, "Launched Samsung My Files")
-            return true
-        } catch (_: Exception) {}
-
-        // Strategy 2: Android DocumentsUI with specific document ID
-        try {
-            val docUri = DocumentsContract.buildDocumentUri(
-                "com.android.externalstorage.documents",
-                "primary:$relativePath"
-            )
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(docUri, DocumentsContract.Document.MIME_TYPE_DIR)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            if (samsungIntent.resolveActivity(packageManager) != null) {
+                startActivity(samsungIntent)
+                Log.d(TAG, "Launched Samsung My Files")
+                return true
             }
-            startActivity(intent)
-            Log.d(TAG, "Launched DocumentsUI specific directory")
-            return true
         } catch (_: Exception) {}
 
-        // Strategy 3: Android DocumentsUI Root
-        try {
-            val rootUri = DocumentsContract.buildRootUri("com.android.externalstorage.documents", "primary")
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(rootUri, DocumentsContract.Document.MIME_TYPE_DIR)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-            }
-            startActivity(intent)
-            Log.d(TAG, "Launched DocumentsUI root")
-            return true
-        } catch (_: Exception) {}
+        // Strategy 2: Android DocumentsUI packages (target ONLY genuine DocumentsUI system app)
+        val docUiPackages = listOf(
+            "com.google.android.documentsui",
+            "com.android.documentsui"
+        )
+        for (pkg in docUiPackages) {
+            try {
+                val docUri = DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:$relativePath"
+                )
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(docUri, DocumentsContract.Document.MIME_TYPE_DIR)
+                    setPackage(pkg)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                }
+                if (intent.resolveActivity(packageManager) != null) {
+                    startActivity(intent)
+                    Log.d(TAG, "Launched DocumentsUI with $pkg")
+                    return true
+                }
+            } catch (_: Exception) {}
+        }
 
-        // Strategy 4: DownloadManager ACTION_VIEW_DOWNLOADS (if inside Download)
+        // Strategy 3: DownloadManager ACTION_VIEW_DOWNLOADS (if inside Download)
         try {
             if (folder.absolutePath.contains("Download", ignoreCase = true)) {
                 val dlIntent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-                startActivity(dlIntent)
-                Log.d(TAG, "Launched Downloads")
-                return true
+                if (dlIntent.resolveActivity(packageManager) != null) {
+                    startActivity(dlIntent)
+                    Log.d(TAG, "Launched Downloads")
+                    return true
+                }
             }
         } catch (_: Exception) {}
 
-        // Strategy 5: FileProvider folder intent
-        try {
-            val contentUri = FileProvider.getUriForFile(
-                this,
-                "${applicationContext.packageName}.fileprovider",
-                folder
-            )
-            val folderIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(contentUri, "resource/folder")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-            }
-            startActivity(folderIntent)
-            Log.d(TAG, "Launched FileProvider resource/folder")
-            return true
-        } catch (_: Exception) {}
-
-        // Strategy 6: Launch installed File Manager directly (Google Files, Samsung My Files, DocumentsUI, Mi File Explorer)
+        // Strategy 4: Launch installed File Manager directly (Google Files, Samsung My Files, Mi File Explorer, etc.)
         val fileManagerPackages = listOf(
-            "com.google.android.apps.nbu.files",
             "com.sec.android.app.myfiles",
+            "com.google.android.apps.nbu.files",
             "com.google.android.documentsui",
             "com.android.documentsui",
-            "com.mi.android.globalFileexplorer"
+            "com.mi.android.globalFileexplorer",
+            "com.coloros.filemanager"
         )
         for (pkg in fileManagerPackages) {
             try {
@@ -123,25 +110,28 @@ class MainActivity: FlutterFragmentActivity() {
                 if (launchIntent != null) {
                     launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     startActivity(launchIntent)
-                    Log.d(TAG, "Launched $pkg")
+                    Log.d(TAG, "Launched file manager app $pkg")
                     return true
                 }
             } catch (_: Exception) {}
         }
 
-        // Strategy 7: Fallback chooser with ACTION_OPEN_DOCUMENT initialized to folder
-        try {
-            val treeUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:$relativePath")
-            val openDocIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "*/*"
-                putExtra(DocumentsContract.EXTRA_INITIAL_URI, treeUri)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(openDocIntent)
-            Log.d(TAG, "Launched ACTION_OPEN_DOCUMENT")
-            return true
-        } catch (_: Exception) {}
+        // Strategy 5: DocumentsUI with ACTION_OPEN_DOCUMENT_TREE scoped to DocumentsUI
+        for (pkg in docUiPackages) {
+            try {
+                val treeUri = Uri.parse("content://com.android.externalstorage.documents/document/primary:$relativePath")
+                val openDocIntent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                    setPackage(pkg)
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, treeUri)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                if (openDocIntent.resolveActivity(packageManager) != null) {
+                    startActivity(openDocIntent)
+                    Log.d(TAG, "Launched ACTION_OPEN_DOCUMENT_TREE with $pkg")
+                    return true
+                }
+            } catch (_: Exception) {}
+        }
 
         return false
     }

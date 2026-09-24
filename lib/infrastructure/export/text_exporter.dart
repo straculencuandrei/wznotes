@@ -14,6 +14,11 @@ class TextExporter {
     buffer.writeln('=' * title.length.clamp(1, 40));
     buffer.writeln();
 
+    if (doc.blocks.isEmpty && doc.strokes.isNotEmpty) {
+      buffer.writeln('[Handwritten Inking Note - ${doc.strokes.length} vector inking stroke(s)]');
+      return buffer.toString().trimRight();
+    }
+
     int numberedIndex = 1;
 
     for (final block in doc.blocks) {
@@ -39,7 +44,6 @@ class TextExporter {
         case TextBlockType.paragraph:
           numberedIndex = 1;
           buffer.writeln(text);
-          buffer.writeln();
           break;
         case TextBlockType.bulletList:
           numberedIndex = 1;
@@ -63,7 +67,6 @@ class TextExporter {
           buffer.writeln('--- CODE ${block.codeLanguage ?? ""} ---');
           buffer.writeln(text);
           buffer.writeln('--- END CODE ---');
-          buffer.writeln();
           break;
       }
     }

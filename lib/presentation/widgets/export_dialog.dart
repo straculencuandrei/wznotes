@@ -337,17 +337,34 @@ class NoteExportService {
           message: 'Saved: $fileName',
           icon: Icons.check_circle_outline_rounded,
           color: AppColors.accentEmerald,
-          duration: const Duration(seconds: 5),
-          trailing: TextButton(
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () {
-              openExportFolder(outDir.path, filePath: Platform.isWindows ? file.path : null);
-            },
-            child: const Text('View', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          duration: const Duration(seconds: 6),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () {
+                  openExportFile(file.path);
+                },
+                child: const Text('View', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              ),
+              const SizedBox(width: 4),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () {
+                  openExportFolder(outDir.path, filePath: file.path);
+                },
+                child: const Text('Folder', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
+            ],
           ),
         );
       }
@@ -407,16 +424,33 @@ class NoteExportService {
           icon: Icons.check_circle_outline_rounded,
           color: AppColors.accentEmerald,
           duration: const Duration(seconds: 6),
-          trailing: TextButton(
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () {
-              openExportFolder(outDir.path, filePath: Platform.isWindows ? file.path : null);
-            },
-            child: const Text('View', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () {
+                  openExportFile(file.path);
+                },
+                child: const Text('View', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              ),
+              const SizedBox(width: 4),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () {
+                  openExportFolder(outDir.path, filePath: file.path);
+                },
+                child: const Text('Folder', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
+            ],
           ),
         );
       }
@@ -433,33 +467,69 @@ class NoteExportService {
     }
   }
 
-  /// Opens the folder of the exported item across Android and Windows.
-  /// Guarantees that on Android, the directory/file manager is opened,
-  /// never prompting text viewer applications.
+  /// Opens the exported file (.txt, .pdf, .zip) directly using default system viewer.
+  static Future<void> openExportFile(String filePath) async {
+    try {
+      if (File(filePath).existsSync()) {
+        await OpenFilex.open(filePath);
+      }
+    } catch (_) {}
+  }
+
+  /// Opens the folder containing the exported file across Android, Windows, and macOS/Linux.
+  /// On Windows: Launches Explorer with the file selected via /select switch.
+  /// On Android: Uses targeted MethodChannel to open the file manager to the folder.
+  /// NEVER passes directory paths to OpenFilex (which causes EISDIR in text editors).
   static Future<void> openExportFolder(String folderPath, {String? filePath}) async {
     try {
       if (Platform.isAndroid) {
         const platform = MethodChannel('dev.opennotes.app/file_manager');
-        final success = await platform.invokeMethod<bool>('openFolder', {'folderPath': folderPath});
+        final success = await platform.invokeMethod<bool>('openFolder', {
+          'folderPath': folderPath,
+          'filePath': filePath,
+        });
         if (success == true) return;
-        // Fallback on Android: open directory directly
-        await OpenFilex.open(folderPath);
+
+        // If file manager couldn't be launched directly, open the file itself
+        if (filePath != null && File(filePath).existsSync()) {
+          await OpenFilex.open(filePath);
+        }
         return;
       } else if (Platform.isWindows) {
         if (filePath != null && File(filePath).existsSync()) {
-          await Process.run('explorer.exe', ['/select,${filePath.replaceAll('/', '\\')}']);
+          final winFilePath = filePath.replaceAll('/', '\\');
+          await Process.run('explorer.exe', ['/select,$winFilePath']);
           return;
         } else {
-          await Process.run('explorer.exe', [folderPath.replaceAll('/', '\\')]);
+          final winFolderPath = folderPath.replaceAll('/', '\\');
+          await Process.run('explorer.exe', [winFolderPath]);
+          return;
+        }
+      } else if (Platform.isMacOS) {
+        if (filePath != null && File(filePath).existsSync()) {
+          await Process.run('open', ['-R', filePath]);
+          return;
+        } else {
+          await Process.run('open', [folderPath]);
+          return;
+        }
+      } else if (Platform.isLinux) {
+        if (filePath != null && File(filePath).existsSync()) {
+          await Process.run('xdg-open', [folderPath]);
+          return;
+        } else {
+          await Process.run('xdg-open', [folderPath]);
           return;
         }
       }
     } catch (_) {}
 
-    // Fallback: ALWAYS open the folderPath, NEVER open filePath as text document!
-    try {
-      await OpenFilex.open(folderPath);
-    } catch (_) {}
+    // Fallback: If opening folder fails, open the file if available. NEVER open folder with OpenFilex!
+    if (filePath != null && File(filePath).existsSync()) {
+      try {
+        await OpenFilex.open(filePath);
+      } catch (_) {}
+    }
   }
 
   /// Pre-creates and verifies the dedicated WZNotes folder where exported notes & backups reside.
@@ -472,32 +542,53 @@ class NoteExportService {
     }
   }
 
+  static bool _testDirectoryWritable(Directory dir) {
+    try {
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+      final testFile = File(p.join(dir.path, '.test_write_${DateTime.now().millisecondsSinceEpoch}'));
+      testFile.writeAsStringSync('ok');
+      testFile.deleteSync();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Gets the dedicated WZNotes folder where exported notes & backups are stored.
-  /// On Android: /storage/emulated/0/Documents/WZNotes (accessible directly in Files app)
+  /// On Android: Tests public Documents/WZNotes, Download/WZNotes, and falls back to
+  /// external app storage if scoped storage restricts direct POSIX writes.
   /// On Windows: C:\Users\<user>\Documents\WZNotes
   static Future<Directory> getExportDirectory() async {
     Directory targetDir;
     if (Platform.isAndroid) {
-      // Primary standard public Documents directory
+      // 1. Primary standard public Documents directory
       final primaryDoc = Directory('/storage/emulated/0/Documents/WZNotes');
-      try {
-        if (!primaryDoc.existsSync()) {
-          primaryDoc.createSync(recursive: true);
-        }
+      if (_testDirectoryWritable(primaryDoc)) {
         return primaryDoc;
-      } catch (_) {
-        // Fallback to Download/WZNotes or external storage
-        final primaryDownload = Directory('/storage/emulated/0/Download/WZNotes');
-        try {
-          if (!primaryDownload.existsSync()) {
-            primaryDownload.createSync(recursive: true);
-          }
-          return primaryDownload;
-        } catch (_) {
-          final ext = await getExternalStorageDirectory();
-          targetDir = Directory(p.join(ext?.path ?? (await getApplicationDocumentsDirectory()).path, 'WZNotes'));
-        }
       }
+
+      // 2. Fallback to public Download directory
+      final primaryDownload = Directory('/storage/emulated/0/Download/WZNotes');
+      if (_testDirectoryWritable(primaryDownload)) {
+        return primaryDownload;
+      }
+
+      // 3. Fallback to app external storage (always accessible on Android)
+      try {
+        final ext = await getExternalStorageDirectory();
+        if (ext != null) {
+          final extTarget = Directory(p.join(ext.path, 'WZNotes'));
+          if (_testDirectoryWritable(extTarget)) {
+            return extTarget;
+          }
+        }
+      } catch (_) {}
+
+      // 4. Fallback to application documents
+      final appDocs = await getApplicationDocumentsDirectory();
+      targetDir = Directory(p.join(appDocs.path, 'WZNotes'));
     } else {
       try {
         final docDir = await getApplicationDocumentsDirectory();

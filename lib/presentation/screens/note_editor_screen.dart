@@ -129,10 +129,12 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                 side: const BorderSide(color: AppColors.amoledBorder),
               ),
               onSelected: (action) {
+                InfiniteRichTextLayer.flushActive();
                 final currentDoc = ref.read(documentProvider);
                 if (action == 'delete') {
                   _confirmDelete(context, currentDoc);
                 } else {
+                  ref.read(notesLibraryProvider.notifier).saveNote(currentDoc);
                   _handleExport(context, action, currentDoc);
                 }
               },
