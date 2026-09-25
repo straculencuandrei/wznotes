@@ -182,6 +182,13 @@ void main() {
       expect(service.metrics.wordCount, equals(800));
       expect(service.metrics.charCount, equals(5000));
     });
+
+    test('PerformanceBenchmarkService has registered keyboard dock probes', () {
+      final service = PerformanceBenchmarkService.instance;
+      expect(service.probes.containsKey('keyboard_dock_build'), isTrue);
+      expect(service.probes.containsKey('keyboard_dock_layout'), isTrue);
+      expect(service.probes.containsKey('keyboard_dock_paint'), isTrue);
+    });
   });
 }
 

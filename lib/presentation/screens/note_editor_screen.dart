@@ -99,20 +99,23 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
           color: activeTheme.background,
           gradient: activeTheme.backgroundGradient,
         ),
-        child: Scaffold(
-          resizeToAvoidBottomInset: false,
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
+        child: MediaQuery.removeViewInsets(
+          removeBottom: true,
+          context: context,
+          child: Scaffold(
+            resizeToAvoidBottomInset: false,
             backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back_ios_new, size: 22, color: activeTheme.textPrimary),
-              tooltip: 'Back to Notes',
-              onPressed: _saveAndPop,
-            ),
-            title: Consumer(
-              builder: (context, ref, _) {
-                final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new, size: 22, color: activeTheme.textPrimary),
+                tooltip: 'Back to Notes',
+                onPressed: _saveAndPop,
+              ),
+              title: Consumer(
+                builder: (context, ref, _) {
+                  final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
                 if (!showWordCount) return const SizedBox.shrink();
                 final wordCount = ref.watch(documentProvider.select((d) => d.metadata.wordCount));
                 return Text(
@@ -254,7 +257,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
               ),
             ],
           ),
-
+        ),
         ),
       ),
     );
@@ -354,21 +357,74 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
 }
 
 /// Isolates keyboard inset updates so only the floating island shifts in exact hardware lockstep
-/// with Android's WindowInsets, preventing laggy double-interpolation and fighting with the OS keyboard.
-class _KeyboardDockIsland extends StatelessWidget {
+/// with Android's WindowInsets via GPU matrix translation, completely eliminating CPU layout thrashing
+/// and preventing fighting with the OS keyboard.
+class _KeyboardDockIsland extends StatefulWidget {
   final Widget child;
   const _KeyboardDockIsland({required this.child});
 
   @override
+  State<_KeyboardDockIsland> createState() => _KeyboardDockIslandState();
+}
+
+class _KeyboardDockIslandState extends State<_KeyboardDockIsland> with WidgetsBindingObserver {
+  double _bottomInset = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateInset();
+  }
+
+  @override
+  void didChangeMetrics() {
+    _updateInset();
+  }
+
+  void _updateInset() {
+    if (!mounted) return;
+    try {
+      final view = View.of(context);
+      final physicalInset = view.viewInsets.bottom;
+      final dpr = view.devicePixelRatio > 0 ? view.devicePixelRatio : 1.0;
+      final logicalInset = physicalInset / dpr;
+      if ((logicalInset - _bottomInset).abs() > 0.5) {
+        setState(() {
+          _bottomInset = logicalInset;
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PerformanceBenchmarkService.measure('keyboard_dock_build', () {
-      final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-      return RepaintBoundary(
-        child: PerformanceProbeWidget(
-          tag: 'keyboard_dock',
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomInset),
+      return TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0.0, end: _bottomInset),
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        builder: (context, animatedInset, child) {
+          return Transform.translate(
+            offset: Offset(0, -animatedInset),
             child: child,
+          );
+        },
+        child: RepaintBoundary(
+          child: PerformanceProbeWidget(
+            tag: 'keyboard_dock',
+            child: widget.child,
           ),
         ),
       );
