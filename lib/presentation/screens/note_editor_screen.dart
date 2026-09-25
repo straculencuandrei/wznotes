@@ -411,16 +411,8 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland> with WidgetsBi
   @override
   Widget build(BuildContext context) {
     return PerformanceBenchmarkService.measure('keyboard_dock_build', () {
-      return TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0.0, end: _bottomInset),
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        builder: (context, animatedInset, child) {
-          return Transform.translate(
-            offset: Offset(0, -animatedInset),
-            child: child,
-          );
-        },
+      return Transform.translate(
+        offset: Offset(0, -_bottomInset),
         child: RepaintBoundary(
           child: PerformanceProbeWidget(
             tag: 'keyboard_dock',
