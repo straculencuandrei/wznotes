@@ -169,7 +169,6 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Tick
         if (mounted) _syncCaretFromEngine();
       });
     }
-    setState(() {});
   }
 
   RenderEditable? _cachedRenderEditable;
@@ -284,8 +283,6 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Tick
       final defaultCaretHeight = fontSize * heightMultiplier;
       final strut = StrutStyle.fromTextStyle(widget.style, forceStrutHeight: true);
 
-      final isCollapsed = widget.controller.selection.isCollapsed || widget.controller.selection.baseOffset < 0;
-      final showSmoothCaret = widget.focusNode.hasFocus && isCollapsed;
       final effectiveCaretColor = widget.caretColor ?? Theme.of(context).colorScheme.primary;
 
       return Stack(
@@ -322,8 +319,17 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Tick
             left: 0,
             child: RepaintBoundary(
               child: AnimatedBuilder(
-                animation: Listenable.merge([_xAnimation, _blinkAnimation, _caretYNotifier, _caretHeightNotifier]),
+                animation: Listenable.merge([
+                  _xAnimation,
+                  _blinkAnimation,
+                  _caretYNotifier,
+                  _caretHeightNotifier,
+                  widget.focusNode,
+                  widget.controller,
+                ]),
                 builder: (context, _) {
+                  final isCollapsed = widget.controller.selection.isCollapsed || widget.controller.selection.baseOffset < 0;
+                  final showSmoothCaret = widget.focusNode.hasFocus && isCollapsed;
                   if (!showSmoothCaret) return const SizedBox.shrink();
                   return Transform.translate(
                     offset: Offset(_xAnimation.value, _caretYNotifier.value),
