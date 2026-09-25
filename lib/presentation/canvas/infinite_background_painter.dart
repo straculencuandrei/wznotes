@@ -43,7 +43,7 @@ class InfiniteBackgroundPainter extends CustomPainter {
         final marginPaint = Paint()
           ..color = effectiveLineColor.withValues(alpha: 0.6)
           ..strokeWidth = 1.5;
-        canvas.drawLine(Offset(56.0, 0), Offset(56.0, height), marginPaint);
+        canvas.drawLine(const Offset(56.0, 0), Offset(56.0, height), marginPaint);
         break;
 
       case CanvasTemplateType.grid:

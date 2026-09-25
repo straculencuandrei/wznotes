@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/theme/app_themes.dart';
 import '../../domain/models/text_block.dart';
 import '../controllers/document_controller.dart';
 import '../controllers/settings_controller.dart';
@@ -208,6 +209,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final activeTheme = ref.watch(appThemeProvider);
 
     const titleStyle = TextStyle(
       fontSize: 28,
@@ -229,7 +231,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
 
     return Container(
       width: widget.width,
-      color: AppColors.amoledBlack,
+      color: activeTheme.background,
       padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 16.0, bottom: 250.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,6 +250,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
               height: 1.25,
             ),
             textCapitalization: TextCapitalization.sentences,
+            caretColor: activeTheme.accent,
             onChanged: (val) => _onBodyChanged(_bodyController.text),
           ),
 
@@ -263,6 +266,7 @@ class _InfiniteRichTextLayerState extends ConsumerState<InfiniteRichTextLayer> {
               color: const Color(0xFF5A5A5A),
               fontSize: settings.fontSize,
             ),
+            caretColor: activeTheme.accent,
             onChanged: _onBodyChanged,
           ),
         ],

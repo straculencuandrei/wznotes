@@ -172,13 +172,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'svg',
                   child: Row(
                     children: [
-                      Icon(Icons.draw_outlined, color: AppColors.samsungOrange, size: 18),
-                      SizedBox(width: 8),
-                      Text('Export to SVG Vector', style: TextStyle(color: Colors.white, fontSize: 14)),
+                      Icon(Icons.draw_outlined, color: Theme.of(context).colorScheme.primary, size: 18),
+                      const SizedBox(width: 8),
+                      const Text('Export to SVG Vector', style: TextStyle(color: Colors.white, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -302,7 +302,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close', style: TextStyle(color: AppColors.samsungOrange, fontWeight: FontWeight.bold)),
+            child: Text('Close', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

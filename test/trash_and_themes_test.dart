@@ -94,10 +94,23 @@ void main() {
   });
 
   group('Curated AMOLED Themes Suite', () {
-    test('AppThemes contains 6 curated dark AMOLED-friendly palettes', () {
-      expect(AppThemes.allThemes.length, 6);
+    test('AppThemes contains 12 curated dark AMOLED-friendly palettes', () {
+      expect(AppThemes.allThemes.length, 12);
       final ids = AppThemes.allThemes.map((t) => t.id).toSet();
-      expect(ids, containsAll(['amoled', 'cyber', 'nord', 'forest', 'sepia', 'twilight']));
+      expect(ids, containsAll([
+        'amoled',
+        'cyber',
+        'nord',
+        'forest',
+        'sepia',
+        'twilight',
+        'crimson',
+        'pacific',
+        'solar',
+        'gold',
+        'dracula',
+        'carbon',
+      ]));
     });
 
     test('All themes have valid contrast backgrounds and accents', () {
@@ -118,6 +131,12 @@ void main() {
       expect(AppThemes.getTheme('forest').name, 'Forest Matrix');
       expect(AppThemes.getTheme('sepia').name, 'Warm Sepia');
       expect(AppThemes.getTheme('twilight').name, 'Royal Twilight');
+      expect(AppThemes.getTheme('crimson').name, 'Crimson Velvet');
+      expect(AppThemes.getTheme('pacific').name, 'Deep Pacific');
+      expect(AppThemes.getTheme('solar').name, 'Solar Flare');
+      expect(AppThemes.getTheme('gold').name, 'Golden Amber');
+      expect(AppThemes.getTheme('dracula').name, 'Dracula Noir');
+      expect(AppThemes.getTheme('carbon').name, 'Carbon Silver');
       expect(AppThemes.getTheme('unknown_id').id, 'amoled');
     });
 

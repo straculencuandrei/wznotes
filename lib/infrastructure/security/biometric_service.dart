@@ -213,6 +213,8 @@ class _PinEntryDialogState extends State<_PinEntryDialog> with SingleTickerProvi
   Widget build(BuildContext context) {
     final showBiometric = Platform.isAndroid || Platform.isIOS;
 
+    final accentColor = Theme.of(context).colorScheme.primary;
+
     return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
@@ -228,10 +230,10 @@ class _PinEntryDialogState extends State<_PinEntryDialog> with SingleTickerProvi
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.samsungOrange.withValues(alpha: 0.15),
+                color: accentColor.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.lock_rounded, color: AppColors.samsungOrange, size: 28),
+              child: Icon(Icons.lock_rounded, color: accentColor, size: 28),
             ),
             const SizedBox(height: 12),
             Text(
@@ -275,11 +277,11 @@ class _PinEntryDialogState extends State<_PinEntryDialog> with SingleTickerProvi
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isFilled
-                              ? (_hasError ? AppColors.accentRose : AppColors.samsungOrange)
+                              ? (_hasError ? AppColors.accentRose : accentColor)
                               : Colors.transparent,
                           border: Border.all(
                             color: isFilled
-                                ? (_hasError ? AppColors.accentRose : AppColors.samsungOrange)
+                                ? (_hasError ? AppColors.accentRose : accentColor)
                                 : (_hasError ? AppColors.accentRose.withValues(alpha: 0.5) : Colors.white38),
                             width: 2.2,
                           ),
@@ -316,7 +318,7 @@ class _PinEntryDialogState extends State<_PinEntryDialog> with SingleTickerProvi
                     children: [
                       if (showBiometric)
                         IconButton(
-                          icon: const Icon(Icons.fingerprint_rounded, color: AppColors.samsungOrange, size: 30),
+                          icon: Icon(Icons.fingerprint_rounded, color: accentColor, size: 30),
                           tooltip: 'Biometric Unlock',
                           onPressed: () async {
                             final auth = await BiometricSecurityService.authenticate();
@@ -512,6 +514,8 @@ class _SetPinDialogState extends State<_SetPinDialog> with SingleTickerProviderS
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = Theme.of(context).colorScheme.primary;
+
     return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
@@ -527,10 +531,10 @@ class _SetPinDialogState extends State<_SetPinDialog> with SingleTickerProviderS
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.samsungOrange.withValues(alpha: 0.15),
+                color: accentColor.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.pin_rounded, color: AppColors.samsungOrange, size: 28),
+              child: Icon(Icons.pin_rounded, color: accentColor, size: 28),
             ),
             const SizedBox(height: 12),
             Text(
@@ -540,7 +544,7 @@ class _SetPinDialogState extends State<_SetPinDialog> with SingleTickerProviderS
             const SizedBox(height: 4),
             Text(
               _step == 1 ? 'Step 1 of 2: Enter new 4-digit PIN' : 'Step 2 of 2: Confirm new 4-digit PIN',
-              style: const TextStyle(color: AppColors.samsungOrange, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(color: accentColor, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -571,11 +575,11 @@ class _SetPinDialogState extends State<_SetPinDialog> with SingleTickerProviderS
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isFilled
-                              ? (_hasError ? AppColors.accentRose : AppColors.samsungOrange)
+                              ? (_hasError ? AppColors.accentRose : accentColor)
                               : Colors.transparent,
                           border: Border.all(
                             color: isFilled
-                                ? (_hasError ? AppColors.accentRose : AppColors.samsungOrange)
+                                ? (_hasError ? AppColors.accentRose : accentColor)
                                 : (_hasError ? AppColors.accentRose.withValues(alpha: 0.5) : Colors.white38),
                             width: 2.2,
                           ),

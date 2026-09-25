@@ -232,6 +232,7 @@ class NotesLibraryScreen extends ConsumerWidget {
       barrierColor: Colors.black54,
       isScrollControlled: true,
       builder: (context) {
+        final activeTheme = ref.read(appThemeProvider);
         final isFav = note.metadata.folderId == 'favorites';
         final isLocked = note.metadata.isLocked;
         final title = note.metadata.title.isNotEmpty ? note.metadata.title : 'Untitled Note';
@@ -239,9 +240,9 @@ class NotesLibraryScreen extends ConsumerWidget {
         return Container(
           margin: const EdgeInsets.only(left: 14, right: 14, bottom: 20),
           decoration: BoxDecoration(
-            color: const Color(0xFF161616),
+            color: activeTheme.surface,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFF282828), width: 1.2),
+            border: Border.all(color: activeTheme.border, width: 1.2),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.45),
@@ -352,8 +353,8 @@ class NotesLibraryScreen extends ConsumerWidget {
                   // 2. Lock / Unlock
                   _buildCompactActionRow(
                     icon: isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
-                    iconColor: AppColors.samsungOrange,
-                    iconBg: AppColors.samsungOrange.withValues(alpha: 0.15),
+                    iconColor: activeTheme.accent,
+                    iconBg: activeTheme.accent.withValues(alpha: 0.15),
                     title: isLocked ? 'Unlock note' : 'Lock note with Fingerprint / PIN',
                     subtitle: isLocked ? 'Remove security protection' : 'Protects note with fingerprint & PIN',
                     onTap: () async {
@@ -639,7 +640,7 @@ body: Stack(
                                         ),
                                         TextButton.icon(
                                           style: TextButton.styleFrom(
-                                            foregroundColor: AppColors.samsungOrange,
+                                            foregroundColor: activeTheme.accent,
                                           ),
                                           icon: Icon(isAllSelected ? Icons.deselect_rounded : Icons.select_all_rounded, size: 20),
                                           label: Text(
@@ -767,11 +768,11 @@ body: Stack(
                                         end: Alignment.bottomRight,
                                       ),
                                       borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.7)),
+                                      border: Border.all(color: activeTheme.accent.withValues(alpha: 0.7)),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.rocket_launch_rounded, color: AppColors.samsungOrange, size: 24),
+                                        Icon(Icons.rocket_launch_rounded, color: activeTheme.accent, size: 24),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Column(
@@ -795,7 +796,7 @@ body: Stack(
                                         ),
                                         ElevatedButton(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.samsungOrange,
+                                            backgroundColor: activeTheme.accent,
                                             foregroundColor: Colors.black,
                                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1328,6 +1329,7 @@ body: Stack(
     return HoldToSelectBorderCard(
       isSelected: isSelected,
       isSelectionMode: libraryState.isSelectionMode,
+      glowColor: activeTheme.accent,
       onTap: () {
         if (libraryState.isSelectionMode) {
           ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);
@@ -1451,6 +1453,7 @@ body: Stack(
     return HoldToSelectBorderCard(
       isSelected: isSelected,
       isSelectionMode: libraryState.isSelectionMode,
+      glowColor: activeTheme.accent,
       onTap: () {
         if (libraryState.isSelectionMode) {
           ref.read(notesLibraryProvider.notifier).toggleNoteSelection(note.metadata.id);

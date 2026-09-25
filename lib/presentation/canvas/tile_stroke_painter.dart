@@ -28,7 +28,7 @@ class TileStrokePainter extends CustomPainter {
       }
 
       final paint = Paint()
-        ..color = stroke.color.withOpacity(effectiveOpacity)
+        ..color = stroke.color.withValues(alpha: effectiveOpacity)
         ..blendMode = stroke.blendMode
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
@@ -59,7 +59,7 @@ class TileStrokePainter extends CustomPainter {
         );
         final Path ribbon = BezierSplineCalculator.buildRibbonPath(segments, samplesPerSegment: 6);
         final fillPaint = Paint()
-          ..color = stroke.color.withOpacity(stroke.opacity)
+          ..color = stroke.color.withValues(alpha: stroke.opacity)
           ..blendMode = BlendMode.multiply
           ..style = PaintingStyle.fill;
         canvas.drawPath(ribbon, fillPaint);

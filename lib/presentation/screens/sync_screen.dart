@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/theme/app_themes.dart';
 import '../../infrastructure/sync/deep_link_service.dart';
 import '../../infrastructure/sync/sync_discovery_service.dart';
 import '../controllers/sync_controller.dart';
@@ -170,11 +171,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     final syncState = ref.watch(syncProvider);
     final syncNotifier = ref.read(syncProvider.notifier);
+    final activeTheme = ref.watch(appThemeProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.amoledBlack,
+      backgroundColor: activeTheme.background,
       appBar: AppBar(
-        backgroundColor: AppColors.amoledBlack,
+        backgroundColor: activeTheme.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.white),
@@ -191,10 +193,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         ),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppColors.samsungOrange,
+          indicatorColor: activeTheme.accent,
           indicatorWeight: 3,
-          labelColor: AppColors.samsungOrange,
-          unselectedLabelColor: AppColors.amoledTextSecondary,
+          labelColor: activeTheme.accent,
+          unselectedLabelColor: activeTheme.textSecondary,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
           tabs: const [
             Tab(icon: Icon(Icons.flash_on_rounded), text: '1-Tap Nearby & Vault'),
@@ -205,30 +207,30 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildQuickSyncTab(syncState, syncNotifier),
-          _buildManualSyncTab(syncState, syncNotifier),
+          _buildQuickSyncTab(syncState, syncNotifier, activeTheme),
+          _buildManualSyncTab(syncState, syncNotifier, activeTheme),
         ],
       ),
     );
   }
 
   // --- TAB 1: 1-TAP NEARBY & VAULT SYNC ---
-  Widget _buildQuickSyncTab(SyncState state, SyncNotifier notifier) {
+  Widget _buildQuickSyncTab(SyncState state, SyncNotifier notifier, AppThemePalette activeTheme) {
     final isBusy = state.status == SyncStatus.syncing || state.status == SyncStatus.connecting;
 
     return ListView(
       padding: const EdgeInsets.all(20.0),
       children: [
         // 0. High-Speed USB Cable Sync Card
-        _buildUsbQuickSyncCard(state, notifier, isBusy),
+        _buildUsbQuickSyncCard(state, notifier, isBusy, activeTheme),
 
         // 1. Nearby Devices Section
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.amoledSurface,
+            color: activeTheme.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.amoledBorder),
+            border: Border.all(color: activeTheme.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,23 +240,23 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.samsungOrange.withValues(alpha: 0.15),
+                      color: activeTheme.accent.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.radar_rounded, color: AppColors.samsungOrange, size: 22),
+                    child: Icon(Icons.radar_rounded, color: activeTheme.accent, size: 22),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Nearby Devices on Wi-Fi',
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                         Text(
                           'Zero-config auto-discovery. No IP or PIN typing required.',
-                          style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 11.5),
+                          style: TextStyle(color: activeTheme.textSecondary, fontSize: 11.5),
                         ),
                       ],
                     ),
@@ -269,33 +271,33 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161616),
+                    color: activeTheme.surfaceElevated,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF262626)),
+                    border: Border.all(color: activeTheme.border),
                   ),
-                  child: const Column(
+                  child: Column(
                     children: [
                       SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.samsungOrange),
+                        child: CircularProgressIndicator(strokeWidth: 2.2, color: activeTheme.accent),
                       ),
-                      SizedBox(height: 14),
-                      Text(
+                      const SizedBox(height: 14),
+                      const Text(
                         'Scanning Wi-Fi for nearby devices...',
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.5),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
                         'Open WZNotes on your phone or PC on the same Wi-Fi.\nDevices will appear here automatically.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12, height: 1.4),
+                        style: TextStyle(color: activeTheme.textSecondary, fontSize: 12, height: 1.4),
                       ),
                     ],
                   ),
                 ),
               ] else ...[
-                ...state.discoveredPeers.map((peer) => _buildDiscoveredPeerCard(peer, notifier, isBusy)),
+                ...state.discoveredPeers.map((peer) => _buildDiscoveredPeerCard(peer, notifier, isBusy, activeTheme)),
               ],
 
               if (Platform.isAndroid || Platform.isIOS) ...[
@@ -304,12 +306,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.samsungOrange,
-                      side: BorderSide(color: AppColors.samsungOrange.withValues(alpha: 0.6), width: 1.2),
+                      foregroundColor: activeTheme.accent,
+                      side: BorderSide(color: activeTheme.accent.withValues(alpha: 0.6), width: 1.2),
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: AppColors.samsungOrange),
+                    icon: Icon(Icons.qr_code_scanner_rounded, size: 20, color: activeTheme.accent),
                     label: const Text(
                       'Scan PC Screen QR Code',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
@@ -322,15 +324,15 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               Center(
                 child: TextButton.icon(
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.amoledTextSecondary,
+                    foregroundColor: activeTheme.textSecondary,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   ),
-                  icon: const Icon(Icons.lan_outlined, size: 16, color: AppColors.samsungOrange),
+                  icon: Icon(Icons.lan_outlined, size: 16, color: activeTheme.accent),
                   label: const Text(
                     'PC on Ethernet LAN cable? Tap to pair directly',
                     style: TextStyle(fontSize: 12),
                   ),
-                  onPressed: () => _showFindLanDeviceDialog(context, notifier),
+                  onPressed: () => _showFindLanDeviceDialog(context, notifier, activeTheme),
                 ),
               ),
             ],
@@ -343,9 +345,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.amoledSurface,
+            color: activeTheme.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.amoledBorder),
+            border: Border.all(color: activeTheme.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,23 +357,23 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryBlue.withValues(alpha: 0.15),
+                      color: activeTheme.accentSecondary.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.cloud_sync_rounded, color: AppColors.primaryBlue, size: 22),
+                    child: Icon(Icons.cloud_sync_rounded, color: activeTheme.accentSecondary, size: 22),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Cloud & File Vault Backup',
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                         Text(
                           'Sync via Google Drive, OneDrive, USB, or Quick Share in 1 file.',
-                          style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 11.5),
+                          style: TextStyle(color: activeTheme.textSecondary, fontSize: 11.5),
                         ),
                       ],
                     ),
@@ -387,13 +389,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF222222),
+                        backgroundColor: activeTheme.surfaceElevated,
                         foregroundColor: Colors.white,
-                        side: const BorderSide(color: Color(0xFF383838)),
+                        side: BorderSide(color: activeTheme.border),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      icon: const Icon(Icons.upload_file_rounded, size: 18, color: AppColors.samsungOrange),
+                      icon: Icon(Icons.upload_file_rounded, size: 18, color: activeTheme.accent),
                       label: const Text('Export Vault', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       onPressed: () async {
                         final res = await notifier.exportVault();
@@ -416,7 +418,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white70,
-                        side: const BorderSide(color: AppColors.amoledBorder),
+                        side: BorderSide(color: activeTheme.border),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
@@ -453,13 +455,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     margin: const EdgeInsets.only(bottom: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF181818),
+                      color: activeTheme.surfaceElevated,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF282828)),
+                      border: Border.all(color: activeTheme.border),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.inventory_2_outlined, color: AppColors.samsungOrange, size: 18),
+                        Icon(Icons.inventory_2_outlined, color: activeTheme.accent, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -480,7 +482,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                               );
                             }
                           },
-                          child: const Text('Merge', style: TextStyle(color: AppColors.samsungOrange, fontWeight: FontWeight.bold, fontSize: 12)),
+                          child: Text('Merge', style: TextStyle(color: activeTheme.accent, fontWeight: FontWeight.bold, fontSize: 12)),
                         ),
                       ],
                     ),
@@ -495,50 +497,50 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
 
         // 3. Progress Card
         if (state.progressMessage.isNotEmpty || state.errorMessage != null)
-          _buildProgressCard(state, notifier, isBusy),
+          _buildProgressCard(state, notifier, isBusy, activeTheme),
       ],
     );
   }
 
-  Widget _buildUsbQuickSyncCard(SyncState state, SyncNotifier notifier, bool isBusy) {
+  Widget _buildUsbQuickSyncCard(SyncState state, SyncNotifier notifier, bool isBusy, AppThemePalette activeTheme) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.samsungOrange.withValues(alpha: 0.16),
-            const Color(0xFF1A1A1A),
+            activeTheme.accent.withValues(alpha: 0.16),
+            activeTheme.surface,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.4), width: 1.2),
+        border: Border.all(color: activeTheme.accent.withValues(alpha: 0.4), width: 1.2),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.samsungOrange.withValues(alpha: 0.2),
+              color: activeTheme.accent.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.usb_rounded, color: AppColors.samsungOrange, size: 24),
+            child: Icon(Icons.usb_rounded, color: activeTheme.accent, size: 24),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   '1-Tap USB Cable Sync',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.5),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
                   'Bypasses Wi-Fi router isolation. Plug phone to PC via USB.',
-                  style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 11.5),
+                  style: TextStyle(color: activeTheme.textSecondary, fontSize: 11.5),
                 ),
               ],
             ),
@@ -546,7 +548,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           const SizedBox(width: 10),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.samsungOrange,
+              backgroundColor: activeTheme.accent,
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -570,18 +572,19 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildDiscoveredPeerCard(DiscoveredPeer peer, SyncNotifier notifier, bool isBusy) {
+  Widget _buildDiscoveredPeerCard(DiscoveredPeer peer, SyncNotifier notifier, bool isBusy, AppThemePalette activeTheme) {
     final isUsb = peer.ip == '127.0.0.1' || peer.deviceName.contains('USB');
     final isMobile = !isUsb && (peer.deviceName.toLowerCase().contains('phone') || peer.deviceName.toLowerCase().contains('android'));
+    final peerColor = isUsb ? AppColors.accentEmerald : activeTheme.accent;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B1B1B),
+        color: activeTheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isUsb ? AppColors.accentEmerald.withValues(alpha: 0.6) : AppColors.samsungOrange.withValues(alpha: 0.5),
+          color: peerColor.withValues(alpha: isUsb ? 0.6 : 0.5),
           width: 1.2,
         ),
       ),
@@ -590,14 +593,14 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isUsb ? AppColors.accentEmerald.withValues(alpha: 0.15) : AppColors.samsungOrange.withValues(alpha: 0.15),
+              color: peerColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               isUsb
                   ? Icons.usb_rounded
                   : (isMobile ? Icons.phone_android_rounded : Icons.laptop_windows_rounded),
-              color: isUsb ? AppColors.accentEmerald : AppColors.samsungOrange,
+              color: peerColor,
               size: 26,
             ),
           ),
@@ -631,14 +634,14 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 const SizedBox(height: 3),
                 Text(
                   isUsb ? 'USB Cable Loopback • ${peer.noteCount} notes' : '${peer.ip} • ${peer.noteCount} notes',
-                  style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12),
+                  style: TextStyle(color: activeTheme.textSecondary, fontSize: 12),
                 ),
               ],
             ),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isUsb ? AppColors.accentEmerald : AppColors.samsungOrange,
+              backgroundColor: peerColor,
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -663,7 +666,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
   }
 
   // --- TAB 2: MANUAL WI-FI SYNC ---
-  Widget _buildManualSyncTab(SyncState state, SyncNotifier notifier) {
+  Widget _buildManualSyncTab(SyncState state, SyncNotifier notifier, AppThemePalette activeTheme) {
     final isBusy = state.status == SyncStatus.syncing || state.status == SyncStatus.connecting;
 
     return ListView(
@@ -673,27 +676,27 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.amoledSurface,
+            color: activeTheme.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.amoledBorder),
+            border: Border.all(color: activeTheme.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.wifi_tethering, color: AppColors.samsungOrange, size: 24),
-                  SizedBox(width: 10),
-                  Text(
+                  Icon(Icons.wifi_tethering, color: activeTheme.accent, size: 24),
+                  const SizedBox(width: 10),
+                  const Text(
                     'Direct Host Server Details',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
-              _buildInfoRow('Local IP Address', state.localIp ?? 'Detecting...'),
-              _buildInfoRow('Server Port', '${state.port}'),
-              _buildInfoRow('Pairing PIN', state.pin, isHighlight: true),
+              _buildInfoRow('Local IP Address', state.localIp ?? 'Detecting...', activeTheme),
+              _buildInfoRow('Server Port', '${state.port}', activeTheme),
+              _buildInfoRow('Pairing PIN', state.pin, activeTheme, isHighlight: true),
               const SizedBox(height: 14),
               if (state.localIp != null) ...[
                 Center(
@@ -711,10 +714,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Center(
+                Center(
                   child: Text(
                     'Scan with phone camera or WZNotes scanner to pair instantly',
-                    style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 11.5),
+                    style: TextStyle(color: activeTheme.textSecondary, fontSize: 11.5),
                   ),
                 ),
               ],
@@ -728,9 +731,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.amoledSurface,
+            color: activeTheme.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.amoledBorder),
+            border: Border.all(color: activeTheme.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -745,7 +748,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   if (Platform.isAndroid || Platform.isIOS)
                     TextButton.icon(
                       style: TextButton.styleFrom(
-                        foregroundColor: AppColors.samsungOrange,
+                        foregroundColor: activeTheme.accent,
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       ),
                       icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
@@ -760,16 +763,16 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF222222),
-                      foregroundColor: AppColors.samsungOrange,
+                      backgroundColor: activeTheme.surfaceElevated,
+                      foregroundColor: activeTheme.accent,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: AppColors.samsungOrange.withValues(alpha: 0.6), width: 1.2),
+                        side: BorderSide(color: activeTheme.accent.withValues(alpha: 0.6), width: 1.2),
                       ),
                       elevation: 0,
                     ),
-                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: AppColors.samsungOrange),
+                    icon: Icon(Icons.qr_code_scanner_rounded, size: 20, color: activeTheme.accent),
                     label: const Text(
                       'Scan PC Screen QR Code',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white),
@@ -784,11 +787,11 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Peer IP Address',
-                  labelStyle: const TextStyle(color: AppColors.amoledTextSecondary),
+                  labelStyle: TextStyle(color: activeTheme.textSecondary),
                   hintText: 'e.g. 192.168.1.100',
                   hintStyle: const TextStyle(color: Colors.white24),
                   filled: true,
-                  fillColor: const Color(0xFF1A1A1A),
+                  fillColor: activeTheme.surfaceElevated,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -801,9 +804,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'Port',
-                        labelStyle: const TextStyle(color: AppColors.amoledTextSecondary),
+                        labelStyle: TextStyle(color: activeTheme.textSecondary),
                         filled: true,
-                        fillColor: const Color(0xFF1A1A1A),
+                        fillColor: activeTheme.surfaceElevated,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
@@ -815,9 +818,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'PIN Code',
-                        labelStyle: const TextStyle(color: AppColors.amoledTextSecondary),
+                        labelStyle: TextStyle(color: activeTheme.textSecondary),
                         filled: true,
-                        fillColor: const Color(0xFF1A1A1A),
+                        fillColor: activeTheme.surfaceElevated,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
@@ -829,7 +832,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.samsungOrange,
+                    backgroundColor: activeTheme.accent,
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -853,21 +856,21 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
 
         const SizedBox(height: 20),
         if (state.progressMessage.isNotEmpty || state.errorMessage != null)
-          _buildProgressCard(state, notifier, isBusy),
+          _buildProgressCard(state, notifier, isBusy, activeTheme),
       ],
     );
   }
 
-  Widget _buildProgressCard(SyncState state, SyncNotifier notifier, bool isBusy) {
+  Widget _buildProgressCard(SyncState state, SyncNotifier notifier, bool isBusy, AppThemePalette activeTheme) {
     final isError = state.status == SyncStatus.error;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.amoledSurfaceElevated,
+        color: activeTheme.surfaceElevated,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isError ? Colors.redAccent.withValues(alpha: 0.8) : AppColors.amoledBorder,
+          color: isError ? Colors.redAccent.withValues(alpha: 0.8) : activeTheme.border,
           width: isError ? 1.4 : 1.0,
         ),
       ),
@@ -878,12 +881,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (isBusy)
-                const Padding(
-                  padding: EdgeInsets.only(top: 2),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
                   child: SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.samsungOrange),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: activeTheme.accent),
                   ),
                 )
               else if (state.status == SyncStatus.success)
@@ -908,8 +911,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             const SizedBox(height: 12),
             LinearProgressIndicator(
               value: state.progressPercent > 0 ? state.progressPercent : null,
-              backgroundColor: AppColors.amoledBorder,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.samsungOrange),
+              backgroundColor: activeTheme.border,
+              valueColor: AlwaysStoppedAnimation<Color>(activeTheme.accent),
               borderRadius: BorderRadius.circular(4),
             ),
           ],
@@ -921,7 +924,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               children: [
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.samsungOrange,
+                    backgroundColor: activeTheme.accent,
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -933,11 +936,11 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: const BorderSide(color: AppColors.amoledBorder),
+                    side: BorderSide(color: activeTheme.border),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  icon: const Icon(Icons.upload_file_rounded, size: 16, color: AppColors.samsungOrange),
+                  icon: Icon(Icons.upload_file_rounded, size: 16, color: activeTheme.accent),
                   label: const Text('Export Vault', style: TextStyle(fontSize: 12)),
                   onPressed: () async {
                     final res = await notifier.exportVault();
@@ -968,17 +971,17 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isHighlight = false}) {
+  Widget _buildInfoRow(String label, String value, AppThemePalette activeTheme, {bool isHighlight = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+          Text(label, style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
           Text(
             value,
             style: TextStyle(
-              color: isHighlight ? AppColors.samsungOrange : Colors.white,
+              color: isHighlight ? activeTheme.accent : Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -988,21 +991,21 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
     );
   }
 
-  void _showFindLanDeviceDialog(BuildContext context, SyncNotifier notifier) {
+  void _showFindLanDeviceDialog(BuildContext context, SyncNotifier notifier, AppThemePalette activeTheme) {
     final ipCtl = TextEditingController();
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.amoledSurfaceElevated,
+        backgroundColor: activeTheme.surfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.amoledBorder),
+          side: BorderSide(color: activeTheme.border),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.lan_rounded, color: AppColors.samsungOrange, size: 22),
-            SizedBox(width: 10),
-            Text(
+            Icon(Icons.lan_rounded, color: activeTheme.accent, size: 22),
+            const SizedBox(width: 10),
+            const Text(
               'Connect to PC or Phone',
               style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
             ),
@@ -1012,18 +1015,18 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Enter the direct IP address or tap a quick preset:',
-              style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12.5, height: 1.4),
+              style: TextStyle(color: activeTheme.textSecondary, fontSize: 12.5, height: 1.4),
             ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               children: [
                 ActionChip(
-                  label: const Text('USB (127.0.0.1)', style: TextStyle(fontSize: 11.5, color: AppColors.samsungOrange)),
-                  backgroundColor: AppColors.samsungOrange.withValues(alpha: 0.15),
-                  side: const BorderSide(color: AppColors.samsungOrange),
+                  label: Text('USB (127.0.0.1)', style: TextStyle(fontSize: 11.5, color: activeTheme.accent)),
+                  backgroundColor: activeTheme.accent.withValues(alpha: 0.15),
+                  side: BorderSide(color: activeTheme.accent),
                   onPressed: () {
                     ipCtl.text = '127.0.0.1';
                   },
@@ -1038,10 +1041,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 hintText: 'e.g. 192.168.1.15 or 127.0.0.1',
                 hintStyle: const TextStyle(color: Colors.white30),
                 filled: true,
-                fillColor: const Color(0xFF1E1E1E),
+                fillColor: activeTheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF333333)),
+                  borderSide: BorderSide(color: activeTheme.border),
                 ),
               ),
             ),
@@ -1054,7 +1057,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.samsungOrange,
+              backgroundColor: activeTheme.accent,
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),

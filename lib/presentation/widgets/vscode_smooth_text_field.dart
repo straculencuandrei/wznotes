@@ -13,6 +13,7 @@ class VSCodeSmoothTextField extends StatefulWidget {
   final int? maxLines;
   final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
+  final Color? caretColor;
 
   const VSCodeSmoothTextField({
     super.key,
@@ -25,6 +26,7 @@ class VSCodeSmoothTextField extends StatefulWidget {
     this.maxLines,
     this.keyboardType = TextInputType.multiline,
     this.onChanged,
+    this.caretColor,
   });
 
   @override
@@ -181,6 +183,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Tick
 
         final isCollapsed = widget.controller.selection.isCollapsed || widget.controller.selection.baseOffset < 0;
         final showSmoothCaret = widget.focusNode.hasFocus && isCollapsed;
+        final effectiveCaretColor = widget.caretColor ?? Theme.of(context).colorScheme.primary;
 
         return Stack(
           clipBehavior: Clip.none,
@@ -193,6 +196,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Tick
               keyboardType: widget.keyboardType,
               textCapitalization: widget.textCapitalization,
               showCursor: false, // Smooth gliding custom caret replaces default jump cursor
+              cursorColor: effectiveCaretColor,
               style: widget.style,
               strutStyle: strut,
               decoration: InputDecoration(
@@ -220,7 +224,7 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Tick
                           width: 2.4,
                           height: caretHeight,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF9100), // Clean Warm Amber / Samsung Orange
+                            color: effectiveCaretColor,
                             borderRadius: BorderRadius.circular(1.5),
                           ),
                         ),

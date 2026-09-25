@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 
 /// A sleek Dynamic Island / Top Capsule Toast notification that drops smoothly
 /// from the top of the screen (under status bar / notch) without obstructing bottom action bars.
@@ -12,13 +11,15 @@ class TopIslandToast {
     BuildContext context, {
     required String message,
     IconData? icon,
-    Color color = AppColors.samsungOrange,
+    Color? color,
     Duration duration = const Duration(seconds: 3),
     bool isLoading = false,
     Widget? trailing,
   }) {
     // Clear any previous active toast
     dismiss();
+
+    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
 
     final overlayState = Overlay.of(context, rootOverlay: true);
 
@@ -27,7 +28,7 @@ class TopIslandToast {
       builder: (ctx) => _TopIslandToastWidget(
         message: message,
         icon: icon,
-        color: color,
+        color: effectiveColor,
         duration: duration,
         isLoading: isLoading,
         trailing: trailing,

@@ -45,8 +45,8 @@ class CanvasTemplate {
   Map<String, dynamic> toJson() => {
         'type': type.name,
         'lineSpacing': lineSpacing,
-        'lineColor': '#${lineColor.value.toRadixString(16).padLeft(8, '0')}',
-        'backgroundColor': '#${backgroundColor.value.toRadixString(16).padLeft(8, '0')}',
+        'lineColor': '#${lineColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'backgroundColor': '#${backgroundColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
         if (pdfAssetPath != null) 'pdfAssetPath': pdfAssetPath,
       };
 

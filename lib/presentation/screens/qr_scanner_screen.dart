@@ -117,12 +117,13 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
               child: Stack(
                 children: [
                   // Corner markers
-                  const _ScanCornerMarkers(color: AppColors.samsungOrange),
+                  _ScanCornerMarkers(color: Theme.of(context).colorScheme.primary),
 
                   // Animated laser line
                   AnimatedBuilder(
                     animation: _scanLineAnimation,
                     builder: (context, child) {
+                      final scanColor = Theme.of(context).colorScheme.primary;
                       return Positioned(
                         top: _scanLineAnimation.value * (scanSize - 4),
                         left: 8,
@@ -132,14 +133,14 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AppColors.samsungOrange.withValues(alpha: 0.1),
-                                AppColors.samsungOrange,
-                                AppColors.samsungOrange.withValues(alpha: 0.1),
+                                scanColor.withValues(alpha: 0.1),
+                                scanColor,
+                                scanColor.withValues(alpha: 0.1),
                               ],
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.samsungOrange.withValues(alpha: 0.7),
+                                color: scanColor.withValues(alpha: 0.7),
                                 blurRadius: 10,
                                 spreadRadius: 1,
                               ),
@@ -183,7 +184,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                 IconButton(
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.black54,
-                    foregroundColor: _isTorchOn ? AppColors.samsungOrange : Colors.white,
+                    foregroundColor: _isTorchOn ? Theme.of(context).colorScheme.primary : Colors.white,
                   ),
                   icon: Icon(_isTorchOn ? Icons.flash_on : Icons.flash_off, size: 20),
                   onPressed: () async {
@@ -223,15 +224,15 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white12),
               ),
-              child: const Column(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.desktop_windows_rounded, size: 18, color: AppColors.samsungOrange),
-                      SizedBox(width: 8),
-                      Text(
+                      Icon(Icons.desktop_windows_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Text(
                         'Align with PC Screen QR Code',
                         style: TextStyle(
                           color: Colors.white,
@@ -241,8 +242,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                       ),
                     ],
                   ),
-                  SizedBox(height: 6),
-                  Text(
+                  const SizedBox(height: 6),
+                  const Text(
                     'Position the QR code shown in WZNotes on your PC inside the frame. Details and PIN will auto-fill instantly.',
                     textAlign: TextAlign.center,
                     style: TextStyle(

@@ -35,7 +35,7 @@ class LassoPainter extends CustomPainter {
         ..style = PaintingStyle.stroke;
 
       final fillPaint = Paint()
-        ..color = AppColors.primaryBlue.withOpacity(0.06)
+        ..color = AppColors.primaryBlue.withValues(alpha: 0.06)
         ..style = PaintingStyle.fill;
 
       canvas.drawRect(boundingBox!, fillPaint);

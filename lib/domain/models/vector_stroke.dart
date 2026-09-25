@@ -108,7 +108,7 @@ class VectorStroke {
   Map<String, dynamic> toJson() => {
         'id': id,
         'toolType': toolType.name,
-        'color': '#${color.value.toRadixString(16).padLeft(8, '0')}',
+        'color': '#${color.toARGB32().toRadixString(16).padLeft(8, '0')}',
         'baseWidth': double.parse(baseWidth.toStringAsFixed(2)),
         'opacity': double.parse(opacity.toStringAsFixed(2)),
         'blendMode': blendMode.name,

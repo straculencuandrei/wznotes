@@ -288,7 +288,7 @@ class _SpectrumColorPickerDialogState extends State<SpectrumColorPickerDialog> {
                           color: c,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isSel ? AppColors.samsungOrange : Colors.white24,
+                            color: isSel ? Theme.of(context).colorScheme.primary : Colors.white24,
                             width: isSel ? 2.5 : 1.0,
                           ),
                         ),
@@ -303,7 +303,7 @@ class _SpectrumColorPickerDialogState extends State<SpectrumColorPickerDialog> {
               // Confirm Button
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.samsungOrange,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(

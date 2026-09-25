@@ -18,7 +18,7 @@ class ActiveStrokePainter extends CustomPainter {
     if (points.isEmpty) return;
 
     final paint = Paint()
-      ..color = toolConfig.color.withOpacity(toolConfig.opacity)
+      ..color = toolConfig.color.withValues(alpha: toolConfig.opacity)
       ..blendMode = toolConfig.blendMode
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round

@@ -107,10 +107,10 @@ class _ExportChoiceDialogState extends State<ExportChoiceDialog> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppColors.samsungOrange.withValues(alpha: 0.15),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.file_download_outlined, color: AppColors.samsungOrange, size: 24),
+                    child: Icon(Icons.file_download_outlined, color: Theme.of(context).colorScheme.primary, size: 24),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -184,7 +184,7 @@ class _ExportChoiceDialogState extends State<ExportChoiceDialog> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.samsungOrange,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
@@ -226,7 +226,7 @@ class _ExportChoiceDialogState extends State<ExportChoiceDialog> {
           color: isSelected ? const Color(0xFF1E1E1E) : const Color(0xFF161616),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? AppColors.samsungOrange : const Color(0xFF262626),
+            color: isSelected ? Theme.of(context).colorScheme.primary : const Color(0xFF262626),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -287,7 +287,7 @@ class _ExportChoiceDialogState extends State<ExportChoiceDialog> {
             const SizedBox(width: 10),
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: isSelected ? AppColors.samsungOrange : Colors.white30,
+              color: isSelected ? Theme.of(context).colorScheme.primary : Colors.white30,
               size: 22,
             ),
           ],
@@ -311,7 +311,7 @@ class NoteExportService {
         context,
         message: 'Generating ${format == ExportFormat.txt ? ".txt" : ".pdf"} file...',
         isLoading: true,
-        color: AppColors.samsungOrange,
+        color: Theme.of(context).colorScheme.primary,
       );
 
       final Directory outDir = await getExportDirectory();
@@ -392,7 +392,7 @@ class NoteExportService {
         context,
         message: 'No notes to export in backup archive.',
         icon: Icons.info_outline_rounded,
-        color: AppColors.samsungOrange,
+        color: Theme.of(context).colorScheme.primary,
       );
       return;
     }
@@ -404,7 +404,7 @@ class NoteExportService {
         context,
         message: 'Creating backup ZIP with ${notes.length} ${extType.toUpperCase()} notes...',
         isLoading: true,
-        color: AppColors.samsungOrange,
+        color: Theme.of(context).colorScheme.primary,
         duration: const Duration(seconds: 30),
       );
 

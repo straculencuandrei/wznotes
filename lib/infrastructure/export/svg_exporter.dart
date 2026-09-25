@@ -14,7 +14,7 @@ class SvgExporter {
     for (final stroke in doc.strokes) {
       if (stroke.points.isEmpty) continue;
 
-      final hexColor = '#${stroke.color.value.toRadixString(16).padLeft(8, '0').substring(2)}';
+      final hexColor = '#${stroke.color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
       final opacity = stroke.opacity;
 
       if (stroke.points.length == 1) {

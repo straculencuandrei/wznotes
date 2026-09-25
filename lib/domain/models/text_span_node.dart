@@ -57,8 +57,8 @@ class TextSpanNode {
         if (underline) 'underline': true,
         if (strikethrough) 'strikethrough': true,
         if (isCode) 'isCode': true,
-        if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
-        if (highlightColor != null) 'highlightColor': '#${highlightColor!.value.toRadixString(16).padLeft(8, '0')}',
+        if (color != null) 'color': '#${color!.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        if (highlightColor != null) 'highlightColor': '#${highlightColor!.toARGB32().toRadixString(16).padLeft(8, '0')}',
       };
 
   factory TextSpanNode.fromJson(Map<String, dynamic> json) {

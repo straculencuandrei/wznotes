@@ -12,6 +12,7 @@ import '../widgets/update_dialog.dart';
 import '../widgets/top_island_toast.dart';
 import '../widgets/export_dialog.dart';
 import 'sync_screen.dart';
+import 'theme_selection_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -41,96 +42,54 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         physics: const BouncingScrollPhysics(),
         children: [
-          // 1. Appearance & Curated Themes Section
+          // 1. Appearance & Themes Section
           _buildSectionHeader('Appearance & Themes', activeTheme.accent),
           _buildCard(
             activeTheme: activeTheme,
             children: [
-              ...AppThemes.allThemes.map((theme) {
-                final isSelected = theme.id == settings.themeId;
-                return Column(
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        settingsNotifier.setTheme(theme.id);
-                        TopIslandToast.show(
-                          context,
-                          message: '${theme.name} theme applied',
-                          icon: Icons.palette_outlined,
-                          color: theme.accent,
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                        child: Row(
-                          children: [
-                            // Theme color preview circle
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: theme.surfaceElevated,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isSelected ? theme.accent : theme.border,
-                                  width: isSelected ? 2.2 : 1.2,
-                                ),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: theme.accent,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: theme.accent.withValues(alpha: 0.5),
-                                        blurRadius: 6,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    theme.name,
-                                    style: TextStyle(
-                                      color: isSelected ? theme.accent : Colors.white,
-                                      fontSize: 15.5,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    theme.description,
-                                    style: TextStyle(
-                                      color: activeTheme.textSecondary,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isSelected)
-                              Icon(Icons.check_circle_rounded, color: theme.accent, size: 22)
-                            else
-                              const Icon(Icons.circle_outlined, color: Colors.white24, size: 20),
-                          ],
-                        ),
+              ListTile(
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: activeTheme.surfaceElevated,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: activeTheme.accent, width: 1.8),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: activeTheme.accent,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: activeTheme.accent.withValues(alpha: 0.6),
+                            blurRadius: 6,
+                          ),
+                        ],
                       ),
                     ),
-                    if (theme != AppThemes.allThemes.last)
-                      Divider(color: activeTheme.border, height: 1),
-                  ],
-                );
-              }),
+                  ),
+                ),
+                title: const Text(
+                  'Theme & Palette',
+                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  '${activeTheme.name} (${AppThemes.allThemes.length} curated AMOLED palettes)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: activeTheme.textSecondary, fontSize: 13),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const ThemeSelectionScreen()),
+                  );
+                },
+              ),
             ],
           ),
 
@@ -380,7 +339,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, [Color accentColor = AppColors.samsungOrange]) {
+  Widget _buildSectionHeader(String title, Color accentColor) {
     return Padding(
       padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
       child: Text(

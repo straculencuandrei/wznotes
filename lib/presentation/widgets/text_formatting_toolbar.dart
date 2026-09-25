@@ -46,6 +46,7 @@ class TextFormattingToolbar extends ConsumerWidget {
                 children: [
                   // 1. Bold (B)
                   _buildIslandBtn(
+                    context: context,
                     icon: Icons.format_bold_rounded,
                     tooltip: 'Bold',
                     isSelected: bridge.isBold,
@@ -54,6 +55,7 @@ class TextFormattingToolbar extends ConsumerWidget {
 
                   // 2. Italic (I)
                   _buildIslandBtn(
+                    context: context,
                     icon: Icons.format_italic_rounded,
                     tooltip: 'Italic',
                     isSelected: bridge.isItalic,
@@ -62,6 +64,7 @@ class TextFormattingToolbar extends ConsumerWidget {
 
                   // 3. Strikethrough (S)
                   _buildIslandBtn(
+                    context: context,
                     icon: Icons.strikethrough_s_rounded,
                     tooltip: 'Strikethrough',
                     isSelected: bridge.isStrike,
@@ -77,6 +80,7 @@ class TextFormattingToolbar extends ConsumerWidget {
 
                   // 4. Bullet List (•)
                   _buildIslandBtn(
+                    context: context,
                     icon: Icons.format_list_bulleted_rounded,
                     tooltip: 'Bullet List',
                     onTap: () => bridge.toggleLinePrefix('- '),
@@ -84,6 +88,7 @@ class TextFormattingToolbar extends ConsumerWidget {
 
                   // 5. Interactive Checklist (☑)
                   _buildIslandBtn(
+                    context: context,
                     icon: Icons.checklist_rtl_rounded,
                     tooltip: 'Checklist',
                     onTap: () => bridge.toggleLinePrefix('[ ] '),
@@ -91,6 +96,7 @@ class TextFormattingToolbar extends ConsumerWidget {
 
                   // 6. Blockquote (”)
                   _buildIslandBtn(
+                    context: context,
                     icon: Icons.format_quote_rounded,
                     tooltip: 'Quote',
                     onTap: () => bridge.toggleLinePrefix('> '),
@@ -105,6 +111,7 @@ class TextFormattingToolbar extends ConsumerWidget {
 
                   // 7. Handwriting / Drawing Toggle
                   _buildIslandBtn(
+                    context: context,
                     icon: inkingState.isInkingMode ? Icons.edit_rounded : Icons.draw_outlined,
                     tooltip: inkingState.isInkingMode ? 'Switch to Typing' : 'Handwriting / Drawing',
                     isSelected: inkingState.isInkingMode,
@@ -114,6 +121,7 @@ class TextFormattingToolbar extends ConsumerWidget {
 
                   // 8. Undo
                   _buildIslandBtn(
+                    context: context,
                     icon: Icons.undo_rounded,
                     tooltip: 'Undo',
                     isEnabled: docNotifier.canUndo,
@@ -129,13 +137,15 @@ class TextFormattingToolbar extends ConsumerWidget {
   }
 
   Widget _buildIslandBtn({
+    required BuildContext context,
     required IconData icon,
     required String tooltip,
     bool isSelected = false,
     bool isEnabled = true,
-    Color activeColor = AppColors.samsungOrange,
+    Color? activeColor,
     required VoidCallback onTap,
   }) {
+    final effectiveActive = activeColor ?? Theme.of(context).colorScheme.primary;
     return Tooltip(
       message: tooltip,
       child: Material(
@@ -147,7 +157,7 @@ class TextFormattingToolbar extends ConsumerWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: isSelected ? activeColor : Colors.transparent,
+              color: isSelected ? effectiveActive : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,

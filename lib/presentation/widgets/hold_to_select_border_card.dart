@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/constants/app_colors.dart';
 
 /// A card wrapper that renders an animated glowing border circling clockwise
 /// from top-center when held down, activating selection or actions upon 360° completion.
@@ -12,7 +11,7 @@ class HoldToSelectBorderCard extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onHoldCompleted;
   final double borderRadius;
-  final Color glowColor;
+  final Color? glowColor;
   final Duration holdDuration;
 
   const HoldToSelectBorderCard({
@@ -23,7 +22,7 @@ class HoldToSelectBorderCard extends StatefulWidget {
     required this.onTap,
     required this.onHoldCompleted,
     this.borderRadius = 20.0,
-    this.glowColor = AppColors.samsungOrange,
+    this.glowColor,
     this.holdDuration = const Duration(milliseconds: 420),
   });
 
@@ -156,6 +155,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
           child: widget.child,
           builder: (context, child) {
             final progress = _controller.value;
+            final effectiveGlowColor = widget.glowColor ?? Theme.of(context).colorScheme.primary;
 
             return Stack(
               children: [
@@ -168,7 +168,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(widget.borderRadius),
                       border: widget.isSelected
-                          ? Border.all(color: widget.glowColor, width: 2.0)
+                          ? Border.all(color: effectiveGlowColor, width: 2.0)
                           : null,
                     ),
                     child: child,
@@ -183,7 +183,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
                         painter: _HoldProgressBorderPainter(
                           progress: progress,
                           radius: widget.borderRadius,
-                          color: widget.glowColor,
+                          color: effectiveGlowColor,
                         ),
                       ),
                     ),
@@ -207,7 +207,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
                           height: 26,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: widget.isSelected ? widget.glowColor : const Color(0x80000000),
+                            color: widget.isSelected ? effectiveGlowColor : const Color(0x80000000),
                             border: Border.all(
                               color: widget.isSelected ? Colors.transparent : Colors.white60,
                               width: 1.8,
@@ -215,7 +215,7 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
                             boxShadow: widget.isSelected
                                 ? [
                                     BoxShadow(
-                                      color: widget.glowColor.withValues(alpha: 0.6),
+                                      color: effectiveGlowColor.withValues(alpha: 0.6),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),

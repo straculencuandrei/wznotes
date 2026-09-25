@@ -155,6 +155,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Widget build(BuildContext context) {
     final isWin = Platform.isWindows;
     final isAndroid = Platform.isAndroid;
+    final accentColor = Theme.of(context).colorScheme.primary;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -164,7 +165,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         decoration: BoxDecoration(
           color: AppColors.amoledSurface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.6), width: 1.5),
+          border: Border.all(color: accentColor.withValues(alpha: 0.6), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.8),
@@ -183,10 +184,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.samsungOrange.withValues(alpha: 0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.system_update_rounded, color: AppColors.samsungOrange, size: 28),
+                  child: Icon(Icons.system_update_rounded, color: accentColor, size: 28),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -205,7 +206,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.samsungOrange,
+                          color: accentColor,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -227,10 +228,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
             // Release Notes Box
             if (widget.updateInfo.releaseNotes.isNotEmpty && !_isDownloading) ...[
-              const Text(
+              Text(
                 'WHAT\'S NEW',
                 style: TextStyle(
-                  color: AppColors.samsungOrange,
+                  color: accentColor,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.0,
@@ -267,7 +268,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 decoration: BoxDecoration(
                   color: AppColors.amoledBlack,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.samsungOrange.withValues(alpha: 0.4)),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.4)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,10 +276,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     Row(
                       children: [
                         if (_isDownloading)
-                          const SizedBox(
+                          SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.samsungOrange),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: accentColor),
                           )
                         else
                           const Icon(Icons.check_circle_rounded, color: AppColors.accentEmerald, size: 20),
@@ -295,7 +296,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     LinearProgressIndicator(
                       value: _downloadProgress > 0 ? _downloadProgress : null,
                       backgroundColor: AppColors.amoledBorder,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.samsungOrange),
+                      valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ],
@@ -354,7 +355,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   flex: 2,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.samsungOrange,
+                      backgroundColor: accentColor,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -17,6 +17,7 @@ class FloatingPenDock extends ConsumerWidget {
     final inkingNotifier = ref.read(inkingProvider.notifier);
     final docNotifier = ref.read(documentProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = Theme.of(context).colorScheme.primary;
     final currentTool = inkingState.toolConfig.type;
 
     return Card(
@@ -43,7 +44,7 @@ class FloatingPenDock extends ConsumerWidget {
               IconButton(
                 icon: Icon(
                   inkingState.isInkingMode ? Icons.edit : Icons.keyboard,
-                  color: AppColors.samsungOrange,
+                  color: accentColor,
                   size: 20,
                 ),
                 tooltip: inkingState.isInkingMode ? 'Switch to Typing' : 'Switch to Inking',
@@ -62,6 +63,7 @@ class FloatingPenDock extends ConsumerWidget {
                 label: 'Ballpoint',
                 isSelected: currentTool == PenType.ballpoint,
                 isDark: isDark,
+                accentColor: accentColor,
                 onTap: () => inkingNotifier.setPenType(PenType.ballpoint),
               ),
               _buildToolButton(
@@ -69,6 +71,7 @@ class FloatingPenDock extends ConsumerWidget {
                 label: 'Calligraphy',
                 isSelected: currentTool == PenType.calligraphy,
                 isDark: isDark,
+                accentColor: accentColor,
                 onTap: () => inkingNotifier.setPenType(PenType.calligraphy),
               ),
               _buildToolButton(
@@ -76,6 +79,7 @@ class FloatingPenDock extends ConsumerWidget {
                 label: 'Highlighter',
                 isSelected: currentTool == PenType.highlighter,
                 isDark: isDark,
+                accentColor: accentColor,
                 onTap: () => inkingNotifier.setPenType(PenType.highlighter),
               ),
               _buildToolButton(
@@ -83,6 +87,7 @@ class FloatingPenDock extends ConsumerWidget {
                 label: 'Pencil',
                 isSelected: currentTool == PenType.pencil,
                 isDark: isDark,
+                accentColor: accentColor,
                 onTap: () => inkingNotifier.setPenType(PenType.pencil),
               ),
               _buildToolButton(
@@ -90,6 +95,7 @@ class FloatingPenDock extends ConsumerWidget {
                 label: 'Eraser',
                 isSelected: currentTool == PenType.eraser,
                 isDark: isDark,
+                accentColor: accentColor,
                 onTap: () => inkingNotifier.setPenType(PenType.eraser),
               ),
               _buildToolButton(
@@ -97,6 +103,7 @@ class FloatingPenDock extends ConsumerWidget {
                 label: 'Lasso',
                 isSelected: currentTool == PenType.lasso,
                 isDark: isDark,
+                accentColor: accentColor,
                 onTap: () => inkingNotifier.setPenType(PenType.lasso),
               ),
 
@@ -120,7 +127,7 @@ class FloatingPenDock extends ConsumerWidget {
                       color: c,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isSelected ? AppColors.samsungOrange : (isDark ? Colors.white24 : Colors.black12),
+                        color: isSelected ? Theme.of(context).colorScheme.primary : (isDark ? Colors.white24 : Colors.black12),
                         width: isSelected ? 2.5 : 1.0,
                       ),
                     ),
@@ -216,6 +223,7 @@ class FloatingPenDock extends ConsumerWidget {
     required String label,
     required bool isSelected,
     required bool isDark,
+    required Color accentColor,
     required VoidCallback onTap,
   }) {
     return Tooltip(
@@ -228,7 +236,7 @@ class FloatingPenDock extends ConsumerWidget {
           margin: const EdgeInsets.symmetric(horizontal: 1),
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColors.samsungOrange.withValues(alpha: 0.18)
+                ? accentColor.withValues(alpha: 0.18)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
@@ -236,7 +244,7 @@ class FloatingPenDock extends ConsumerWidget {
             icon,
             size: 18,
             color: isSelected
-                ? AppColors.samsungOrange
+                ? accentColor
                 : (isDark ? AppColors.amoledTextPrimary : const Color(0xFF334155)),
           ),
         ),

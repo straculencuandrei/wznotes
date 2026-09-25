@@ -55,7 +55,7 @@ class StrokeBinaryCodec {
 
       final strokeMeta = ByteData(19);
       strokeMeta.setUint8(0, stroke.toolType.index);
-      strokeMeta.setUint32(1, stroke.color.value, Endian.little);
+      strokeMeta.setUint32(1, stroke.color.toARGB32(), Endian.little);
       strokeMeta.setFloat32(5, stroke.baseWidth, Endian.little);
       strokeMeta.setFloat32(9, stroke.opacity, Endian.little);
       strokeMeta.setUint8(13, stroke.blendMode.index);
