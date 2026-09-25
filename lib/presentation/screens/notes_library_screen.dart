@@ -81,23 +81,24 @@ class NotesLibraryScreen extends ConsumerWidget {
   }
 
   void _confirmPermanentDeleteSingle(BuildContext context, WidgetRef ref, NoteDocument note) {
+    final activeTheme = ref.read(appThemeProvider);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF181818),
+        backgroundColor: activeTheme.surfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF2E2E2E)),
+          side: BorderSide(color: activeTheme.border),
         ),
-        title: const Text('Delete Permanently?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('Delete Permanently?', style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold)),
         content: Text(
           'Permanently delete "${note.metadata.title.isNotEmpty ? note.metadata.title : 'this note'}"? This action cannot be undone.',
-          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14),
+          style: TextStyle(color: activeTheme.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: Text('Cancel', style: TextStyle(color: activeTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -123,23 +124,24 @@ class NotesLibraryScreen extends ConsumerWidget {
   }
 
   void _confirmEmptyTrash(BuildContext context, WidgetRef ref, int count) {
+    final activeTheme = ref.read(appThemeProvider);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF181818),
+        backgroundColor: activeTheme.surfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF2E2E2E)),
+          side: BorderSide(color: activeTheme.border),
         ),
-        title: const Text('Empty Trash?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('Empty Trash?', style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold)),
         content: Text(
           'Permanently delete all $count ${count == 1 ? 'note' : 'notes'} in Trash? This action cannot be undone.',
-          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14),
+          style: TextStyle(color: activeTheme.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: Text('Cancel', style: TextStyle(color: activeTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -165,14 +167,15 @@ class NotesLibraryScreen extends ConsumerWidget {
   }
 
   void _showTrashNoteDialog(BuildContext context, WidgetRef ref, NoteDocument note) {
+    final activeTheme = ref.read(appThemeProvider);
     final daysLeft = note.metadata.daysUntilPermanentDeletion;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF181818),
+        backgroundColor: activeTheme.surfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF2E2E2E)),
+          side: BorderSide(color: activeTheme.border),
         ),
         title: Row(
           children: [
@@ -183,14 +186,14 @@ class NotesLibraryScreen extends ConsumerWidget {
                 note.metadata.title.isNotEmpty ? note.metadata.title : 'Deleted Note',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ),
           ],
         ),
         content: Text(
           'This note is currently in Trash ($daysLeft days until automatic permanent deletion).\n\nRestore this note to view and edit it.',
-          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14, height: 1.4),
+          style: TextStyle(color: activeTheme.textSecondary, fontSize: 14, height: 1.4),
         ),
         actions: [
           TextButton(
@@ -266,10 +269,10 @@ class NotesLibraryScreen extends ConsumerWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: activeTheme.textPrimary,
                           ),
                         ),
                       ),
@@ -282,7 +285,7 @@ class NotesLibraryScreen extends ConsumerWidget {
                           return Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF222222),
+                              color: activeTheme.surfaceElevated,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -291,7 +294,7 @@ class NotesLibraryScreen extends ConsumerWidget {
                                   : '$wordCountPart${_formatDate(note.metadata.modifiedAt)}',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: note.metadata.isDeleted ? AppColors.accentRose : const Color(0xFF999999),
+                                color: note.metadata.isDeleted ? AppColors.accentRose : activeTheme.textSecondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -301,12 +304,13 @@ class NotesLibraryScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Divider(color: Color(0xFF262626), height: 1),
+                  Divider(color: activeTheme.border, height: 1),
                   const SizedBox(height: 8),
 
                   if (note.metadata.isDeleted) ...[
                     // Trash actions: Restore or Delete Forever
                     _buildCompactActionRow(
+                      activeTheme: activeTheme,
                       icon: Icons.restore_rounded,
                       iconColor: AppColors.accentEmerald,
                       iconBg: AppColors.accentEmerald.withValues(alpha: 0.15),
@@ -324,6 +328,7 @@ class NotesLibraryScreen extends ConsumerWidget {
                       },
                     ),
                     _buildCompactActionRow(
+                      activeTheme: activeTheme,
                       icon: Icons.delete_forever_rounded,
                       iconColor: AppColors.accentRose,
                       iconBg: AppColors.accentRose.withValues(alpha: 0.15),
@@ -339,9 +344,10 @@ class NotesLibraryScreen extends ConsumerWidget {
                     // Compact Action Rows
                     // 1. Select Multiple Notes
                   _buildCompactActionRow(
+                    activeTheme: activeTheme,
                     icon: Icons.checklist_rounded,
-                    iconColor: Colors.white,
-                    iconBg: const Color(0xFF2E2E2E),
+                    iconColor: activeTheme.textPrimary,
+                    iconBg: activeTheme.surfaceElevated,
                     title: 'Select multiple notes',
                     subtitle: 'Enter multi-selection mode',
                     onTap: () {
@@ -352,6 +358,7 @@ class NotesLibraryScreen extends ConsumerWidget {
 
                   // 2. Lock / Unlock
                   _buildCompactActionRow(
+                    activeTheme: activeTheme,
                     icon: isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
                     iconColor: activeTheme.accent,
                     iconBg: activeTheme.accent.withValues(alpha: 0.15),
@@ -428,6 +435,7 @@ class NotesLibraryScreen extends ConsumerWidget {
 
                   // 3. Favorite
                   _buildCompactActionRow(
+                    activeTheme: activeTheme,
                     icon: isFav ? Icons.star_rounded : Icons.star_border_rounded,
                     iconColor: const Color(0xFFFBBF24),
                     iconBg: const Color(0xFFFBBF24).withValues(alpha: 0.15),
@@ -440,6 +448,7 @@ class NotesLibraryScreen extends ConsumerWidget {
 
                   // 4. Export (.txt / .pdf)
                   _buildCompactActionRow(
+                    activeTheme: activeTheme,
                     icon: Icons.file_download_outlined,
                     iconColor: const Color(0xFF38BDF8),
                     iconBg: const Color(0xFF38BDF8).withValues(alpha: 0.15),
@@ -466,6 +475,7 @@ class NotesLibraryScreen extends ConsumerWidget {
 
                   // 5. Move to Trash
                   _buildCompactActionRow(
+                    activeTheme: activeTheme,
                     icon: Icons.delete_outline_rounded,
                     iconColor: AppColors.accentRose,
                     iconBg: AppColors.accentRose.withValues(alpha: 0.15),
@@ -493,13 +503,14 @@ class NotesLibraryScreen extends ConsumerWidget {
     );
   }
 
-  static Widget _buildCompactActionRow({
+  Widget _buildCompactActionRow({
+    required AppThemePalette activeTheme,
     required IconData icon,
     required Color iconColor,
     required Color iconBg,
     required String title,
     String? subtitle,
-    Color titleColor = Colors.white,
+    Color? titleColor,
     required VoidCallback onTap,
   }) {
     return Material(
@@ -531,20 +542,20 @@ class NotesLibraryScreen extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w600,
-                        color: titleColor,
+                        color: titleColor ?? activeTheme.textPrimary,
                       ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF777777)),
+                        style: TextStyle(fontSize: 11.5, color: activeTheme.textSecondary),
                       ),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF444444), size: 20),
+              Icon(Icons.chevron_right_rounded, color: activeTheme.textSecondary.withValues(alpha: 0.5), size: 20),
             ],
           ),
         ),
@@ -623,17 +634,17 @@ body: Stack(
                                         Row(
                                           children: [
                                             IconButton(
-                                              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
+                                              icon: Icon(Icons.close_rounded, color: activeTheme.textPrimary, size: 26),
                                               tooltip: 'Close Selection',
                                               onPressed: () => libraryNotifier.clearSelection(),
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
                                               '$selectedCount Selected',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 22,
                                                 fontWeight: FontWeight.bold,
-                                                color: AppColors.amoledTextPrimary,
+                                                color: activeTheme.textPrimary,
                                               ),
                                             ),
                                           ],
@@ -712,7 +723,14 @@ body: Stack(
                                                 tooltip: 'Wi-Fi Device Sync (Ctrl+Shift+S)',
                                                 onPressed: () {
                                                   Navigator.of(context).push(
-                                                    MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
+                                                    PageRouteBuilder<void>(
+                                                      pageBuilder: (_, animation, __) => const SyncScreen(),
+                                                      transitionsBuilder: (_, animation, __, child) => FadeTransition(
+                                                        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+                                                        child: child,
+                                                      ),
+                                                      transitionDuration: const Duration(milliseconds: 140),
+                                                    ),
                                                   );
                                                 },
                                               ),
@@ -731,7 +749,14 @@ body: Stack(
                                               tooltip: 'Settings',
                                               onPressed: () {
                                                 Navigator.of(context).push(
-                                                  MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+                                                  PageRouteBuilder<void>(
+                                                    pageBuilder: (_, animation, __) => const SettingsScreen(),
+                                                    transitionsBuilder: (_, animation, __, child) => FadeTransition(
+                                                      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+                                                      child: child,
+                                                    ),
+                                                    transitionDuration: const Duration(milliseconds: 140),
+                                                  ),
                                                 );
                                               },
                                             ),
@@ -780,16 +805,16 @@ body: Stack(
                                             children: [
                                               Text(
                                                 'wznotes v${info.version} Available',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                                                  color: activeTheme.textPrimary,
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 14,
                                                 ),
                                               ),
                                               const SizedBox(height: 2),
-                                              const Text(
+                                              Text(
                                                 'Tap to view what\'s new & update',
-                                                style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 12),
+                                                style: TextStyle(color: activeTheme.textSecondary, fontSize: 12),
                                               ),
                                             ],
                                           ),
@@ -808,7 +833,7 @@ body: Stack(
                                         ),
                                         const SizedBox(width: 6),
                                         IconButton(
-                                          icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
+                                          icon: Icon(Icons.close_rounded, size: 18, color: activeTheme.textSecondary),
                                           tooltip: 'Dismiss',
                                           onPressed: () => ref.read(updateProvider.notifier).dismiss(),
                                         ),
@@ -841,11 +866,11 @@ body: Stack(
                                   style: TextStyle(fontSize: 16, color: activeTheme.textPrimary),
                                   decoration: InputDecoration(
                                     hintText: 'Search notes...',
-                                    hintStyle: const TextStyle(color: Color(0xFF666666), fontSize: 15),
+                                    hintStyle: TextStyle(color: activeTheme.textSecondary, fontSize: 15),
                                     prefixIcon: Icon(Icons.search, color: activeTheme.accent, size: 24),
                                     suffixIcon: libraryState.searchQuery.isNotEmpty
                                         ? IconButton(
-                                            icon: const Icon(Icons.clear, size: 20, color: Colors.white54),
+                                            icon: Icon(Icons.clear, size: 20, color: activeTheme.textSecondary),
                                             onPressed: () => libraryNotifier.setSearchQuery(''),
                                           )
                                         : null,
@@ -948,17 +973,19 @@ body: Stack(
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: IgnorePointer(
-                    ignoring: !isSelectionMode,
-                    child: AnimatedSlide(
-                      offset: isSelectionMode ? Offset.zero : const Offset(0.0, 1.4),
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedOpacity(
-                        opacity: isSelectionMode ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOut,
-                        child: _buildBatchActionBar(context, ref, libraryState),
+                  child: RepaintBoundary(
+                    child: IgnorePointer(
+                      ignoring: !isSelectionMode,
+                      child: AnimatedSlide(
+                        offset: isSelectionMode ? Offset.zero : const Offset(0.0, 1.4),
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        child: AnimatedOpacity(
+                          opacity: isSelectionMode ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          child: _buildBatchActionBar(context, ref, libraryState),
+                        ),
                       ),
                     ),
                   ),
@@ -966,16 +993,17 @@ body: Stack(
               ],
             ),
             // Floating Action Button (Smooth scale and fade, hidden in selection mode or trash)
-            floatingActionButton: AnimatedScale(
-              scale: (isSelectionMode || isTrash) ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutBack,
-              child: AnimatedOpacity(
-                opacity: (isSelectionMode || isTrash) ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 180),
-                child: IgnorePointer(
-                  ignoring: isSelectionMode || isTrash,
-                  child: FloatingActionButton.extended(
+            floatingActionButton: RepaintBoundary(
+              child: AnimatedScale(
+                scale: (isSelectionMode || isTrash) ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  opacity: (isSelectionMode || isTrash) ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: IgnorePointer(
+                    ignoring: isSelectionMode || isTrash,
+                    child: FloatingActionButton.extended(
                     backgroundColor: activeTheme.accent,
                     elevation: 8,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -995,8 +1023,9 @@ body: Stack(
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // --- BATCH ACTION BAR & DIALOGS ---
 
@@ -1017,7 +1046,7 @@ body: Stack(
             border: Border.all(color: activeTheme.accent.withValues(alpha: 0.6), width: 1.3),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.8),
+                color: activeTheme.isDark ? Colors.black.withValues(alpha: 0.8) : const Color(0x33000000),
                 blurRadius: 24,
                 offset: const Offset(0, 10),
               ),
@@ -1115,12 +1144,12 @@ body: Stack(
               ],
 
               const SizedBox(width: 6),
-              Container(width: 1, height: 24, color: const Color(0xFF333333)),
+              Container(width: 1, height: 24, color: activeTheme.border),
               const SizedBox(width: 6),
 
               // Close / Done
               IconButton(
-                icon: const Icon(Icons.check_rounded, color: Colors.white, size: 23),
+                icon: Icon(Icons.check_rounded, color: activeTheme.textPrimary, size: 23),
                 tooltip: 'Done',
                 onPressed: () => ref.read(notesLibraryProvider.notifier).clearSelection(),
               ),
@@ -1184,31 +1213,32 @@ body: Stack(
   }
 
   void _showBatchDeleteDialog(BuildContext context, WidgetRef ref, int count) {
+    final activeTheme = ref.read(appThemeProvider);
     final isTrash = ref.read(notesLibraryProvider).selectedCategory == 'Trash';
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF181818),
+        backgroundColor: activeTheme.surfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF2E2E2E)),
+          side: BorderSide(color: activeTheme.border),
         ),
         title: Text(
           isTrash
               ? 'Permanently delete $count ${count == 1 ? 'Note' : 'Notes'}?'
               : 'Move $count ${count == 1 ? 'Note' : 'Notes'} to Trash?',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         content: Text(
           isTrash
               ? 'Permanently remove $count selected ${count == 1 ? 'note' : 'notes'} from device? This action cannot be undone.'
               : '$count selected ${count == 1 ? 'note' : 'notes'} will be moved to Trash and can be restored within 30 days.',
-          style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 14),
+          style: TextStyle(color: activeTheme.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+            child: Text('Cancel', style: TextStyle(color: activeTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -1298,7 +1328,7 @@ body: Stack(
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                 decoration: BoxDecoration(
-                  color: isSelected ? activeTheme.accent.withValues(alpha: 0.25) : const Color(0xFF222222),
+                  color: isSelected ? activeTheme.accent.withValues(alpha: 0.25) : (activeTheme.isDark ? const Color(0xFF222222) : activeTheme.border),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -1306,7 +1336,7 @@ body: Stack(
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? activeTheme.accent : const Color(0xFF888888),
+                    color: isSelected ? activeTheme.accent : activeTheme.textSecondary,
                   ),
                 ),
               ),
@@ -1391,7 +1421,7 @@ body: Stack(
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: isLocked ? Colors.white30 : activeTheme.textSecondary,
+                  color: isLocked ? activeTheme.textSecondary.withValues(alpha: 0.5) : activeTheme.textSecondary,
                   letterSpacing: isLocked ? 2.0 : null,
                 ),
               ),
@@ -1401,24 +1431,32 @@ body: Stack(
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (isDeleted)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentRose.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '${note.metadata.daysUntilPermanentDeletion}d left',
-                      style: const TextStyle(fontSize: 10.5, color: AppColors.accentRose, fontWeight: FontWeight.bold),
-                    ),
-                  )
-                else
-                  Text(
-                    _formatDate(note.metadata.modifiedAt),
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF666666), fontWeight: FontWeight.w500),
-                  ),
+                Expanded(
+                  child: isDeleted
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentRose.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${note.metadata.daysUntilPermanentDeletion}d left',
+                              style: const TextStyle(fontSize: 10.5, color: AppColors.accentRose, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          _formatDate(note.metadata.modifiedAt),
+                          style: TextStyle(fontSize: 11, color: activeTheme.textSecondary, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                ),
+                const SizedBox(width: 4),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     if (!isDeleted && showWordCount && note.metadata.wordCount > 0) ...[
                       Text(
@@ -1429,7 +1467,7 @@ body: Stack(
                     ],
                     GestureDetector(
                       onTap: () => _showNoteActions(context, ref, note),
-                      child: const Icon(Icons.more_horiz, size: 18, color: Colors.white38),
+                      child: Icon(Icons.more_horiz, size: 18, color: activeTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -1513,7 +1551,7 @@ body: Stack(
                 ),
                 Text(
                   _formatDate(note.metadata.modifiedAt),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF666666), fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 12, color: activeTheme.textSecondary, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -1526,7 +1564,7 @@ body: Stack(
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: isLocked ? Colors.white30 : activeTheme.textSecondary,
+                  color: isLocked ? activeTheme.textSecondary.withValues(alpha: 0.5) : activeTheme.textSecondary,
                   letterSpacing: isLocked ? 2.0 : null,
                 ),
               ),
@@ -1556,7 +1594,7 @@ body: Stack(
                   const SizedBox.shrink(),
                 GestureDetector(
                   onTap: () => _showNoteActions(context, ref, note),
-                  child: const Icon(Icons.more_horiz, size: 20, color: Colors.white38),
+                  child: Icon(Icons.more_horiz, size: 20, color: activeTheme.textSecondary),
                 ),
               ],
             ),

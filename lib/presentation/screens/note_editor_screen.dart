@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/theme/app_themes.dart';
 import '../../domain/models/note_document.dart';
 import '../../infrastructure/export/markdown_exporter.dart';
 import '../../infrastructure/export/svg_exporter.dart';
@@ -15,6 +16,7 @@ import '../widgets/top_island_toast.dart';
 import '../canvas/infinite_canvas_viewport.dart';
 import '../widgets/text_formatting_toolbar.dart';
 import '../widgets/floating_pen_dock.dart';
+import '../../core/diagnostics/performance_benchmark.dart';
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
   const NoteEditorScreen({super.key});
@@ -70,20 +72,20 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
 
   @override
   Widget build(BuildContext context) {
-    final wordCount = ref.watch(documentProvider.select((d) => d.metadata.wordCount));
-    final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
-    final inkingState = ref.watch(inkingProvider);
+    return PerformanceBenchmarkService.measure('note_editor_build', () {
+      final inkingState = ref.watch(inkingProvider);
+      final activeTheme = ref.watch(appThemeProvider);
 
-    // Auto-save: When document content updates, debounce save to disk within 2s
-    ref.listen<NoteDocument>(documentProvider, (previous, next) {
-      if (_isDeleting) return;
-      _autoSaveDebouncer?.cancel();
-      _autoSaveDebouncer = Timer(const Duration(milliseconds: 2000), () {
-        if (mounted && !_isDeleting) {
-          ref.read(notesLibraryProvider.notifier).saveNote(next);
-        }
+      // Auto-save: When document content updates, debounce save to disk within 2s
+      ref.listen<NoteDocument>(documentProvider, (previous, next) {
+        if (_isDeleting) return;
+        _autoSaveDebouncer?.cancel();
+        _autoSaveDebouncer = Timer(const Duration(milliseconds: 2000), () {
+          if (mounted && !_isDeleting) {
+            ref.read(notesLibraryProvider.notifier).saveNote(next);
+          }
+        });
       });
-    });
 
     return PopScope(
       canPop: true,
@@ -92,152 +94,192 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
           _flushAndSave();
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.amoledBlack,
-        appBar: AppBar(
-          backgroundColor: AppColors.amoledBlack,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, size: 22, color: Colors.white),
-            tooltip: 'Back to Notes',
-            onPressed: _saveAndPop,
-          ),
-          title: Text(
-            (showWordCount && wordCount > 0) ? '$wordCount words' : '',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.amoledTextSecondary,
-            ),
-          ),
-          centerTitle: false,
-          actions: [
-            // Quick direct delete button inside note header
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, size: 22, color: AppColors.accentRose),
-              tooltip: 'Move to Trash',
-              onPressed: () {
-                final currentDoc = ref.read(documentProvider);
-                _confirmDelete(context, currentDoc);
-              },
-            ),
-
-            // Export & Options Menu
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 24, color: Colors.white),
-              tooltip: 'Note Options',
-              color: AppColors.amoledSurfaceElevated,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppColors.amoledBorder),
-              ),
-              onSelected: (action) {
-                InfiniteRichTextLayer.flushActive();
-                final currentDoc = ref.read(documentProvider);
-                if (action == 'delete') {
-                  _confirmDelete(context, currentDoc);
-                } else {
-                  ref.read(notesLibraryProvider.notifier).saveNote(currentDoc);
-                  _handleExport(context, action, currentDoc);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'txt',
-                  child: Row(
-                    children: [
-                      Icon(Icons.article_outlined, color: Colors.blueAccent, size: 18),
-                      SizedBox(width: 8),
-                      Text('Export to Plain Text (.txt)', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'pdf',
-                  child: Row(
-                    children: [
-                      Icon(Icons.picture_as_pdf_outlined, color: AppColors.accentRose, size: 18),
-                      SizedBox(width: 8),
-                      Text('Export to Vector PDF (.pdf)', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'markdown',
-                  child: Row(
-                    children: [
-                      Icon(Icons.code_rounded, color: Colors.white70, size: 18),
-                      SizedBox(width: 8),
-                      Text('Export to Markdown (.md)', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'svg',
-                  child: Row(
-                    children: [
-                      Icon(Icons.draw_outlined, color: Theme.of(context).colorScheme.primary, size: 18),
-                      const SizedBox(width: 8),
-                      const Text('Export to SVG Vector', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    ],
-                  ),
-                ),
-                const PopupMenuDivider(height: 1),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline, color: AppColors.accentRose, size: 20),
-                      SizedBox(width: 8),
-                      Text('Delete note', style: TextStyle(color: AppColors.accentRose, fontSize: 14, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-          ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: activeTheme.background,
+          gradient: activeTheme.backgroundGradient,
         ),
-        body: Column(
-          children: [
-            // 1. Full AMOLED Keyboard Writing Viewport
-            Expanded(
-              child: InfiniteCanvasViewport(scrollController: _scrollController),
+        child: Scaffold(
+          resizeToAvoidBottomInset: false,
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, size: 22, color: activeTheme.textPrimary),
+              tooltip: 'Back to Notes',
+              onPressed: _saveAndPop,
             ),
-
-            // 2. Optional Floating Stylus Tool Dock (Only shown when drawing mode is toggled on)
-            if (inkingState.isInkingMode)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: FloatingPenDock(),
+            title: Consumer(
+              builder: (context, ref, _) {
+                final showWordCount = ref.watch(settingsProvider.select((s) => s.showWordCount));
+                if (!showWordCount) return const SizedBox.shrink();
+                final wordCount = ref.watch(documentProvider.select((d) => d.metadata.wordCount));
+                return Text(
+                  wordCount > 0 ? '$wordCount words' : '',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: activeTheme.textSecondary,
+                  ),
+                );
+              },
+            ),
+            centerTitle: false,
+            actions: [
+              // Quick direct delete button inside note header
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 22, color: AppColors.accentRose),
+                tooltip: 'Move to Trash',
+                onPressed: () {
+                  final currentDoc = ref.read(documentProvider);
+                  _confirmDelete(context, currentDoc);
+                },
               ),
 
-            // 3. Samsung Notes Style Bottom Keyboard Accessory Bar (Always Accessible)
-            const TextFormattingToolbar(),
-          ],
+              // Export & Options Menu
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, size: 24, color: activeTheme.textPrimary),
+                tooltip: 'Note Options',
+                color: activeTheme.surfaceElevated,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: activeTheme.border),
+                ),
+                onSelected: (action) {
+                  InfiniteRichTextLayer.flushActive();
+                  final currentDoc = ref.read(documentProvider);
+                  if (action == 'delete') {
+                    _confirmDelete(context, currentDoc);
+                  } else {
+                    ref.read(notesLibraryProvider.notifier).saveNote(currentDoc);
+                    _handleExport(context, action, currentDoc);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'txt',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.article_outlined, color: Colors.blueAccent, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Export to Plain Text (.txt)', style: TextStyle(color: activeTheme.textPrimary, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'pdf',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.picture_as_pdf_outlined, color: AppColors.accentRose, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Export to Vector PDF (.pdf)', style: TextStyle(color: activeTheme.textPrimary, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'markdown',
+                    child: Row(
+                      children: [
+                        Icon(Icons.code_rounded, color: activeTheme.textSecondary, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Export to Markdown (.md)', style: TextStyle(color: activeTheme.textPrimary, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'svg',
+                    child: Row(
+                      children: [
+                        Icon(Icons.draw_outlined, color: activeTheme.accent, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Export to SVG Vector', style: TextStyle(color: activeTheme.textPrimary, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, color: AppColors.accentRose, size: 20),
+                        SizedBox(width: 8),
+                        Text('Delete note', style: TextStyle(color: AppColors.accentRose, fontSize: 14, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: Stack(
+            children: [
+              // 1. Full Keyboard Writing Viewport extending edge-to-edge behind floating toolbars
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: InfiniteCanvasViewport(scrollController: _scrollController),
+                ),
+              ),
+
+              // 2. Floating Stylus Tool Dock & Formatting Toolbar smoothly glued above keyboard
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _KeyboardDockIsland(
+                  child: RepaintBoundary(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (inkingState.isInkingMode)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                            child: FloatingPenDock(),
+                          ),
+                        TextFormattingToolbar(scrollController: _scrollController),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 3. Writing Performance Diagnostic HUD (collapsible live latency & stress test runner)
+              Positioned(
+                top: 8,
+                right: 12,
+                child: SafeArea(
+                  child: BenchmarkHudOverlay(ref: ref),
+                ),
+              ),
+            ],
+          ),
+
         ),
       ),
     );
+    });
   }
 
   void _confirmDelete(BuildContext context, NoteDocument doc) {
+    final activeTheme = ref.read(appThemeProvider);
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.amoledSurfaceElevated,
+        backgroundColor: activeTheme.surfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.amoledBorder),
+          side: BorderSide(color: activeTheme.border),
         ),
-        title: const Text('Move to Trash?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text(
+        title: Text('Move to Trash?', style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold)),
+        content: Text(
           'This note will be moved to the Trash bin. You can restore it anytime within 30 days before it is permanently deleted.',
-          style: TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
+          style: TextStyle(color: activeTheme.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: Text('Cancel', style: TextStyle(color: activeTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -280,32 +322,58 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
   }
 
   void _showExportPreview(BuildContext context, String title, String content) {
+    final activeTheme = ref.read(appThemeProvider);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.amoledSurfaceElevated,
+        backgroundColor: activeTheme.surfaceElevated,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.amoledBorder),
+          side: BorderSide(color: activeTheme.border),
         ),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(title, style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold)),
         content: SizedBox(
           width: 600,
           height: 400,
           child: SingleChildScrollView(
             child: SelectableText(
               content,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 13, color: Color(0xFFE0E0E0)),
+              style: TextStyle(fontFamily: 'monospace', fontSize: 13, color: activeTheme.textPrimary.withValues(alpha: 0.9)),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Close', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+            child: Text('Close', style: TextStyle(color: activeTheme.accent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 }
+
+/// Isolates keyboard inset updates so only the floating island shifts in exact hardware lockstep
+/// with Android's WindowInsets, preventing laggy double-interpolation and fighting with the OS keyboard.
+class _KeyboardDockIsland extends StatelessWidget {
+  final Widget child;
+  const _KeyboardDockIsland({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return PerformanceBenchmarkService.measure('keyboard_dock_build', () {
+      final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+      return RepaintBoundary(
+        child: PerformanceProbeWidget(
+          tag: 'keyboard_dock',
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: child,
+          ),
+        ),
+      );
+    });
+  }
+}
+
+

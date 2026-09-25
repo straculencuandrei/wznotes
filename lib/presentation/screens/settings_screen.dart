@@ -30,12 +30,12 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: activeTheme.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: activeTheme.textPrimary, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Settings',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: activeTheme.textPrimary),
         ),
       ),
       body: ListView(
@@ -73,20 +73,27 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                title: const Text(
+                title: Text(
                   'Theme & Palette',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  '${activeTheme.name} (${AppThemes.allThemes.length} curated AMOLED palettes)',
+                  '${activeTheme.name} (${AppThemes.allThemes.length} curated palettes)',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: activeTheme.textSecondary, fontSize: 13),
                 ),
-                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                trailing: Icon(Icons.chevron_right, color: activeTheme.textSecondary),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const ThemeSelectionScreen()),
+                    PageRouteBuilder<void>(
+                      pageBuilder: (_, animation, __) => const ThemeSelectionScreen(),
+                      transitionsBuilder: (_, animation, __, child) => FadeTransition(
+                        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+                        child: child,
+                      ),
+                      transitionDuration: const Duration(milliseconds: 140),
+                    ),
                   );
                 },
               ),
@@ -103,8 +110,8 @@ class SettingsScreen extends ConsumerWidget {
               if (Platform.isAndroid || Platform.isIOS) ...[
                 SwitchListTile(
                   activeThumbColor: activeTheme.accent,
-                  title: const Text('Fingerprint / Face Unlock', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Require biometrics to open locked notes', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+                  title: Text('Fingerprint / Face Unlock', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                  subtitle: Text('Require biometrics to open locked notes', style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
                   value: settings.isBiometricEnabled,
                   onChanged: (val) async {
                     if (val) {
@@ -121,14 +128,14 @@ class SettingsScreen extends ConsumerWidget {
               ],
               ListTile(
                 leading: Icon(Icons.pin_rounded, color: activeTheme.accent),
-                title: const Text('Set / Change Master PIN', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                title: Text('Set / Change Master PIN', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
                 subtitle: Text(
                   settings.appPin == '1234'
                       ? 'Default PIN: 1234 (Tap to set custom PIN)'
                       : 'Custom PIN active (••••)',
-                  style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13),
+                  style: TextStyle(color: activeTheme.textSecondary, fontSize: 13),
                 ),
-                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                trailing: Icon(Icons.chevron_right, color: activeTheme.textSecondary),
                 onTap: () async {
                   bool canProceed = true;
                   if (settings.appPin != '1234') {
@@ -168,18 +175,18 @@ class SettingsScreen extends ConsumerWidget {
             activeTheme: activeTheme,
             children: [
               ListTile(
-                title: const Text('Editor Font Size', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                subtitle: Text('${settings.fontSize.toInt()}sp (Default)', style: const TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+                title: Text('Editor Font Size', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                subtitle: Text('${settings.fontSize.toInt()}sp (Default)', style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.remove, color: Colors.white70),
+                      icon: Icon(Icons.remove, color: activeTheme.textPrimary),
                       onPressed: settings.fontSize > 13 ? () => settingsNotifier.setFontSize(settings.fontSize - 2) : null,
                     ),
                     Text('${settings.fontSize.toInt()}', style: TextStyle(color: activeTheme.accent, fontWeight: FontWeight.bold)),
                     IconButton(
-                      icon: const Icon(Icons.add, color: Colors.white70),
+                      icon: Icon(Icons.add, color: activeTheme.textPrimary),
                       onPressed: settings.fontSize < 25 ? () => settingsNotifier.setFontSize(settings.fontSize + 2) : null,
                     ),
                   ],
@@ -188,16 +195,16 @@ class SettingsScreen extends ConsumerWidget {
               Divider(color: activeTheme.border, height: 1),
               SwitchListTile(
                 activeThumbColor: activeTheme.accent,
-                title: const Text('VSCode Smooth Caret Effect', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                subtitle: const Text('Smooth animated typing cursor', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+                title: Text('VSCode Smooth Caret Effect', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                subtitle: Text('Smooth animated typing cursor', style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
                 value: settings.smoothCaretEnabled,
                 onChanged: (val) => settingsNotifier.toggleSmoothCaret(val),
               ),
               Divider(color: activeTheme.border, height: 1),
               SwitchListTile(
                 activeThumbColor: activeTheme.accent,
-                title: const Text('Show Word Count', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                subtitle: const Text('Display real-time word counter in note header & library', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+                title: Text('Show Word Count', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                subtitle: Text('Display real-time word counter in note header & library', style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
                 value: settings.showWordCount,
                 onChanged: (val) => settingsNotifier.toggleWordCount(val),
               ),
@@ -212,15 +219,15 @@ class SettingsScreen extends ConsumerWidget {
             activeTheme: activeTheme,
             children: [
               ListTile(
-                title: const Text('Total Notes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                title: Text('Total Notes', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
                 trailing: Text('${libraryState.notes.length}', style: TextStyle(color: activeTheme.accent, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
               Divider(color: activeTheme.border, height: 1),
               ListTile(
                 leading: Icon(Icons.sync_alt_rounded, color: activeTheme.accent),
-                title: const Text('Wi-Fi Device Sync', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                subtitle: const Text('Sync notes between Phone & PC over local network', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
-                trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                title: Text('Wi-Fi Device Sync', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                subtitle: Text('Sync notes between Phone & PC over local network', style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
+                trailing: Icon(Icons.chevron_right, color: activeTheme.textSecondary),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const SyncScreen()),
@@ -230,8 +237,8 @@ class SettingsScreen extends ConsumerWidget {
               Divider(color: activeTheme.border, height: 1),
               ListTile(
                 leading: Icon(Icons.folder_zip_outlined, color: activeTheme.accent),
-                title: const Text('Export Backup Archive', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                subtitle: const Text('Save all notes as a compressed .zip (.txt / .pdf)', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
+                title: Text('Export Backup Archive', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                subtitle: Text('Save all notes as a compressed .zip (.txt / .pdf)', style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
                 onTap: () async {
                   final format = await ExportChoiceDialog.show(
                     context,
@@ -260,9 +267,9 @@ class SettingsScreen extends ConsumerWidget {
             activeTheme: activeTheme,
             children: [
               ListTile(
-                title: const Text('wznotes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                subtitle: const Text('Pure AMOLED Keyboard-First Engine', style: TextStyle(color: AppColors.amoledTextSecondary, fontSize: 13)),
-                trailing: Text('v${UpdateService.currentVersion}', style: const TextStyle(color: Colors.white38, fontSize: 14)),
+                title: Text('wznotes', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                subtitle: Text('Personal Notes & Inking Engine', style: TextStyle(color: activeTheme.textSecondary, fontSize: 13)),
+                trailing: Text('v${UpdateService.currentVersion}', style: TextStyle(color: activeTheme.textSecondary, fontSize: 14)),
               ),
               Divider(color: activeTheme.border, height: 1),
               Consumer(
@@ -272,13 +279,13 @@ class SettingsScreen extends ConsumerWidget {
 
                   return ListTile(
                     leading: Icon(Icons.system_update_alt_rounded, color: activeTheme.accent),
-                    title: const Text('Check for Updates', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    title: Text('Check for Updates', style: TextStyle(color: activeTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
                     subtitle: Text(
                       updateState.hasUpdate
                           ? 'Update available: v${updateState.updateInfo!.version}'
                           : 'Current version: v${UpdateService.currentVersion}+${UpdateService.currentBuildNumber}',
                       style: TextStyle(
-                        color: updateState.hasUpdate ? activeTheme.accent : AppColors.amoledTextSecondary,
+                        color: updateState.hasUpdate ? activeTheme.accent : activeTheme.textSecondary,
                         fontSize: 13,
                         fontWeight: updateState.hasUpdate ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -291,7 +298,7 @@ class SettingsScreen extends ConsumerWidget {
                           )
                         : (updateState.hasUpdate
                             ? Icon(Icons.arrow_circle_up_rounded, color: activeTheme.accent)
-                            : const Icon(Icons.refresh_rounded, color: Colors.white54)),
+                            : Icon(Icons.refresh_rounded, color: activeTheme.textSecondary)),
                     onTap: updateState.isChecking
                         ? null
                         : () async {

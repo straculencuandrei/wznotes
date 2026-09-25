@@ -15,6 +15,8 @@ class AppThemePalette {
   final Color accentSecondary;
   final Color textPrimary;
   final Color textSecondary;
+  final Gradient? backgroundGradient;
+  final bool isDark;
 
   const AppThemePalette({
     required this.id,
@@ -28,11 +30,213 @@ class AppThemePalette {
     required this.accentSecondary,
     this.textPrimary = const Color(0xFFFFFFFF),
     this.textSecondary = const Color(0xFFA0A0A0),
+    this.backgroundGradient,
+    this.isDark = true,
   });
 }
 
 class AppThemes {
-  // 1. Pure AMOLED (Default - Pitch black with signature Samsung orange)
+  // ==================== DYNAMIC MULTI-COLOR GRADIENT PALETTES ====================
+
+  // 1. Prism Spectrum (Pure RGB chromatic fade: Sapphire Blue -> Electric Violet -> Magenta -> Sunset Amber)
+  static const prismRgb = AppThemePalette(
+    id: 'prism_rgb',
+    name: 'Prism Spectrum',
+    description: 'Dynamic RGB chromatic fade from sapphire blue through electric violet into magenta',
+    background: Color(0xFF090C22),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF090C22), Color(0xFF261047), Color(0xFF580E4F), Color(0xFF1B0720)],
+      stops: [0.0, 0.35, 0.72, 1.0],
+    ),
+    surface: Color(0xFF140F2E),
+    surfaceElevated: Color(0xFF1F1742),
+    border: Color(0xFF3B2A6E),
+    accent: Color(0xFF00F2FE),
+    accentSecondary: Color(0xFFFF007F),
+    textPrimary: Color(0xFFFFFFFF),
+    textSecondary: Color(0xFFC4BBE4),
+  );
+
+  // 2. Miami Sunset (Color fade: Deep Night Violet -> Hot Plum-Magenta -> Burning Sunset Tangerine)
+  static const cyberSunset = AppThemePalette(
+    id: 'cyber_sunset',
+    name: 'Miami Sunset',
+    description: 'Vibrant sunset fade: deep royal violet melting into hot plum and golden coral',
+    background: Color(0xFF0D0924),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0xFF0D0924), Color(0xFF360C40), Color(0xFF6B1B32), Color(0xFF180A1F)],
+      stops: [0.0, 0.38, 0.75, 1.0],
+    ),
+    surface: Color(0xFF1B102B),
+    surfaceElevated: Color(0xFF29183F),
+    border: Color(0xFF4C2754),
+    accent: Color(0xFFFF5E7E),
+    accentSecondary: Color(0xFFFFAE34),
+    textPrimary: Color(0xFFFFFFFF),
+    textSecondary: Color(0xFFDABED4),
+  );
+
+  // 3. Aurora Borealis (Arctic multi-chroma fade: Deep Polar Midnight -> Luminous Emerald -> Cyan -> Purple Aura)
+  static const auroraBorealis = AppThemePalette(
+    id: 'aurora_borealis',
+    name: 'Aurora Borealis',
+    description: 'Polar celestial fade: dark oceanic navy fading through vivid emerald, cyan, and violet aura',
+    background: Color(0xFF030C17),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF030C17), Color(0xFF052B23), Color(0xFF073B45), Color(0xFF1B0E30)],
+      stops: [0.0, 0.32, 0.68, 1.0],
+    ),
+    surface: Color(0xFF0A1E24),
+    surfaceElevated: Color(0xFF102D37),
+    border: Color(0xFF1B4958),
+    accent: Color(0xFF00FFA3),
+    accentSecondary: Color(0xFFA78BFA),
+    textPrimary: Color(0xFFFFFFFF),
+    textSecondary: Color(0xFFA5CFD2),
+  );
+
+  // 4. Hyper Pop (Electric Duo-Chroma: Deep Indigo -> Electric Royal Blue -> Hot Neon Fuchsia)
+  static const hyperPop = AppThemePalette(
+    id: 'hyper_pop',
+    name: 'Hyper Pop',
+    description: 'High-voltage electric fade: deep royal blue fusing into hot neon fuchsia and laser cyan',
+    background: Color(0xFF09061C),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topRight,
+      end: Alignment.bottomLeft,
+      colors: [Color(0xFF09061C), Color(0xFF15144F), Color(0xFF4F0D45), Color(0xFF070512)],
+      stops: [0.0, 0.35, 0.75, 1.0],
+    ),
+    surface: Color(0xFF160F33),
+    surfaceElevated: Color(0xFF22174C),
+    border: Color(0xFF422877),
+    accent: Color(0xFFFF2A85),
+    accentSecondary: Color(0xFF00E5FF),
+    textPrimary: Color(0xFFFFFFFF),
+    textSecondary: Color(0xFFCDBBE6),
+  );
+
+  // ==================== WHITE & BRIGHTISH GRADIENT PALETTES ====================
+
+  // 5. Ethereal Pearl (Preserved White Light Mode - Soft Porcelain & Cool Slate)
+  static const etherealPearl = AppThemePalette(
+    id: 'ethereal_pearl',
+    name: 'Ethereal Pearl',
+    description: 'Luminous alabaster pearl fading into cool ethereal porcelain and slate',
+    background: Color(0xFFF1F5F9),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFFAFBFD), Color(0xFFEEF3F8), Color(0xFFE2E8F0), Color(0xFFF4F7FB)],
+      stops: [0.0, 0.35, 0.75, 1.0],
+    ),
+    surface: Color(0xFFFFFFFF),
+    surfaceElevated: Color(0xFFFFFFFF),
+    border: Color(0xFFCBD5E1),
+    accent: Color(0xFF2563EB),
+    accentSecondary: Color(0xFF6366F1),
+    textPrimary: Color(0xFF0F172A),
+    textSecondary: Color(0xFF475569),
+    isDark: false,
+  );
+
+  // 6. Wabi Parchment (Preserved White/Warm Paper Light Mode - Japanese Editorial Fade)
+  static const wabiParchment = AppThemePalette(
+    id: 'wabi_parchment',
+    name: 'Wabi Parchment',
+    description: 'Warm vintage Japanese paper fading through tranquil oat and sand shades',
+    background: Color(0xFFF4EDE4),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0xFFFBF8F3), Color(0xFFF3ECE1), Color(0xFFE8DECF), Color(0xFFF6F0E6)],
+      stops: [0.0, 0.3, 0.75, 1.0],
+    ),
+    surface: Color(0xFFFFFDF9),
+    surfaceElevated: Color(0xFFFFFFFF),
+    border: Color(0xFFD6C8B8),
+    accent: Color(0xFFC2410C),
+    accentSecondary: Color(0xFFD97706),
+    textPrimary: Color(0xFF261E17),
+    textSecondary: Color(0xFF6E5D4F),
+    isDark: false,
+  );
+
+  // 7. Solaris Dawn (Brightish - Luminous Golden Peach -> Pastel Coral Rose -> Soft Morning Lilac)
+  static const solarisDawn = AppThemePalette(
+    id: 'solaris_dawn',
+    name: 'Solaris Dawn',
+    description: 'Bright radiant sunrise: warm golden ivory fading into coral rose and soft morning lavender',
+    background: Color(0xFFFFF7ED),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFFFFBF5), Color(0xFFFFE8EC), Color(0xFFF4EBFF), Color(0xFFFAF5FF)],
+      stops: [0.0, 0.35, 0.75, 1.0],
+    ),
+    surface: Color(0xFFFFFFFF),
+    surfaceElevated: Color(0xFFFFFFFF),
+    border: Color(0xFFFED7AA),
+    accent: Color(0xFFE11D48),
+    accentSecondary: Color(0xFFEA580C),
+    textPrimary: Color(0xFF1E1B4B),
+    textSecondary: Color(0xFF64748B),
+    isDark: false,
+  );
+
+  // 8. Sakura Matcha (Brightish - Dew Spring Mint -> Fresh Jade -> Soft Cherry Blossom Pink)
+  static const sakuraMatcha = AppThemePalette(
+    id: 'sakura_matcha',
+    name: 'Sakura Matcha',
+    description: 'Bright botanical harmony: spring matcha mint softly fading into sweet cherry blossom pink',
+    background: Color(0xFFF0FDF4),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0xFFF5FCF7), Color(0xFFE6F8EE), Color(0xFFFDF2F8), Color(0xFFFBFBFE)],
+      stops: [0.0, 0.3, 0.7, 1.0],
+    ),
+    surface: Color(0xFFFFFFFF),
+    surfaceElevated: Color(0xFFFFFFFF),
+    border: Color(0xFFBBF7D0),
+    accent: Color(0xFF059669),
+    accentSecondary: Color(0xFFF43F5E),
+    textPrimary: Color(0xFF064E3B),
+    textSecondary: Color(0xFF475569),
+    isDark: false,
+  );
+
+  // 9. Celestial Opal (Brightish - Cool Sky Ice -> Soft Lavender Amethyst -> Sunlight Cream)
+  static const celestialOpal = AppThemePalette(
+    id: 'celestial_opal',
+    name: 'Celestial Opal',
+    description: 'Bright iridescent glow: crisp sky ice blue fading into ethereal lavender and sunlight cream',
+    background: Color(0xFFF0F9FF),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFF6FAFE), Color(0xFFF3F0FF), Color(0xFFFEFCE8), Color(0xFFFAF5FF)],
+      stops: [0.0, 0.35, 0.75, 1.0],
+    ),
+    surface: Color(0xFFFFFFFF),
+    surfaceElevated: Color(0xFFFFFFFF),
+    border: Color(0xFFC7D2FE),
+    accent: Color(0xFF2563EB),
+    accentSecondary: Color(0xFF7C3AED),
+    textPrimary: Color(0xFF0F172A),
+    textSecondary: Color(0xFF475569),
+    isDark: false,
+  );
+
+  // ==================== ORIGINAL SOLID PALETTES ====================
+
+  // 10. Pure AMOLED (Default - Pitch black with signature Samsung orange)
   static const amoled = AppThemePalette(
     id: 'amoled',
     name: 'Pure AMOLED',
@@ -45,7 +249,7 @@ class AppThemes {
     accentSecondary: Color(0xFFFF8F00),
   );
 
-  // 2. Midnight Neon (Cyberpunk obsidian with electric cyan glow)
+  // 11. Midnight Neon (Cyberpunk obsidian with electric cyan glow)
   static const cyber = AppThemePalette(
     id: 'cyber',
     name: 'Midnight Neon',
@@ -58,7 +262,7 @@ class AppThemes {
     accentSecondary: Color(0xFFFF007F),
   );
 
-  // 3. Nord Frost (Deep arctic night with crisp ice cyan)
+  // 12. Nord Frost (Deep arctic night with crisp ice cyan)
   static const nord = AppThemePalette(
     id: 'nord',
     name: 'Nord Frost',
@@ -71,7 +275,7 @@ class AppThemes {
     accentSecondary: Color(0xFF81A1C1),
   );
 
-  // 4. Forest Matrix (Deep obsidian emerald with vivid mint)
+  // 13. Forest Matrix (Deep obsidian emerald with vivid mint)
   static const forest = AppThemePalette(
     id: 'forest',
     name: 'Forest Matrix',
@@ -84,7 +288,7 @@ class AppThemes {
     accentSecondary: Color(0xFF69F0AE),
   );
 
-  // 5. Warm Sepia (Roasted dark espresso with caramel amber)
+  // 14. Warm Sepia (Roasted dark espresso with caramel amber)
   static const sepia = AppThemePalette(
     id: 'sepia',
     name: 'Warm Sepia',
@@ -97,7 +301,7 @@ class AppThemes {
     accentSecondary: Color(0xFFFFB74D),
   );
 
-  // 6. Royal Twilight (Deep midnight violet with radiant lavender)
+  // 15. Royal Twilight (Deep midnight violet with radiant lavender)
   static const twilight = AppThemePalette(
     id: 'twilight',
     name: 'Royal Twilight',
@@ -110,7 +314,7 @@ class AppThemes {
     accentSecondary: Color(0xFF7C4DFF),
   );
 
-  // 7. Crimson Velvet (Deep velvet obsidian with vivid ruby red glow)
+  // 16. Crimson Velvet (Deep velvet obsidian with vivid ruby red glow)
   static const crimson = AppThemePalette(
     id: 'crimson',
     name: 'Crimson Velvet',
@@ -123,7 +327,7 @@ class AppThemes {
     accentSecondary: Color(0xFFF43F5E),
   );
 
-  // 8. Deep Pacific (Abyssal oceanic trench with electric sapphire)
+  // 17. Deep Pacific (Abyssal oceanic trench with electric sapphire)
   static const pacific = AppThemePalette(
     id: 'pacific',
     name: 'Deep Pacific',
@@ -136,7 +340,7 @@ class AppThemes {
     accentSecondary: Color(0xFF38BDF8),
   );
 
-  // 9. Solar Flare (Eclipse charcoal with fiery solar coral)
+  // 18. Solar Flare (Eclipse charcoal with fiery solar coral)
   static const solar = AppThemePalette(
     id: 'solar',
     name: 'Solar Flare',
@@ -149,7 +353,7 @@ class AppThemes {
     accentSecondary: Color(0xFFFF8A65),
   );
 
-  // 10. Golden Amber (Imperial dark onyx with radiant molten gold)
+  // 19. Golden Amber (Imperial dark onyx with radiant molten gold)
   static const gold = AppThemePalette(
     id: 'gold',
     name: 'Golden Amber',
@@ -162,7 +366,7 @@ class AppThemes {
     accentSecondary: Color(0xFFF59E0B),
   );
 
-  // 11. Dracula Noir (Gothic midnight slate with electric orchid)
+  // 20. Dracula Noir (Gothic midnight slate with electric orchid)
   static const dracula = AppThemePalette(
     id: 'dracula',
     name: 'Dracula Noir',
@@ -175,7 +379,7 @@ class AppThemes {
     accentSecondary: Color(0xFF50FA7B),
   );
 
-  // 12. Carbon Silver (Pure minimalist carbon with surgical silver)
+  // 21. Carbon Silver (Pure minimalist carbon with surgical silver)
   static const carbon = AppThemePalette(
     id: 'carbon',
     name: 'Carbon Silver',
@@ -188,7 +392,21 @@ class AppThemes {
     accentSecondary: Color(0xFF94A3B8),
   );
 
-  static List<AppThemePalette> get allThemes => [
+  /// Curated Multi-Color & Brightish Gradient Themes
+  static List<AppThemePalette> get gradientThemes => [
+        prismRgb,
+        cyberSunset,
+        auroraBorealis,
+        hyperPop,
+        etherealPearl,
+        wabiParchment,
+        solarisDawn,
+        sakuraMatcha,
+        celestialOpal,
+      ];
+
+  /// Curated Solid Minimalist & Classic Palettes
+  static List<AppThemePalette> get solidThemes => [
         amoled,
         cyber,
         nord,
@@ -203,6 +421,11 @@ class AppThemes {
         carbon,
       ];
 
+  static List<AppThemePalette> get allThemes => [
+        ...gradientThemes,
+        ...solidThemes,
+      ];
+
   static AppThemePalette getTheme(String id) {
     return allThemes.firstWhere(
       (t) => t.id == id,
@@ -212,16 +435,26 @@ class AppThemes {
 
   static ThemeData getThemeData(String id) {
     final palette = getTheme(id);
+    final isDark = palette.isDark;
+
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.dark(
-        primary: palette.accent,
-        onPrimary: Colors.black,
-        secondary: palette.accentSecondary,
-        surface: palette.surface,
-        outline: palette.border,
-      ),
+      brightness: isDark ? Brightness.dark : Brightness.light,
+      colorScheme: isDark
+          ? ColorScheme.dark(
+              primary: palette.accent,
+              onPrimary: Colors.black,
+              secondary: palette.accentSecondary,
+              surface: palette.surface,
+              outline: palette.border,
+            )
+          : ColorScheme.light(
+              primary: palette.accent,
+              onPrimary: Colors.white,
+              secondary: palette.accentSecondary,
+              surface: palette.surface,
+              outline: palette.border,
+            ),
       scaffoldBackgroundColor: palette.background,
       canvasColor: palette.background,
       tabBarTheme: TabBarThemeData(

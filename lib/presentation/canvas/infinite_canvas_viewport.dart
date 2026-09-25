@@ -1,15 +1,16 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/constants/app_colors.dart';
 import '../../domain/models/pen_tool.dart';
 import '../controllers/infinite_canvas_controller.dart';
 import '../controllers/inking_controller.dart';
 import '../controllers/document_controller.dart';
+import '../controllers/editor_formatting_bridge.dart';
 import '../widgets/infinite_rich_text_layer.dart';
 import 'tile_stroke_painter.dart';
 import 'active_stroke_painter.dart';
 import 'lasso_painter.dart';
+import '../../core/diagnostics/performance_benchmark.dart';
 
 /// Pure AMOLED Keyboard & Inking Viewport
 class InfiniteCanvasViewport extends ConsumerStatefulWidget {
@@ -43,33 +44,48 @@ class _InfiniteCanvasViewportState extends ConsumerState<InfiniteCanvasViewport>
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(canvasViewportProvider);
-    final strokes = ref.watch(documentProvider.select((d) => d.strokes));
-    final inkingState = ref.watch(inkingProvider);
-    final inkingNotifier = ref.read(inkingProvider.notifier);
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double docWidth = screenWidth < 820.0 ? screenWidth : 820.0;
+    return PerformanceBenchmarkService.measure('canvas_viewport_build', () {
+      final strokes = ref.watch(documentProvider.select((d) => d.strokes));
+      final inkingState = ref.watch(inkingProvider);
+      final inkingNotifier = ref.read(inkingProvider.notifier);
+      final double screenWidth = MediaQuery.sizeOf(context).width;
+      final double screenHeight = MediaQuery.sizeOf(context).height;
+      final double docWidth = screenWidth < 820.0 ? screenWidth : 820.0;
 
-    return Container(
-      color: AppColors.amoledBlack,
-      child: SingleChildScrollView(
+      return Container(
+        color: Colors.transparent,
+        child: PerformanceProbeWidget(
+          tag: 'canvas_viewport',
+          child: SingleChildScrollView(
         controller: widget.scrollController,
         physics: inkingState.isInkingMode && inkingState.isDrawing
             ? const NeverScrollableScrollPhysics()
             : const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 450.0),
         child: Align(
           alignment: Alignment.topCenter,
-          child: Container(
-            width: docWidth,
-            constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
-            color: AppColors.amoledBlack,
-            child: Stack(
-              children: [
-                // 1. Keyboard-First Rich Text Layer (Always interactable unless stylus inking is active)
-                IgnorePointer(
-                  ignoring: inkingState.isInkingMode,
-                  child: InfiniteRichTextLayer(width: docWidth),
-                ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              if (!inkingState.isInkingMode) {
+                final bridge = ref.read(editorFormattingBridgeProvider);
+                if (bridge.bodyController != null && bridge.bodyFocusNode != null) {
+                  bridge.bodyFocusNode!.requestFocus();
+                  bridge.bodyController!.selection = TextSelection.collapsed(offset: bridge.bodyController!.text.length);
+                }
+              }
+            },
+            child: Container(
+              width: docWidth,
+              constraints: BoxConstraints(minHeight: screenHeight),
+              color: Colors.transparent,
+              child: Stack(
+                children: [
+                  // 1. Keyboard-First Rich Text Layer (Always interactable unless stylus inking is active)
+                  IgnorePointer(
+                    ignoring: inkingState.isInkingMode,
+                    child: InfiniteRichTextLayer(width: docWidth),
+                  ),
 
                 // 2. Committed Inking Vector Strokes (Transparent overlay)
                 if (strokes.isNotEmpty)
@@ -130,11 +146,14 @@ class _InfiniteCanvasViewportState extends ConsumerState<InfiniteCanvasViewport>
                       ),
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    );
+    ),
+  );
+    });
   }
 }

@@ -179,7 +179,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         backgroundColor: activeTheme.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_new, size: 20, color: activeTheme.textPrimary),
           onPressed: () {
             if (syncState.isHost) {
               syncNotifier.stopHostServer();
@@ -187,9 +187,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             Navigator.of(context).pop();
           },
         ),
-        title: const Text(
+        title: Text(
           'Wi-Fi Device Sync',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: activeTheme.textPrimary),
         ),
         bottom: TabBar(
           controller: _tabController,
@@ -250,9 +250,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Nearby Devices on Wi-Fi',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                         Text(
                           'Zero-config auto-discovery. No IP or PIN typing required.',
@@ -283,9 +283,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                         child: CircularProgressIndicator(strokeWidth: 2.2, color: activeTheme.accent),
                       ),
                       const SizedBox(height: 14),
-                      const Text(
+                      Text(
                         'Scanning Wi-Fi for nearby devices...',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.5),
+                        style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13.5),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -367,9 +367,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Cloud & File Vault Backup',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                         Text(
                           'Sync via Google Drive, OneDrive, USB, or Quick Share in 1 file.',
@@ -390,7 +390,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: activeTheme.surfaceElevated,
-                        foregroundColor: Colors.white,
+                        foregroundColor: activeTheme.textPrimary,
                         side: BorderSide(color: activeTheme.border),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -417,12 +417,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
+                        foregroundColor: activeTheme.textSecondary,
                         side: BorderSide(color: activeTheme.border),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      icon: const Icon(Icons.folder_open_rounded, size: 18, color: Colors.white70),
+                      icon: Icon(Icons.folder_open_rounded, size: 18, color: activeTheme.textSecondary),
                       label: const Text('Open Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       onPressed: () async {
                         try {
@@ -444,9 +444,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
 
               if (_availableBackups.isNotEmpty) ...[
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   'Available Vault Backups to Restore:',
-                  style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: activeTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 ..._availableBackups.take(3).map((f) {
@@ -466,7 +466,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                         Expanded(
                           child: Text(
                             name,
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                            style: TextStyle(color: activeTheme.textPrimary, fontSize: 12, fontFamily: 'monospace'),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -533,9 +533,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '1-Tap USB Cable Sync',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.5),
+                  style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14.5),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -614,7 +614,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                     Flexible(
                       child: Text(
                         peer.deviceName,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -687,9 +687,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 children: [
                   Icon(Icons.wifi_tethering, color: activeTheme.accent, size: 24),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'Direct Host Server Details',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ],
               ),
@@ -741,9 +741,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Connect to IP Directly',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(color: activeTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   if (Platform.isAndroid || Platform.isIOS)
                     TextButton.icon(
@@ -773,9 +773,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                       elevation: 0,
                     ),
                     icon: Icon(Icons.qr_code_scanner_rounded, size: 20, color: activeTheme.accent),
-                    label: const Text(
+                    label: Text(
                       'Scan PC Screen QR Code',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: activeTheme.textPrimary),
                     ),
                     onPressed: () => _openQrScanner(notifier),
                   ),
@@ -784,12 +784,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               const SizedBox(height: 12),
               TextField(
                 controller: _ipController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: activeTheme.textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Peer IP Address',
                   labelStyle: TextStyle(color: activeTheme.textSecondary),
                   hintText: 'e.g. 192.168.1.100',
-                  hintStyle: const TextStyle(color: Colors.white24),
+                  hintStyle: TextStyle(color: activeTheme.textSecondary.withValues(alpha: 0.5)),
                   filled: true,
                   fillColor: activeTheme.surfaceElevated,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -801,7 +801,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   Expanded(
                     child: TextField(
                       controller: _portController,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: activeTheme.textPrimary),
                       decoration: InputDecoration(
                         labelText: 'Port',
                         labelStyle: TextStyle(color: activeTheme.textSecondary),
@@ -815,7 +815,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                   Expanded(
                     child: TextField(
                       controller: _pinController,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: activeTheme.textPrimary),
                       decoration: InputDecoration(
                         labelText: 'PIN Code',
                         labelStyle: TextStyle(color: activeTheme.textSecondary),
@@ -898,7 +898,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 child: Text(
                   state.errorMessage ?? state.progressMessage,
                   style: TextStyle(
-                    color: isError ? const Color(0xFFFF6B6B) : Colors.white,
+                    color: isError ? const Color(0xFFFF6B6B) : activeTheme.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
@@ -935,7 +935,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 ),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
+                    foregroundColor: activeTheme.textPrimary,
                     side: BorderSide(color: activeTheme.border),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -957,7 +957,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
-                    foregroundColor: Colors.white54,
+                    foregroundColor: activeTheme.textSecondary,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   ),
                   onPressed: () => notifier.resetStatus(),
@@ -981,7 +981,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           Text(
             value,
             style: TextStyle(
-              color: isHighlight ? activeTheme.accent : Colors.white,
+              color: isHighlight ? activeTheme.accent : activeTheme.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -1005,9 +1005,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           children: [
             Icon(Icons.lan_rounded, color: activeTheme.accent, size: 22),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Connect to PC or Phone',
-              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(color: activeTheme.textPrimary, fontSize: 17, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -1036,10 +1036,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             const SizedBox(height: 12),
             TextField(
               controller: ipCtl,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: activeTheme.textPrimary),
               decoration: InputDecoration(
                 hintText: 'e.g. 192.168.1.15 or 127.0.0.1',
-                hintStyle: const TextStyle(color: Colors.white30),
+                hintStyle: TextStyle(color: activeTheme.textSecondary.withValues(alpha: 0.5)),
                 filled: true,
                 fillColor: activeTheme.surface,
                 border: OutlineInputBorder(
@@ -1053,7 +1053,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child: Text('Cancel', style: TextStyle(color: activeTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(

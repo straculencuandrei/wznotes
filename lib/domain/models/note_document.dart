@@ -212,8 +212,22 @@ class NoteDocument {
   }
 
   static int _countWords(String text) {
-    if (text.trim().isEmpty) return 0;
-    return text.trim().split(RegExp(r'\s+')).length;
+    if (text.isEmpty) return 0;
+    int count = 0;
+    bool inWord = false;
+    final len = text.length;
+    for (int i = 0; i < len; i++) {
+      final code = text.codeUnitAt(i);
+      if (code > 32) {
+        if (!inWord) {
+          count++;
+          inWord = true;
+        }
+      } else {
+        inWord = false;
+      }
+    }
+    return count;
   }
 
   NoteDocument copyWith({

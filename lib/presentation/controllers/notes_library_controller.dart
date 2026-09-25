@@ -1,10 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../../domain/models/note_document.dart';
 import '../../infrastructure/sync/models/sync_models.dart';
+
+String _encodeNoteDocumentJson(Map<String, dynamic> jsonMap) {
+  return json.encode(jsonMap);
+}
 
 class NotesLibraryState {
   final List<NoteDocument> notes;
@@ -211,12 +216,13 @@ class NotesLibraryNotifier extends StateNotifier<NotesLibraryState> {
     _persistNoteToDisk(docToSave);
   }
 
-  void _persistNoteToDisk(NoteDocument doc) {
+  Future<void> _persistNoteToDisk(NoteDocument doc) async {
     if (_notesDir == null) return;
     try {
       final file = File(p.join(_notesDir!.path, '${doc.metadata.id}.json'));
-      final jsonString = json.encode(doc.toJson());
-      file.writeAsString(jsonString); // Asynchronous background disk write
+      final jsonMap = doc.toJson();
+      final jsonString = await compute(_encodeNoteDocumentJson, jsonMap);
+      await file.writeAsString(jsonString); // Asynchronous background disk write
     } catch (_) {}
   }
 

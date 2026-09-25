@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../domain/models/text_span_node.dart';
+import '../../core/diagnostics/performance_benchmark.dart';
 
 class FormattingSpan {
   int start;
@@ -134,20 +135,24 @@ class RichSpanEditingController extends TextEditingController {
 
   void _handleDeterministicDiff(String oldText, String newText) {
     if (oldText == newText) return;
+    if (_spans.isEmpty && !activeBold && !activeItalic && !activeStrike) {
+      return;
+    }
 
     final oldLen = oldText.length;
     final newLen = newText.length;
 
     int prefix = 0;
-    while (prefix < oldLen && prefix < newLen && oldText[prefix] == newText[prefix]) {
+    while (prefix < oldLen && prefix < newLen && oldText.codeUnitAt(prefix) == newText.codeUnitAt(prefix)) {
       prefix++;
     }
 
     int suffix = 0;
     while (suffix < (oldLen - prefix) && suffix < (newLen - prefix) &&
-           oldText[oldLen - 1 - suffix] == newText[newLen - 1 - suffix]) {
+           oldText.codeUnitAt(oldLen - 1 - suffix) == newText.codeUnitAt(newLen - 1 - suffix)) {
       suffix++;
     }
+
 
     final int deletedCount = oldLen - prefix - suffix;
     final int insertedCount = newLen - prefix - suffix;
@@ -295,44 +300,63 @@ class RichSpanEditingController extends TextEditingController {
       return nodes;
     }
 
-    int cursor = lineStart;
-    while (cursor < lineEnd) {
+    final int effectiveEnd = math.min(lineEnd, currentText.length);
+
+    // Fast O(1) path: If no spans in document, return plain text node immediately
+    if (_spans.isEmpty) {
+      nodes.add(TextSpanNode(
+        text: currentText.substring(lineStart, effectiveEnd),
+        bold: false,
+        italic: false,
+        strikethrough: false,
+      ));
+      return nodes;
+    }
+
+    // Fast O(1) path: If no spans intersect [lineStart, effectiveEnd), return plain text node immediately
+    final relevantSpans = _spans.where((s) => s.end > lineStart && s.start < effectiveEnd).toList();
+    if (relevantSpans.isEmpty) {
+      nodes.add(TextSpanNode(
+        text: currentText.substring(lineStart, effectiveEnd),
+        bold: false,
+        italic: false,
+        strikethrough: false,
+      ));
+      return nodes;
+    }
+
+    // Ultra-Fast O(M log M) interval sweep over span boundary points
+    final boundarySet = <int>{lineStart, effectiveEnd};
+    for (final s in relevantSpans) {
+      boundarySet.add(s.start.clamp(lineStart, effectiveEnd));
+      boundarySet.add(s.end.clamp(lineStart, effectiveEnd));
+    }
+
+    final boundaries = boundarySet.toList()..sort();
+
+    for (int i = 0; i < boundaries.length - 1; i++) {
+      final segStart = boundaries[i];
+      final segEnd = boundaries[i + 1];
+      if (segStart >= segEnd) continue;
+
       bool isB = false;
       bool isI = false;
       bool isS = false;
 
-      for (final s in _spans) {
-        if (cursor >= s.start && cursor < s.end) {
+      for (final s in relevantSpans) {
+        if (s.start <= segStart && s.end >= segEnd) {
           if (s.isBold) isB = true;
           if (s.isItalic) isI = true;
           if (s.isStrike) isS = true;
         }
       }
 
-      int runEnd = cursor + 1;
-      while (runEnd < lineEnd) {
-        bool runB = false;
-        bool runI = false;
-        bool runS = false;
-        for (final s in _spans) {
-          if (runEnd >= s.start && runEnd < s.end) {
-            if (s.isBold) runB = true;
-            if (s.isItalic) runI = true;
-            if (s.isStrike) runS = true;
-          }
-        }
-        if (runB != isB || runI != isI || runS != isS) break;
-        runEnd++;
-      }
-
       nodes.add(TextSpanNode(
-        text: currentText.substring(cursor, runEnd),
+        text: currentText.substring(segStart, segEnd),
         bold: isB,
         italic: isI,
         strikethrough: isS,
       ));
-
-      cursor = runEnd;
     }
 
     return nodes;
@@ -344,64 +368,59 @@ class RichSpanEditingController extends TextEditingController {
     TextStyle? style,
     required bool withComposing,
   }) {
-    final effectiveStyle = style ?? baseStyle;
-    final currentText = text;
+    return PerformanceBenchmarkService.measure('build_text_span', () {
+      final effectiveStyle = style ?? baseStyle;
+      final currentText = text;
 
-    if (currentText.isEmpty || _spans.isEmpty) {
-      return TextSpan(style: effectiveStyle, text: currentText);
-    }
-
-    final List<TextSpan> children = [];
-    int cursor = 0;
-
-    while (cursor < currentText.length) {
-      bool isB = false;
-      bool isI = false;
-      bool isS = false;
-
-      for (final s in _spans) {
-        if (cursor >= s.start && cursor < s.end) {
-          if (s.isBold) isB = true;
-          if (s.isItalic) isI = true;
-          if (s.isStrike) isS = true;
-        }
+      if (currentText.isEmpty || _spans.isEmpty) {
+        return TextSpan(style: effectiveStyle, text: currentText);
       }
 
-      int runEnd = cursor + 1;
-      while (runEnd < currentText.length) {
-        bool runB = false;
-        bool runI = false;
-        bool runS = false;
-        for (final s in _spans) {
-          if (runEnd >= s.start && runEnd < s.end) {
-            if (s.isBold) runB = true;
-            if (s.isItalic) runI = true;
-            if (s.isStrike) runS = true;
+      // High-performance single-pass linear O(M) sweep:
+      // Only partitions text where styled spans exist, keeping plain text contiguous.
+      final List<TextSpan> children = [];
+      int cursor = 0;
+
+      for (int i = 0; i < _spans.length; i++) {
+        final s = _spans[i];
+        final sStart = s.start.clamp(0, currentText.length);
+        final sEnd = s.end.clamp(0, currentText.length);
+
+        if (sStart > cursor) {
+          children.add(TextSpan(
+            text: currentText.substring(cursor, sStart),
+            style: effectiveStyle,
+          ));
+        }
+
+        if (sEnd > sStart && sEnd > cursor) {
+          final actualStart = math.max(cursor, sStart);
+          TextStyle segStyle = effectiveStyle;
+          if (s.isBold) segStyle = segStyle.copyWith(fontWeight: FontWeight.w900);
+          if (s.isItalic) segStyle = segStyle.copyWith(fontStyle: FontStyle.italic);
+          if (s.isStrike) {
+            segStyle = segStyle.copyWith(
+              decoration: TextDecoration.lineThrough,
+              color: (effectiveStyle.color ?? Colors.white).withValues(alpha: 0.7),
+            );
           }
+          children.add(TextSpan(
+            text: currentText.substring(actualStart, sEnd),
+            style: segStyle,
+          ));
         }
-        if (runB != isB || runI != isI || runS != isS) break;
-        runEnd++;
+
+        cursor = math.max(cursor, sEnd);
       }
 
-      TextStyle segStyle = effectiveStyle;
-      if (isB) {
-        segStyle = segStyle.copyWith(fontWeight: FontWeight.w900, color: Colors.white);
-      }
-      if (isI) {
-        segStyle = segStyle.copyWith(fontStyle: FontStyle.italic);
-      }
-      if (isS) {
-        segStyle = segStyle.copyWith(decoration: TextDecoration.lineThrough, color: Colors.white70);
+      if (cursor < currentText.length) {
+        children.add(TextSpan(
+          text: currentText.substring(cursor),
+          style: effectiveStyle,
+        ));
       }
 
-      children.add(TextSpan(
-        text: currentText.substring(cursor, runEnd),
-        style: segStyle,
-      ));
-
-      cursor = runEnd;
-    }
-
-    return TextSpan(style: effectiveStyle, children: children);
+      return TextSpan(style: effectiveStyle, children: children);
+    });
   }
 }

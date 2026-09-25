@@ -1,9 +1,26 @@
-# WZNotes / Pixel Notes - Quick Run Script
+# WZNotes / Pixel Notes - Writing Performance Benchmark & Diagnostic Runner
 $ErrorActionPreference = "Continue"
 Set-Location -Path $PSScriptRoot
 
+$logFile = Join-Path $PSScriptRoot "logs benchmark.txt"
+try {
+    Start-Transcript -Path $logFile -Append -Force | Out-Null
+    Write-Host "[Logging Active] Telemetry is being recorded to: logs benchmark.txt" -ForegroundColor Green
+} catch {
+    Write-Host "[Logging Notice] Could not start transcript: $_" -ForegroundColor Yellow
+}
+
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "              WZNotes / Pixel Notes - Quick Run" -ForegroundColor Yellow
+Write-Host "     WZNotes - Heavy Writing Performance & Telemetry Tool       " -ForegroundColor Yellow
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host " Diagnostic Telemetry Active:" -ForegroundColor Green
+Write-Host "   * Realtime FPS & Frame Render Latency (UI Build + GPU Raster)" -ForegroundColor Gray
+Write-Host "   * Keystroke-to-Screen Input Latency (in ms)" -ForegroundColor Gray
+Write-Host "   * 8k / 20k / 60k Words Synthetic Stress Testing" -ForegroundColor Gray
+Write-Host "   * Live log output saved to: logs benchmark.txt" -ForegroundColor Cyan
+Write-Host "   * Press 'P' in this terminal to toggle Flutter's Performance Graph" -ForegroundColor Yellow
+Write-Host "   * Press 'v' to launch Flutter DevTools profiler in your browser" -ForegroundColor Yellow
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -105,7 +122,7 @@ if ($hasExplicitDevice) {
                 & flutter run -d windows @flutterArgs
                 break
             } elseif ($choice -match "^[Qq]") {
-                Write-Host "Exiting." -ForegroundColor Gray
+                Write-Host "Exiting benchmark runner." -ForegroundColor Gray
                 exit 0
             } else {
                 Write-Host "Retrying in 2 seconds..." -ForegroundColor Gray
@@ -118,12 +135,14 @@ if ($hasExplicitDevice) {
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "================================================================" -ForegroundColor Red
-    Write-Host "Session finished with exit code: $LASTEXITCODE" -ForegroundColor Red
-    Write-Host "You can target a specific device using:" -ForegroundColor Yellow
-    Write-Host "  run.bat -d 37231FDJH0048J" -ForegroundColor Gray
-    Write-Host "  run.bat -d windows" -ForegroundColor Gray
+    Write-Host "Benchmark session finished with exit code: $LASTEXITCODE" -ForegroundColor Red
     Write-Host "================================================================" -ForegroundColor Red
 }
 
+try {
+    Stop-Transcript | Out-Null
+} catch {}
+
 Write-Host ""
+Write-Host "Benchmark logs saved to: $logFile" -ForegroundColor Green
 Read-Host "Press Enter to exit..."

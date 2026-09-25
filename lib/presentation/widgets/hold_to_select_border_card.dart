@@ -142,97 +142,103 @@ class _HoldToSelectBorderCardState extends State<HoldToSelectBorderCard>
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: _onPointerDown,
-      onPointerMove: _onPointerMove,
-      onPointerUp: _onPointerUp,
-      onPointerCancel: _onPointerCancel,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _handleTap,
-        child: AnimatedBuilder(
-          animation: _controller,
-          child: widget.child,
-          builder: (context, child) {
-            final progress = _controller.value;
-            final effectiveGlowColor = widget.glowColor ?? Theme.of(context).colorScheme.primary;
+    return RepaintBoundary(
+      child: Listener(
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
+        onPointerCancel: _onPointerCancel,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _handleTap,
+          child: AnimatedBuilder(
+            animation: _controller,
+            child: RepaintBoundary(child: widget.child),
+            builder: (context, cachedChild) {
+              final progress = _controller.value;
+              final effectiveGlowColor = widget.glowColor ?? Theme.of(context).colorScheme.primary;
 
-            return Stack(
-              children: [
-                // Base Card Content
-                AnimatedScale(
-                  scale: _isHolding ? 0.975 : (widget.isSelected ? 0.98 : 1.0),
-                  duration: const Duration(milliseconds: 140),
-                  curve: Curves.easeOutCubic,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(widget.borderRadius),
-                      border: widget.isSelected
-                          ? Border.all(color: effectiveGlowColor, width: 2.0)
-                          : null,
-                    ),
-                    child: child,
-                  ),
-                ),
-
-                // Animated Perimeter Trace Painter (Active while holding)
-                if (progress > 0.0)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: _HoldProgressBorderPainter(
-                          progress: progress,
-                          radius: widget.borderRadius,
-                          color: effectiveGlowColor,
-                        ),
+              return Stack(
+                children: [
+                  // Base Card Content
+                  AnimatedScale(
+                    scale: _isHolding ? 0.975 : (widget.isSelected ? 0.98 : 1.0),
+                    duration: const Duration(milliseconds: 140),
+                    curve: Curves.easeOutCubic,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(widget.borderRadius),
+                        border: widget.isSelected
+                            ? Border.all(color: effectiveGlowColor, width: 2.0)
+                            : null,
                       ),
+                      child: cachedChild,
                     ),
                   ),
 
-                // Selected Checkmark Badge (Top Right with smooth pop-in animation)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: IgnorePointer(
-                    child: AnimatedScale(
-                      scale: widget.isSelectionMode ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutBack,
-                      child: AnimatedOpacity(
-                        opacity: widget.isSelectionMode ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 180),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: widget.isSelected ? effectiveGlowColor : const Color(0x80000000),
-                            border: Border.all(
-                              color: widget.isSelected ? Colors.transparent : Colors.white60,
-                              width: 1.8,
+                  // Animated Perimeter Trace Painter (Active while holding)
+                  if (progress > 0.0)
+                    Positioned.fill(
+                      child: RepaintBoundary(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _HoldProgressBorderPainter(
+                              progress: progress,
+                              radius: widget.borderRadius,
+                              color: effectiveGlowColor,
                             ),
-                            boxShadow: widget.isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: effectiveGlowColor.withValues(alpha: 0.6),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null,
                           ),
-                          child: widget.isSelected
-                              ? const Icon(Icons.check_rounded, color: Colors.black, size: 18)
-                              : null,
+                        ),
+                      ),
+                    ),
+
+                  // Selected Checkmark Badge (Top Right with smooth pop-in animation)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: RepaintBoundary(
+                      child: IgnorePointer(
+                        child: AnimatedScale(
+                          scale: widget.isSelectionMode ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutBack,
+                          child: AnimatedOpacity(
+                            opacity: widget.isSelectionMode ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 180),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: widget.isSelected ? effectiveGlowColor : const Color(0x80000000),
+                                border: Border.all(
+                                  color: widget.isSelected ? Colors.transparent : Colors.white60,
+                                  width: 1.8,
+                                ),
+                                boxShadow: widget.isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: effectiveGlowColor.withValues(alpha: 0.5),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: widget.isSelected
+                                  ? const Icon(Icons.check_rounded, color: Colors.black, size: 18)
+                                  : null,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -291,21 +297,28 @@ class _HoldProgressBorderPainter extends CustomPainter {
     final extractLength = totalLength * progress.clamp(0.0, 1.0);
     final extractPath = metric.extractPath(0.0, extractLength);
 
-    // Outer Glow / Bloom
-    final glowPaint = Paint()
-      ..color = color.withValues(alpha: 0.6)
+    // Outer Halo (hardware-accelerated, zero GPU/CPU blur stall)
+    final outerHaloPaint = Paint()
+      ..color = color.withValues(alpha: 0.25)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 5.0
+      ..strokeWidth = 6.0
       ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
-    canvas.drawPath(extractPath, glowPaint);
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(extractPath, outerHaloPaint);
+
+    final innerGlowPaint = Paint()
+      ..color = color.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(extractPath, innerGlowPaint);
 
     // Sharp Core Stroke
     final corePaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
+      ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(extractPath, corePaint);
@@ -314,16 +327,20 @@ class _HoldProgressBorderPainter extends CustomPainter {
     if (progress > 0.02 && progress < 0.99) {
       final tangent = metric.getTangentForOffset(extractLength);
       if (tangent != null) {
+        final dotHalo = Paint()
+          ..color = color.withValues(alpha: 0.4)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(tangent.position, 6.0, dotHalo);
+
+        final dotGlow = Paint()
+          ..color = color.withValues(alpha: 0.8)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(tangent.position, 4.2, dotGlow);
+
         final dotPaint = Paint()
           ..color = Colors.white
           ..style = PaintingStyle.fill;
-        canvas.drawCircle(tangent.position, 3.5, dotPaint);
-
-        final dotGlow = Paint()
-          ..color = color.withValues(alpha: 0.9)
-          ..style = PaintingStyle.fill
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
-        canvas.drawCircle(tangent.position, 5.0, dotGlow);
+        canvas.drawCircle(tangent.position, 2.5, dotPaint);
       }
     }
   }

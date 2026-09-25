@@ -29,10 +29,8 @@ class _WzNotesAppState extends ConsumerState<WzNotesApp> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Background-ready: start sync listener, deep link handler, and auto-discovery as soon as app opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final notifier = ref.read(syncProvider.notifier);
-      notifier.startAutoDiscovery();
       DeepLinkService.init(notifier);
     });
   }
@@ -44,11 +42,8 @@ class _WzNotesAppState extends ConsumerState<WzNotesApp> with WidgetsBindingObse
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      ref.read(syncProvider.notifier).startAutoDiscovery();
-    }
-  }
+  void didChangeAppLifecycleState(AppLifecycleState state) {}
+
 
   @override
   Widget build(BuildContext context) {

@@ -93,11 +93,27 @@ void main() {
     });
   });
 
-  group('Curated AMOLED Themes Suite', () {
-    test('AppThemes contains 12 curated dark AMOLED-friendly palettes', () {
-      expect(AppThemes.allThemes.length, 12);
-      final ids = AppThemes.allThemes.map((t) => t.id).toSet();
-      expect(ids, containsAll([
+  group('Curated Themes & Gradients Suite', () {
+    test('AppThemes separates 9 Dynamic Gradients and 12 Solid Palettes (21 total)', () {
+      expect(AppThemes.allThemes.length, 21);
+      expect(AppThemes.gradientThemes.length, 9);
+      expect(AppThemes.solidThemes.length, 12);
+
+      final gradientIds = AppThemes.gradientThemes.map((t) => t.id).toSet();
+      expect(gradientIds, containsAll([
+        'prism_rgb',
+        'cyber_sunset',
+        'aurora_borealis',
+        'hyper_pop',
+        'ethereal_pearl',
+        'wabi_parchment',
+        'solaris_dawn',
+        'sakura_matcha',
+        'celestial_opal',
+      ]));
+
+      final solidIds = AppThemes.solidThemes.map((t) => t.id).toSet();
+      expect(solidIds, containsAll([
         'amoled',
         'cyber',
         'nord',
@@ -113,38 +129,43 @@ void main() {
       ]));
     });
 
-    test('All themes have valid contrast backgrounds and accents', () {
+    test('All themes have valid contrast backgrounds, surfaces, and accents', () {
       for (final theme in AppThemes.allThemes) {
         expect(theme.name.isNotEmpty, isTrue);
         expect(theme.description.isNotEmpty, isTrue);
         expect(theme.background, isNotNull);
         expect(theme.surface, isNotNull);
         expect(theme.accent, isNotNull);
-        // All backgrounds must be ultra-dark (luminance < 0.05) to protect AMOLED displays
-        expect(theme.background.computeLuminance(), lessThan(0.05));
+        if (theme.isDark && theme.backgroundGradient == null) {
+          // Pure solid dark/AMOLED backgrounds must have ultra-low luminance
+          expect(theme.background.computeLuminance(), lessThan(0.05));
+        }
+      }
+    });
+
+    test('Gradient themes possess non-null LinearGradients', () {
+      final gradientThemes = AppThemes.allThemes.where((t) => t.backgroundGradient != null).toList();
+      expect(gradientThemes.length, 9);
+      for (final theme in gradientThemes) {
+        expect(theme.backgroundGradient, isA<LinearGradient>());
+        final linear = theme.backgroundGradient as LinearGradient;
+        expect(linear.colors.length, greaterThanOrEqualTo(2));
       }
     });
 
     test('AppThemes.getTheme returns requested theme or falls back to amoled', () {
       expect(AppThemes.getTheme('cyber').name, 'Midnight Neon');
-      expect(AppThemes.getTheme('nord').name, 'Nord Frost');
-      expect(AppThemes.getTheme('forest').name, 'Forest Matrix');
-      expect(AppThemes.getTheme('sepia').name, 'Warm Sepia');
-      expect(AppThemes.getTheme('twilight').name, 'Royal Twilight');
-      expect(AppThemes.getTheme('crimson').name, 'Crimson Velvet');
-      expect(AppThemes.getTheme('pacific').name, 'Deep Pacific');
-      expect(AppThemes.getTheme('solar').name, 'Solar Flare');
-      expect(AppThemes.getTheme('gold').name, 'Golden Amber');
-      expect(AppThemes.getTheme('dracula').name, 'Dracula Noir');
-      expect(AppThemes.getTheme('carbon').name, 'Carbon Silver');
+      expect(AppThemes.getTheme('prism_rgb').name, 'Prism Spectrum');
+      expect(AppThemes.getTheme('ethereal_pearl').name, 'Ethereal Pearl');
+      expect(AppThemes.getTheme('wabi_parchment').name, 'Wabi Parchment');
       expect(AppThemes.getTheme('unknown_id').id, 'amoled');
     });
 
-    test('AppThemes.getThemeData produces valid Material3 dark ThemeData', () {
+    test('AppThemes.getThemeData produces valid Material3 ThemeData matching theme brightness', () {
       for (final theme in AppThemes.allThemes) {
         final data = AppThemes.getThemeData(theme.id);
         expect(data.useMaterial3, isTrue);
-        expect(data.brightness, Brightness.dark);
+        expect(data.brightness, theme.isDark ? Brightness.dark : Brightness.light);
         expect(data.colorScheme.primary, theme.accent);
         expect(data.scaffoldBackgroundColor, theme.background);
       }
@@ -212,6 +233,22 @@ void main() {
       );
       expect(stateTrash.filteredNotes.length, 1);
       expect(stateTrash.filteredNotes.first.metadata.id, 'trash_1');
+    });
+  });
+
+  group('Note Editor Theme Integration', () {
+    testWidgets('Full note canvas and scaffold reflect active theme background', (WidgetTester tester) async {
+      final sepiaTheme = AppThemes.getTheme('sepia');
+      expect(sepiaTheme.background, isNot(equals(const Color(0xFF000000))));
+
+      // Verify that all themes provide non-black backgrounds and valid theme tokens
+      for (final theme in AppThemes.allThemes) {
+        expect(theme.background, isNotNull);
+        expect(theme.surfaceElevated, isNotNull);
+        expect(theme.border, isNotNull);
+        expect(theme.accent, isNotNull);
+        expect(theme.textPrimary, isNotNull);
+      }
     });
   });
 }

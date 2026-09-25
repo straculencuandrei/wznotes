@@ -136,20 +136,21 @@ class _TopIslandToastWidgetState extends State<_TopIslandToastWidget>
         color: Colors.transparent,
         child: Align(
           alignment: Alignment.topCenter,
-          child: GestureDetector(
-            onTap: _handleDismiss,
-            onVerticalDragUpdate: (details) {
-              if (details.primaryDelta != null && details.primaryDelta! < -4) {
-                _handleDismiss();
-              }
-            },
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: Container(
+          child: RepaintBoundary(
+            child: GestureDetector(
+              onTap: _handleDismiss,
+              onVerticalDragUpdate: (details) {
+                if (details.primaryDelta != null && details.primaryDelta! < -4) {
+                  _handleDismiss();
+                }
+              },
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     constraints: const BoxConstraints(maxWidth: 420),
                     decoration: BoxDecoration(
@@ -224,6 +225,7 @@ class _TopIslandToastWidgetState extends State<_TopIslandToastWidget>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
