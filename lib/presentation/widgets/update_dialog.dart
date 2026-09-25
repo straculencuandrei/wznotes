@@ -35,11 +35,18 @@ class UpdateDialog extends StatefulWidget {
 }
 
 class _UpdateDialogState extends State<UpdateDialog> {
+  final ScrollController _scrollController = ScrollController();
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
   String _downloadStatusText = '';
   String? _downloadedFilePath;
   String? _errorMessage;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   String get _targetUrl {
     if (Platform.isAndroid && widget.updateInfo.androidUrl.isNotEmpty) {
@@ -228,36 +235,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
             // Release Notes Box
             if (widget.updateInfo.releaseNotes.isNotEmpty && !_isDownloading) ...[
-              Text(
-                'WHAT\'S NEW',
-                style: TextStyle(
-                  color: accentColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 160),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.amoledBlack,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.amoledBorder),
-                ),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Text(
-                    widget.updateInfo.releaseNotes,
-                    style: const TextStyle(
-                      color: AppColors.amoledTextPrimary,
-                      fontSize: 13.5,
-                      height: 1.45,
-                    ),
-                  ),
-                ),
-              ),
+              _buildReleaseNotesList(accentColor),
               const SizedBox(height: 18),
             ],
 
@@ -387,6 +365,130 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildReleaseNotesList(Color accentColor) {
+    final rawNotes = widget.updateInfo.releaseNotes.trim();
+    List<String> items;
+    if (rawNotes.contains('\n') || rawNotes.contains('•') || rawNotes.contains('- ')) {
+      items = rawNotes
+          .split(RegExp(r'\r?\n|•\s*'))
+          .map((s) => s.trim().replaceAll(RegExp(r'^[-*•]\s*'), ''))
+          .where((s) => s.isNotEmpty)
+          .toList();
+    } else if (rawNotes.contains(',')) {
+      items = rawNotes.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    } else {
+      items = [rawNotes];
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "WHAT'S NEW",
+              style: TextStyle(
+                color: accentColor,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+              ),
+            ),
+            if (items.length > 1)
+              Text(
+                '${items.length} updates',
+                style: const TextStyle(
+                  color: AppColors.amoledTextSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          constraints: const BoxConstraints(maxHeight: 220, minHeight: 60),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.amoledBlack,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.amoledBorder),
+          ),
+          child: Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: items.length > 2,
+            radius: const Radius.circular(4),
+            child: ListView.separated(
+              controller: _scrollController,
+              shrinkWrap: true,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(right: 6),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final colonIdx = item.indexOf(': ');
+                final hasTitle = colonIdx > 0 && colonIdx < 40;
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 6, right: 10),
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Expanded(
+                      child: hasTitle
+                          ? RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  color: AppColors.amoledTextPrimary,
+                                  fontSize: 13,
+                                  height: 1.4,
+                                  fontFamily: 'Inter',
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: '${item.substring(0, colonIdx)}: ',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: item.substring(colonIdx + 2),
+                                    style: const TextStyle(
+                                      color: AppColors.amoledTextSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Text(
+                              item,
+                              style: const TextStyle(
+                                color: AppColors.amoledTextPrimary,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

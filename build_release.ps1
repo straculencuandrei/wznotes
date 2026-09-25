@@ -694,7 +694,7 @@ try {
         version = $ver
         build_number = $build
         title = "wznotes $gitTag Update"
-        release_notes = if ($ReleaseNotes) { $ReleaseNotes } else { "Trash bin with 30-day auto-purge and restoration, 6 curated AMOLED themes, show word count fix, streamlined Wi-Fi sync" }
+        release_notes = if ($ReleaseNotes) { $ReleaseNotes } else { "• Redesigned What's New View: Restructured in-app release notes dialog with individual bullet rows, accent indicator dots, and bold topic titles.`n• Persistent Scrollbar & Expanded Height: Integrated an explicit visible scrollbar and increased dialog height so release notes never cut off or end abruptly.`n• Updates Counter Badge: Added an item counter badge to the What's New header showing the exact number of included improvements.`n• OTA Manifest Reliability: Fixed manifest generation and updater payloads to deliver complete, unabbreviated changelogs to all platforms." }
         windows_url = "https://github.com/straculencuandrei/wznotes/releases/download/$gitTag/wznotes-windows-v$ver.zip"
         android_url = "https://github.com/straculencuandrei/wznotes/releases/download/$gitTag/wznotes-android-v$ver.apk"
         is_mandatory = $false

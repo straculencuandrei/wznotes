@@ -1,10 +1,10 @@
 {
-    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9.1/wznotes-android-v0.9.1.apk",
-    "release_notes":  "Trash bin with 30-day auto-purge and restoration, 6 curated AMOLED themes, show word count fix, streamlined Wi-Fi sync",
-    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9.1/wznotes-windows-v0.9.1.zip",
-    "title":  "wznotes v0.9.1 Update",
-    "published_at":  "2026-09-25T03:16:06Z",
+    "android_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9.2/wznotes-android-v0.9.2.apk",
+    "release_notes":  "• Redesigned What\u0027s New View: Restructured in-app release notes dialog with individual bullet rows, accent indicator dots, and bold topic titles.\n• Persistent Scrollbar \u0026 Expanded Height: Integrated an explicit visible scrollbar and increased dialog height so release notes never cut off or end abruptly.\n• Updates Counter Badge: Added an item counter badge to the What\u0027s New header showing the exact number of included improvements.\n• OTA Manifest Reliability: Fixed manifest generation and updater payloads to deliver complete, unabbreviated changelogs to all platforms.",
+    "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9.2/wznotes-windows-v0.9.2.zip",
+    "title":  "wznotes v0.9.2 Update",
+    "published_at":  "2026-09-25T03:33:06Z",
     "is_mandatory":  false,
-    "build_number":  24,
-    "version":  "0.9.1"
+    "build_number":  25,
+    "version":  "0.9.2"
 }
