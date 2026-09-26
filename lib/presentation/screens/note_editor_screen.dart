@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -253,13 +254,14 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
               ),
 
               // 3. Writing Performance Diagnostic HUD (collapsible live latency & stress test runner)
-              Positioned(
-                top: 8,
-                right: 12,
-                child: SafeArea(
-                  child: BenchmarkHudOverlay(ref: ref),
+              if (kDebugMode)
+                Positioned(
+                  top: 8,
+                  right: 12,
+                  child: SafeArea(
+                    child: BenchmarkHudOverlay(ref: ref),
+                  ),
                 ),
-              ),
             ],
           ),
           ),
