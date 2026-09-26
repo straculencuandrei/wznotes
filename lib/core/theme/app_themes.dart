@@ -132,10 +132,30 @@ class AppThemes {
     textSecondary: Color(0xFFF0CEE3),
   );
 
+  // 5. Aurora Borealis (Arctic multi-chroma fade: Deep Polar Midnight -> Luminous Emerald -> Cyan -> Purple Aura)
+  static const auroraBorealis = AppThemePalette(
+    id: 'aurora_borealis',
+    name: 'Aurora Borealis',
+    description: 'Polar celestial fade: dark oceanic navy fading through vivid emerald, cyan, and violet aura',
+    background: Color(0xFF030C17),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF030C17), Color(0xFF052B23), Color(0xFF073B45), Color(0xFF1B0E30)],
+      stops: [0.0, 0.32, 0.68, 1.0],
+    ),
+    surface: Color(0xFF0A1E24),
+    surfaceElevated: Color(0xFF102D37),
+    border: Color(0xFF1B4958),
+    accent: Color(0xFF00FFA3),
+    accentSecondary: Color(0xFFA78BFA),
+    textPrimary: Color(0xFFFFFFFF),
+    textSecondary: Color(0xFFA5CFD2),
+  );
+
   // Legacy compatibility aliases for previously saved user preferences
   static const prismRgb = moonwalker;
   static const cyberSunset = ameena;
-  static const auroraBorealis = winterWoods;
   static const hyperPop = yoda;
 
   // ==================== WHITE & BRIGHTISH GRADIENT PALETTES ====================
@@ -414,6 +434,7 @@ class AppThemes {
         ameena,
         winterWoods,
         yoda,
+        auroraBorealis,
         etherealPearl,
         wabiParchment,
         solarisDawn,
@@ -445,7 +466,6 @@ class AppThemes {
   static AppThemePalette getTheme(String id) {
     if (id == 'prism_rgb') return moonwalker;
     if (id == 'cyber_sunset') return ameena;
-    if (id == 'aurora_borealis') return winterWoods;
     if (id == 'hyper_pop') return yoda;
     return allThemes.firstWhere(
       (t) => t.id == id,

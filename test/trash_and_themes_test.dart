@@ -94,9 +94,9 @@ void main() {
   });
 
   group('Curated Themes & Gradients Suite', () {
-    test('AppThemes separates 9 Dynamic Gradients and 12 Solid Palettes (21 total)', () {
-      expect(AppThemes.allThemes.length, 21);
-      expect(AppThemes.gradientThemes.length, 9);
+    test('AppThemes separates 10 Dynamic Gradients and 12 Solid Palettes (22 total)', () {
+      expect(AppThemes.allThemes.length, 22);
+      expect(AppThemes.gradientThemes.length, 10);
       expect(AppThemes.solidThemes.length, 12);
 
       final gradientIds = AppThemes.gradientThemes.map((t) => t.id).toSet();
@@ -105,6 +105,7 @@ void main() {
         'ameena',
         'winter_woods',
         'yoda',
+        'aurora_borealis',
         'ethereal_pearl',
         'wabi_parchment',
         'solaris_dawn',
@@ -145,7 +146,7 @@ void main() {
 
     test('Gradient themes possess non-null LinearGradients', () {
       final gradientThemes = AppThemes.allThemes.where((t) => t.backgroundGradient != null).toList();
-      expect(gradientThemes.length, 9);
+      expect(gradientThemes.length, 10);
       for (final theme in gradientThemes) {
         expect(theme.backgroundGradient, isA<LinearGradient>());
         final linear = theme.backgroundGradient as LinearGradient;
@@ -159,6 +160,7 @@ void main() {
       expect(AppThemes.getTheme('ameena').name, 'Ameena');
       expect(AppThemes.getTheme('winter_woods').name, 'Winter Woods');
       expect(AppThemes.getTheme('yoda').name, 'Yoda');
+      expect(AppThemes.getTheme('aurora_borealis').name, 'Aurora Borealis');
       expect(AppThemes.getTheme('ethereal_pearl').name, 'Ethereal Pearl');
       expect(AppThemes.getTheme('wabi_parchment').name, 'Wabi Parchment');
       expect(AppThemes.getTheme('unknown_id').id, 'amoled');

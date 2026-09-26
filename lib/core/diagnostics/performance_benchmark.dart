@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -143,10 +144,12 @@ class RenderPerformanceProbe extends RenderProxyBox {
 class PerformanceBenchmarkService extends ChangeNotifier {
   static final PerformanceBenchmarkService instance = PerformanceBenchmarkService._();
   PerformanceBenchmarkService._() {
-    _initTimingsCallback();
+    if (kDebugMode) {
+      _initTimingsCallback();
+    }
   }
 
-  bool isEnabled = true;
+  bool isEnabled = kDebugMode;
   WritingPerfMetrics metrics = const WritingPerfMetrics();
 
   final List<double> _recentFrameTimes = [];
