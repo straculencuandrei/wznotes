@@ -3,7 +3,7 @@
     "release_notes":  "• Redesigned What\u0027s New View: Restructured in-app release notes dialog with individual bullet rows, accent indicator dots, and bold topic titles.\n• Persistent Scrollbar \u0026 Expanded Height: Integrated an explicit visible scrollbar and increased dialog height so release notes never cut off or end abruptly.\n• Updates Counter Badge: Added an item counter badge to the What\u0027s New header showing the exact number of included improvements.\n• OTA Manifest Reliability: Fixed manifest generation and updater payloads to deliver complete, unabbreviated changelogs to all platforms.",
     "windows_url":  "https://github.com/straculencuandrei/wznotes/releases/download/v0.9.9/wznotes-windows-v0.9.9.zip",
     "title":  "wznotes v0.9.9 Update",
-    "published_at":  "2026-09-26T03:40:20Z",
+    "published_at":  "2026-09-26T04:02:48Z",
     "is_mandatory":  false,
     "build_number":  26,
     "version":  "0.9.9"
