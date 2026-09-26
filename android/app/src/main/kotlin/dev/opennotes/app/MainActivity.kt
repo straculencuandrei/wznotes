@@ -6,6 +6,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsAnimationCompat
+import androidx.core.view.WindowInsetsCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -15,14 +19,62 @@ import android.util.Log
 class MainActivity: FlutterFragmentActivity() {
     private val FILE_CHANNEL = "dev.opennotes.app/file_manager"
     private val DEEP_LINK_CHANNEL = "dev.opennotes.app/deep_link"
+    private val KEYBOARD_CHANNEL = "dev.opennotes.app/keyboard"
     private val TAG = "MainActivity"
 
     private var initialDeepLink: String? = null
     private var deepLinkChannel: MethodChannel? = null
+    private var keyboardChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
+        setupKeyboardInsetInterception()
+    }
+
+    /// Intercepts IME (keyboard) window insets at the content view level,
+    /// BEFORE they reach Flutter's FlutterView engine. This prevents:
+    /// 1. WidgetsBinding.handleMetricsChanged() from firing (20+ times per keyboard animation)
+    /// 2. EditableTextState.didChangeMetrics() from doing expensive IME reconnections (134ms/frame)
+    /// 3. Full render tree re-layout on every animation frame
+    ///
+    /// The keyboard height is sent to Dart via MethodChannel instead,
+    /// where the dock island uses it for zero-overhead GPU Transform positioning.
+    private fun setupKeyboardInsetInterception() {
+        val contentView = window.decorView.findViewById<android.view.View>(android.R.id.content) ?: return
+        val density = resources.displayMetrics.density
+
+        // 1. Stop keyboard animation progress from reaching FlutterView
+        //    DISPATCH_MODE_STOP prevents onProgress from being dispatched to child views
+        ViewCompat.setWindowInsetsAnimationCallback(contentView,
+            object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_STOP) {
+                override fun onProgress(
+                    insets: WindowInsetsCompat,
+                    runningAnimations: List<WindowInsetsAnimationCompat>
+                ): WindowInsetsCompat {
+                    val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                    val dpHeight = imeBottom / density
+                    keyboardChannel?.invokeMethod("keyboardHeight", dpHeight.toDouble())
+
+                    // Return insets with IME zeroed so FlutterView doesn't see keyboard changes
+                    return WindowInsetsCompat.Builder(insets)
+                        .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
+                        .build()
+                }
+            }
+        )
+
+        // 2. Also intercept final onApplyWindowInsets to zero out IME for the settled state
+        ViewCompat.setOnApplyWindowInsetsListener(contentView) { _, insets ->
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val dpHeight = imeBottom / density
+            keyboardChannel?.invokeMethod("keyboardHeight", dpHeight.toDouble())
+
+            // Strip IME insets, pass everything else (system bars, cutouts) through
+            WindowInsetsCompat.Builder(insets)
+                .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
+                .build()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -70,6 +122,12 @@ class MainActivity: FlutterFragmentActivity() {
                 }
             }
         }
+
+        // Native Keyboard Height Channel — bypasses Flutter engine entirely
+        keyboardChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            KEYBOARD_CHANNEL
+        )
 
         initialDeepLink?.let { link ->
             deepLinkChannel?.invokeMethod("onDeepLink", link)

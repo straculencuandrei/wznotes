@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/theme/app_themes.dart';
@@ -374,6 +375,8 @@ class _KeyboardDockIsland extends StatefulWidget {
 
 class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  static const _keyboardChannel = MethodChannel('dev.opennotes.app/keyboard');
+
   final ValueNotifier<double> _visualInsetNotifier = ValueNotifier<double>(0.0);
   double _targetInset = 0.0;
   double _visualInset = 0.0;
@@ -387,6 +390,9 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
   /// from causing wild dock oscillation during the 304→0→304→0→304 pattern
   Timer? _closeGuardTimer;
 
+  /// Whether native keyboard channel has delivered at least one event
+  bool _nativeChannelActive = false;
+
   @override
   void initState() {
     super.initState();
@@ -397,10 +403,61 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
     final bench = PerformanceBenchmarkService.instance;
     bench.onKeyboardLikelyOpening = _onPredictiveOpen;
     bench.onKeyboardLikelyClosing = _onPredictiveClose;
+
+    // Listen to native keyboard height (bypasses Flutter engine entirely)
+    _keyboardChannel.setMethodCallHandler(_onNativeKeyboardEvent);
+  }
+
+  /// Receives keyboard height from Android's WindowInsetsAnimation.Callback
+  /// via MethodChannel — zero Flutter engine overhead, no handleMetricsChanged()
+  Future<dynamic> _onNativeKeyboardEvent(MethodCall call) async {
+    if (call.method == 'keyboardHeight') {
+      _nativeChannelActive = true;
+      final double height = (call.arguments as num).toDouble();
+      _onKeyboardHeight(height);
+    }
+    return null;
+  }
+
+  /// Unified keyboard height handler — used by both native channel and fallback path
+  void _onKeyboardHeight(double logicalHeight) {
+    if (!mounted) return;
+
+    // Feed the flight recorder
+    PerformanceBenchmarkService.instance.recordKeyboardInsetEvent(
+      logicalHeight, logicalHeight * (View.of(context).devicePixelRatio));
+
+    // Cache the keyboard height for future zero-delay predictive motion
+    if (logicalHeight > 10.0) {
+      _cachedKeyboardHeight = logicalHeight;
+      _closeGuardTimer?.cancel();
+      _closeGuardTimer = null;
+    }
+
+    // Hysteresis: when dock is UP and OS sends a transient zero, wait 150ms
+    if (logicalHeight < 1.0 && _targetInset > 10.0) {
+      _closeGuardTimer ??= Timer(const Duration(milliseconds: 150), () {
+        _closeGuardTimer = null;
+        if (!mounted) return;
+        _targetInset = 0.0;
+        if (!_ticker.isActive) {
+          _lastTick = Duration.zero;
+          _ticker.start();
+        }
+      });
+      return;
+    }
+
+    if ((logicalHeight - _targetInset).abs() > 0.5) {
+      _targetInset = logicalHeight;
+      if (!_ticker.isActive) {
+        _lastTick = Duration.zero;
+        _ticker.start();
+      }
+    }
   }
 
   /// Called at T+0ms when text focus is acquired — starts gliding immediately
-  /// without waiting for Android's 240ms Gboard IPC handshake delay
   void _onPredictiveOpen(double estimatedHeight) {
     if (!mounted) return;
     final height = _cachedKeyboardHeight > 10.0 ? _cachedKeyboardHeight : estimatedHeight;
@@ -442,8 +499,6 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
       return;
     }
 
-    // High-responsiveness critically damped spring follower:
-    // Glides at 120 FPS, bridging Android IPC sampling gaps while settling within 30-40ms
     final double step = diff * (1.0 - math.exp(-32.0 * deltaSeconds));
     _visualInset += step;
     _visualInsetNotifier.value = _visualInset;
@@ -452,71 +507,33 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _updateInset();
+    _updateInsetFallback();
   }
 
   @override
   void didChangeMetrics() {
-    _updateInset();
+    _updateInsetFallback();
   }
 
-  void _updateInset() {
-    if (!mounted) return;
+  /// Fallback path: only used when native MethodChannel hasn't delivered events.
+  /// With native interception active, viewInsets.bottom is always 0 from Flutter's
+  /// perspective, so this method becomes a no-op.
+  void _updateInsetFallback() {
+    if (_nativeChannelActive || !mounted) return;
     try {
       final view = View.of(context);
       final physicalInset = view.viewInsets.bottom;
+      if (physicalInset < 1.0 && _targetInset < 1.0) return;
       final dpr = view.devicePixelRatio > 0 ? view.devicePixelRatio : 1.0;
       final logicalInset = physicalInset / dpr;
-
-      // Feed the flight recorder with platform metrics (includes surface resize detection)
-      PerformanceBenchmarkService.instance.onPlatformMetricsChanged(
-        logicalInset, physicalInset, view.physicalSize);
-
-      // Cache the keyboard height for future zero-delay predictive motion
-      if (logicalInset > 10.0) {
-        _cachedKeyboardHeight = logicalInset;
-        // Cancel any pending close — keyboard is still alive
-        _closeGuardTimer?.cancel();
-        _closeGuardTimer = null;
-      }
-
-      // Hysteresis: when dock is UP and OS sends a transient zero, wait 150ms
-      // before committing. The Android keyboard cycling pattern (304→0→304→0→304)
-      // sends false zeros between real animation frames.
-      if (logicalInset < 1.0 && _targetInset > 10.0) {
-        // Dock is currently up, OS says zero — defer the close
-        _closeGuardTimer ??= Timer(const Duration(milliseconds: 150), () {
-          _closeGuardTimer = null;
-          if (!mounted) return;
-          // Re-check: if the inset is STILL zero after 150ms, commit the close
-          final currentView = View.of(context);
-          final currentInset = currentView.viewInsets.bottom / 
-              (currentView.devicePixelRatio > 0 ? currentView.devicePixelRatio : 1.0);
-          if (currentInset < 1.0) {
-            _targetInset = 0.0;
-            if (!_ticker.isActive) {
-              _lastTick = Duration.zero;
-              _ticker.start();
-            }
-          }
-        });
-        return;
-      }
-
-      // Lock to real OS inset when it arrives (overrides predictive estimate)
-      if ((logicalInset - _targetInset).abs() > 0.5) {
-        _targetInset = logicalInset;
-        if (!_ticker.isActive) {
-          _lastTick = Duration.zero;
-          _ticker.start();
-        }
-      }
+      _onKeyboardHeight(logicalInset);
     } catch (_) {}
   }
 
   @override
   void dispose() {
     _closeGuardTimer?.cancel();
+    _keyboardChannel.setMethodCallHandler(null);
     // Unregister predictive glide callbacks
     final bench = PerformanceBenchmarkService.instance;
     if (bench.onKeyboardLikelyOpening == _onPredictiveOpen) {
