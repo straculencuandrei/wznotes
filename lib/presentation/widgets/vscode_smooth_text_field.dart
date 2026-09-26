@@ -165,9 +165,12 @@ class _VSCodeSmoothTextFieldState extends State<VSCodeSmoothTextField> with Tick
     if (!mounted) return;
     _resetBlinkState();
     if (widget.focusNode.hasFocus) {
+      PerformanceBenchmarkService.instance.onFocusAcquired('VSCodeSmoothTextField');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncCaretFromEngine();
       });
+    } else {
+      PerformanceBenchmarkService.instance.onFocusLost();
     }
   }
 

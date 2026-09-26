@@ -218,7 +218,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
               const SizedBox(width: 8),
             ],
           ),
-          body: Stack(
+          body: Listener(
+            onPointerDown: (event) {
+              PerformanceBenchmarkService.instance.onUserTapScreen(event.localPosition);
+            },
+            child: Stack(
             children: [
               // 1. Full Keyboard Writing Viewport extending edge-to-edge behind floating toolbars
               Positioned.fill(
@@ -258,6 +262,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                 ),
               ),
             ],
+          ),
           ),
         ),
         ),
@@ -377,11 +382,45 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
   late Ticker _ticker;
   Duration _lastTick = Duration.zero;
 
+  /// Cached last known physical keyboard height for zero-delay predictive motion
+  double _cachedKeyboardHeight = 0.0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _ticker = createTicker(_onTick);
+
+    // Register predictive glide callbacks with the benchmark service
+    final bench = PerformanceBenchmarkService.instance;
+    bench.onKeyboardLikelyOpening = _onPredictiveOpen;
+    bench.onKeyboardLikelyClosing = _onPredictiveClose;
+  }
+
+  /// Called at T+0ms when text focus is acquired — starts gliding immediately
+  /// without waiting for Android's 240ms Gboard IPC handshake delay
+  void _onPredictiveOpen(double estimatedHeight) {
+    if (!mounted) return;
+    final height = _cachedKeyboardHeight > 10.0 ? _cachedKeyboardHeight : estimatedHeight;
+    if ((height - _targetInset).abs() > 0.5) {
+      _targetInset = height;
+      if (!_ticker.isActive) {
+        _lastTick = Duration.zero;
+        _ticker.start();
+      }
+    }
+  }
+
+  /// Called when text focus is lost — starts gliding back to zero immediately
+  void _onPredictiveClose() {
+    if (!mounted) return;
+    if (_targetInset > 0.5) {
+      _targetInset = 0.0;
+      if (!_ticker.isActive) {
+        _lastTick = Duration.zero;
+        _ticker.start();
+      }
+    }
   }
 
   void _onTick(Duration elapsed) {
@@ -426,8 +465,17 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
       final physicalInset = view.viewInsets.bottom;
       final dpr = view.devicePixelRatio > 0 ? view.devicePixelRatio : 1.0;
       final logicalInset = physicalInset / dpr;
-      PerformanceBenchmarkService.instance.recordKeyboardInsetEvent(logicalInset, physicalInset);
 
+      // Feed the flight recorder with platform metrics (includes surface resize detection)
+      PerformanceBenchmarkService.instance.onPlatformMetricsChanged(
+        logicalInset, physicalInset, view.physicalSize);
+
+      // Cache the keyboard height for future zero-delay predictive motion
+      if (logicalInset > 10.0) {
+        _cachedKeyboardHeight = logicalInset;
+      }
+
+      // Lock to real OS inset when it arrives (overrides predictive estimate)
       if ((logicalInset - _targetInset).abs() > 0.5) {
         _targetInset = logicalInset;
         if (!_ticker.isActive) {
@@ -440,6 +488,14 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
 
   @override
   void dispose() {
+    // Unregister predictive glide callbacks
+    final bench = PerformanceBenchmarkService.instance;
+    if (bench.onKeyboardLikelyOpening == _onPredictiveOpen) {
+      bench.onKeyboardLikelyOpening = null;
+    }
+    if (bench.onKeyboardLikelyClosing == _onPredictiveClose) {
+      bench.onKeyboardLikelyClosing = null;
+    }
     _ticker.dispose();
     _visualInsetNotifier.dispose();
     WidgetsBinding.instance.removeObserver(this);

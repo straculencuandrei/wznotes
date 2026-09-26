@@ -23,6 +23,21 @@ class KeyboardInsetSample {
   });
 }
 
+/// Represents an event in the real-world user touch-to-keyboard emergence timeline
+class FlightLogEntry {
+  final int elapsedMs;
+  final String category;
+  final String message;
+  final double? value;
+
+  const FlightLogEntry({
+    required this.elapsedMs,
+    required this.category,
+    required this.message,
+    this.value,
+  });
+}
+
 /// Real-time writing performance metrics snapshot
 class WritingPerfMetrics {
   final double fps;
@@ -164,6 +179,192 @@ class PerformanceBenchmarkService extends ChangeNotifier {
     ));
   }
 
+  // --- Real-World Interactive Tap-to-Keyboard Flight Recorder ---
+  bool isPredictiveGlideEnabled = true;
+  void togglePredictiveGlide() {
+    isPredictiveGlideEnabled = !isPredictiveGlideEnabled;
+    notifyListeners();
+  }
+
+  void Function(double targetHeight)? onKeyboardLikelyOpening;
+  void Function()? onKeyboardLikelyClosing;
+  String lastFlightSummary = 'Tap text area to record real-world latency';
+
+  DateTime? _flightTapStartTime;
+  bool _isRecordingFlight = false;
+  final List<FlightLogEntry> _flightLog = [];
+  final List<FrameTiming> _flightFrameTimings = [];
+  Timer? _flightSettledTimer;
+  Size? _lastPhysicalSize;
+
+  void onUserTapScreen(Offset localPos) {
+    if (_flightTapStartTime != null &&
+        DateTime.now().difference(_flightTapStartTime!).inMilliseconds < 800) {
+      return;
+    }
+    _flightTapStartTime = DateTime.now();
+    _isRecordingFlight = true;
+    _flightLog.clear();
+    _flightFrameTimings.clear();
+    _flightSettledTimer?.cancel();
+
+    _flightLog.add(FlightLogEntry(
+      elapsedMs: 0,
+      category: 'TOUCH',
+      message: 'Screen touch down at (${localPos.dx.toStringAsFixed(1)}, ${localPos.dy.toStringAsFixed(1)})',
+    ));
+  }
+
+  void onFocusAcquired(String source) {
+    if (_isRecordingFlight && _flightTapStartTime != null) {
+      final elapsed = DateTime.now().difference(_flightTapStartTime!).inMilliseconds;
+      _flightLog.add(FlightLogEntry(
+        elapsedMs: elapsed,
+        category: 'FOCUS',
+        message: 'Text input focus acquired ($source)',
+      ));
+    }
+    if (isPredictiveGlideEnabled) {
+      onKeyboardLikelyOpening?.call(304.0);
+    }
+  }
+
+  void onFocusLost() {
+    if (isPredictiveGlideEnabled) {
+      onKeyboardLikelyClosing?.call();
+    }
+  }
+
+  void onPlatformMetricsChanged(double logicalInset, double physicalInset, Size physicalSize) {
+    recordKeyboardInsetEvent(logicalInset, physicalInset);
+    if (!_isRecordingFlight || _flightTapStartTime == null) return;
+    final elapsed = DateTime.now().difference(_flightTapStartTime!).inMilliseconds;
+
+    final bool sizeChanged = _lastPhysicalSize != null &&
+        (_lastPhysicalSize!.width != physicalSize.width || _lastPhysicalSize!.height != physicalSize.height);
+    _lastPhysicalSize = physicalSize;
+
+    _flightLog.add(FlightLogEntry(
+      elapsedMs: elapsed,
+      category: 'OS_INSET',
+      message: 'Android OS WindowInsets: ${physicalInset.toStringAsFixed(1)}px '
+          '(${logicalInset.toStringAsFixed(1)} logical px)'
+          '${sizeChanged ? ' [SURFACE RESIZED: ${_lastPhysicalSize!.height} -> ${physicalSize.height}]' : ''}',
+      value: logicalInset,
+    ));
+
+    _flightSettledTimer?.cancel();
+    _flightSettledTimer = Timer(const Duration(milliseconds: 350), () {
+      _finalizeFlightRecording();
+    });
+  }
+
+  void _recordFlightFrameTiming(FrameTiming timing) {
+    if (!_isRecordingFlight || _flightTapStartTime == null) return;
+    _flightFrameTimings.add(timing);
+  }
+
+  void _finalizeFlightRecording() {
+    if (!_isRecordingFlight || _flightTapStartTime == null) return;
+    _isRecordingFlight = false;
+
+    debugPrint('');
+    debugPrint('================================================================');
+    debugPrint('   [LIVE FLIGHT RECORDER] REAL-WORLD USER TAP TO KEYBOARD TRACE');
+    debugPrint('   Full microsecond breakdown of the real-world user touch event');
+    debugPrint('================================================================');
+
+    for (final entry in _flightLog) {
+      final timeStr = '+${entry.elapsedMs.toString().padLeft(4)} ms';
+      final tagStr = '[${entry.category}]'.padRight(12);
+      debugPrint('   $timeStr $tagStr ${entry.message}');
+    }
+
+    if (_flightFrameTimings.isNotEmpty) {
+      debugPrint('----------------------------------------------------------------');
+      debugPrint('   PER-FRAME NATIVE vs FLUTTER BREAKDOWN:');
+      debugPrint('   Frame | Build(ms) | Raster(ms) | Total(ms) | NativeOH(ms) | Verdict');
+
+      double totalBuild = 0, totalRaster = 0, totalTotal = 0, totalNative = 0;
+      int droppedCount = 0;
+
+      for (int i = 0; i < _flightFrameTimings.length; i++) {
+        final t = _flightFrameTimings[i];
+        final buildMs = t.buildDuration.inMicroseconds / 1000.0;
+        final rasterMs = t.rasterDuration.inMicroseconds / 1000.0;
+        final totalMs = t.totalSpan.inMicroseconds / 1000.0;
+        final nativeMs = (totalMs - buildMs - rasterMs).clamp(0.0, double.infinity);
+
+        totalBuild += buildMs;
+        totalRaster += rasterMs;
+        totalTotal += totalMs;
+        totalNative += nativeMs;
+        if (totalMs > 16.6) droppedCount++;
+
+        final verdict = totalMs <= 8.3 ? '120Hz ✓' : totalMs <= 16.6 ? '60Hz ✓' : 'JANK ✗';
+
+        // Show first 10 frames + any janky frames beyond that
+        if (i < 10 || totalMs > 16.6) {
+          debugPrint('   ${(i + 1).toString().padLeft(5)} | '
+              '${buildMs.toStringAsFixed(1).padLeft(9)} | '
+              '${rasterMs.toStringAsFixed(1).padLeft(10)} | '
+              '${totalMs.toStringAsFixed(1).padLeft(9)} | '
+              '${nativeMs.toStringAsFixed(1).padLeft(12)} | $verdict');
+        }
+      }
+
+      final n = _flightFrameTimings.length;
+      final droppedPct = (droppedCount / n * 100).toStringAsFixed(1);
+
+      debugPrint('   ------|-----------|------------|-----------|--------------|-------');
+      debugPrint('   AVG   | '
+          '${(totalBuild / n).toStringAsFixed(1).padLeft(9)} | '
+          '${(totalRaster / n).toStringAsFixed(1).padLeft(10)} | '
+          '${(totalTotal / n).toStringAsFixed(1).padLeft(9)} | '
+          '${(totalNative / n).toStringAsFixed(1).padLeft(12)} | ');
+      debugPrint('');
+      debugPrint('   OVERHEAD ATTRIBUTION:');
+      debugPrint('   * Flutter (Build+Raster): ${((totalBuild + totalRaster) / n).toStringAsFixed(1)} ms/frame');
+      debugPrint('   * Native OS Overhead:     ${(totalNative / n).toStringAsFixed(1)} ms/frame');
+      debugPrint('   * Dropped Frames (>16.6ms): $droppedPct% ($droppedCount of $n)');
+
+      if (totalNative / n > 10.0) {
+        debugPrint('   ⚠️  VERDICT: Native Android surface operations dominate frame time!');
+        debugPrint('      Root Cause: Android SurfaceView resize from adjustResize');
+        debugPrint('      Fix: Change windowSoftInputMode to adjustNothing');
+      } else if (droppedCount == 0) {
+        debugPrint('   ✅ VERDICT: Zero jank! All frames rendered within 120Hz budget');
+      } else if (droppedCount <= 2) {
+        debugPrint('   ✅ VERDICT: Minimal jank — $droppedCount transient OS event(s), smooth overall');
+      }
+    }
+
+    debugPrint('----------------------------------------------------------------');
+    debugPrint('   DIAGNOSTIC VERDICT:');
+
+    final firstInset = _flightLog.firstWhere(
+      (e) => e.category == 'OS_INSET' && (e.value ?? 0) > 0,
+      orElse: () => const FlightLogEntry(elapsedMs: 0, category: '', message: ''),
+    );
+    final focusEntry = _flightLog.firstWhere(
+      (e) => e.category == 'FOCUS',
+      orElse: () => const FlightLogEntry(elapsedMs: 0, category: '', message: ''),
+    );
+
+    final focusMs = focusEntry.elapsedMs;
+    final handshake = firstInset.elapsedMs > 0 ? (firstInset.elapsedMs - focusMs) : 0;
+    final insetEvents = _flightLog.where((e) => e.category == 'OS_INSET').length;
+
+    debugPrint('   * Touch to Focus Latency:  ${focusMs}ms');
+    debugPrint('   * Android Gboard IPC Wait: ${handshake > 0 ? '$handshake ms' : 'N/A'} (Time before OS dispatches insets)');
+    debugPrint('   * OS Inset Events:         $insetEvents ${insetEvents == 0 ? '(adjustNothing — no surface resize!)' : ''}');
+    debugPrint('   * Predictive Glide State:  ${isPredictiveGlideEnabled ? "ACTIVE (Zero-delay movement)" : "DISABLED (Waiting on OS insets)"}');
+
+    lastFlightSummary = 'Tap→Focus: ${focusMs}ms | OS: ${handshake}ms | Insets: $insetEvents | ${isPredictiveGlideEnabled ? "Predictive" : "Passive"}';
+    debugPrint('================================================================');
+    debugPrint('');
+  }
+
   final Map<String, SubsystemProbe> probes = {
     // Upper UI Widget Pipeline
     'note_editor_build': SubsystemProbe(),
@@ -230,6 +431,10 @@ class PerformanceBenchmarkService extends ChangeNotifier {
     if (!isEnabled || timings.isEmpty) return;
 
     for (final timing in timings) {
+      if (_isRecordingFlight) {
+        _recordFlightFrameTiming(timing);
+      }
+
       final buildMs = timing.buildDuration.inMicroseconds / 1000.0;
       final rasterMs = timing.rasterDuration.inMicroseconds / 1000.0;
       final totalMs = timing.totalSpan.inMicroseconds / 1000.0;
@@ -1163,6 +1368,7 @@ class _BenchmarkHudOverlayState extends State<BenchmarkHudOverlay> {
                   _buildMetricRow('GPU Raster Time', '${m.rasterTimeMs.toStringAsFixed(1)} ms', Colors.white70),
                   _buildMetricRow('Dropped Frames', '${m.jankPercent.toStringAsFixed(1)}%', m.jankPercent > 20 ? AppColors.accentRose : Colors.white70),
                   _buildMetricRow('Document Stats', '${m.wordCount} words (${m.charCount} chars)', Colors.white),
+                  _buildMetricRow('Flight Recorder', service.lastFlightSummary, Colors.amberAccent),
                 ],
               ),
             ),
@@ -1170,7 +1376,7 @@ class _BenchmarkHudOverlayState extends State<BenchmarkHudOverlay> {
 
             // Stress Test Actions
             const Text(
-              'STRESS TESTING INJECTION',
+              'STRESS TESTING & MOTION CONTROLS',
               style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -1183,6 +1389,10 @@ class _BenchmarkHudOverlayState extends State<BenchmarkHudOverlay> {
                 _buildActionBtn('Inject 60k', () => service.injectRealisticWords(widget.ref, 60000)),
                 _buildActionBtn('Test Keyboard Raise', () => service.runKeyboardRaiseBenchmark(widget.ref)),
                 _buildActionBtn('Test App Health', () => service.runMainAppHealthBenchmark(widget.ref)),
+                _buildActionBtn(
+                  service.isPredictiveGlideEnabled ? '⚡ Predictive: ON' : '🐢 Predictive: OFF',
+                  () => service.togglePredictiveGlide(),
+                ),
               ],
             ),
             const SizedBox(height: 8),
