@@ -101,9 +101,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
           color: activeTheme.background,
           gradient: activeTheme.backgroundGradient,
         ),
-        child: MediaQuery.removeViewInsets(
-          removeBottom: true,
-          context: context,
+        child: _KeyboardStableMediaQuery(
           child: Scaffold(
             resizeToAvoidBottomInset: false,
             backgroundColor: Colors.transparent,
@@ -385,6 +383,10 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
   /// Cached last known physical keyboard height for zero-delay predictive motion
   double _cachedKeyboardHeight = 0.0;
 
+  /// Hysteresis guard: prevents transient OS zero-crossings (keyboard cycling)
+  /// from causing wild dock oscillation during the 304→0→304→0→304 pattern
+  Timer? _closeGuardTimer;
+
   @override
   void initState() {
     super.initState();
@@ -473,6 +475,32 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
       // Cache the keyboard height for future zero-delay predictive motion
       if (logicalInset > 10.0) {
         _cachedKeyboardHeight = logicalInset;
+        // Cancel any pending close — keyboard is still alive
+        _closeGuardTimer?.cancel();
+        _closeGuardTimer = null;
+      }
+
+      // Hysteresis: when dock is UP and OS sends a transient zero, wait 150ms
+      // before committing. The Android keyboard cycling pattern (304→0→304→0→304)
+      // sends false zeros between real animation frames.
+      if (logicalInset < 1.0 && _targetInset > 10.0) {
+        // Dock is currently up, OS says zero — defer the close
+        _closeGuardTimer ??= Timer(const Duration(milliseconds: 150), () {
+          _closeGuardTimer = null;
+          if (!mounted) return;
+          // Re-check: if the inset is STILL zero after 150ms, commit the close
+          final currentView = View.of(context);
+          final currentInset = currentView.viewInsets.bottom / 
+              (currentView.devicePixelRatio > 0 ? currentView.devicePixelRatio : 1.0);
+          if (currentInset < 1.0) {
+            _targetInset = 0.0;
+            if (!_ticker.isActive) {
+              _lastTick = Duration.zero;
+              _ticker.start();
+            }
+          }
+        });
+        return;
       }
 
       // Lock to real OS inset when it arrives (overrides predictive estimate)
@@ -488,6 +516,7 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
 
   @override
   void dispose() {
+    _closeGuardTimer?.cancel();
     // Unregister predictive glide callbacks
     final bench = PerformanceBenchmarkService.instance;
     if (bench.onKeyboardLikelyOpening == _onPredictiveOpen) {
@@ -524,4 +553,70 @@ class _KeyboardDockIslandState extends State<_KeyboardDockIsland>
   }
 }
 
+/// Prevents keyboard inset changes from propagating through the widget tree.
+///
+/// Problem: `MediaQuery.removeViewInsets` re-reads `MediaQuery.of(context)` on every frame,
+/// creating an unconditional dependency. When the keyboard animates (22+ OS events over 1.5s),
+/// every event triggers a full subtree rebuild (148ms per frame from TextField IME reconnects).
+///
+/// Solution: Cache the non-keyboard MediaQuery data and only update children when structurally
+/// relevant fields change (screen size, system padding, device pixel ratio). The keyboard
+/// inset is always stripped to 0 — the floating dock island handles positioning independently
+/// via `View.of(context).viewInsets.bottom` + GPU `Transform.translate`.
+class _KeyboardStableMediaQuery extends StatefulWidget {
+  final Widget child;
+  const _KeyboardStableMediaQuery({required this.child});
 
+  @override
+  State<_KeyboardStableMediaQuery> createState() => _KeyboardStableMediaQueryState();
+}
+
+class _KeyboardStableMediaQueryState extends State<_KeyboardStableMediaQuery> with WidgetsBindingObserver {
+  MediaQueryData? _stableData;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    // Only rebuild if NON-keyboard metrics changed (screen rotation, display cutouts, etc.)
+    if (!mounted) return;
+    final parentData = MediaQuery.maybeOf(context);
+    if (parentData == null) return;
+    final newStable = _stripKeyboardInsets(parentData);
+    if (_stableData != null && _stableData == newStable) return;
+    setState(() {
+      _stableData = newStable;
+    });
+  }
+
+  static MediaQueryData _stripKeyboardInsets(MediaQueryData data) {
+    return data.copyWith(
+      viewInsets: data.viewInsets.copyWith(bottom: 0),
+      // Stabilize viewPadding.bottom to prevent keyboard-caused padding changes
+      // from propagating (keep navigation bar padding, strip keyboard padding)
+      viewPadding: data.viewPadding.copyWith(
+        bottom: data.padding.bottom,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final parentData = MediaQuery.of(context);
+    _stableData ??= _stripKeyboardInsets(parentData);
+    return MediaQuery(
+      data: _stableData!,
+      child: widget.child,
+    );
+  }
+}
