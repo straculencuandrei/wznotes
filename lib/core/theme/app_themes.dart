@@ -38,89 +38,105 @@ class AppThemePalette {
 class AppThemes {
   // ==================== DYNAMIC MULTI-COLOR GRADIENT PALETTES ====================
 
-  // 1. Prism Spectrum (Pure RGB chromatic fade: Sapphire Blue -> Electric Violet -> Magenta -> Sunset Amber)
-  static const prismRgb = AppThemePalette(
-    id: 'prism_rgb',
-    name: 'Prism Spectrum',
-    description: 'Dynamic RGB chromatic fade from sapphire blue through electric violet into magenta',
-    background: Color(0xFF090C22),
+  // 1. Moonwalker (uiGradients: #152331 -> #000000)
+  static const moonwalker = AppThemePalette(
+    id: 'moonwalker',
+    name: 'Moonwalker',
+    description: 'Deep space atmospheric fade from dark stone navy into pure obsidian black',
+    background: Color(0xFF152331),
     backgroundGradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Color(0xFF090C22), Color(0xFF261047), Color(0xFF580E4F), Color(0xFF1B0720)],
-      stops: [0.0, 0.35, 0.72, 1.0],
+      colors: [Color(0xFF152331), Color(0xFF000000)],
+      stops: [0.0, 1.0],
     ),
-    surface: Color(0xFF140F2E),
-    surfaceElevated: Color(0xFF1F1742),
-    border: Color(0xFF3B2A6E),
-    accent: Color(0xFF00F2FE),
-    accentSecondary: Color(0xFFFF007F),
+    surface: Color(0xFF1A2634),
+    surfaceElevated: Color(0xFF233346),
+    border: Color(0xFF34495E),
+    accent: Color(0xFF4FC3F7),
+    accentSecondary: Color(0xFF90CAF9),
     textPrimary: Color(0xFFFFFFFF),
-    textSecondary: Color(0xFFC4BBE4),
+    textSecondary: Color(0xFFB0BEC5),
   );
 
-  // 2. Miami Sunset (Color fade: Deep Night Violet -> Hot Plum-Magenta -> Burning Sunset Tangerine)
-  static const cyberSunset = AppThemePalette(
-    id: 'cyber_sunset',
-    name: 'Miami Sunset',
-    description: 'Vibrant sunset fade: deep royal violet melting into hot plum and golden coral',
-    background: Color(0xFF0D0924),
-    backgroundGradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [Color(0xFF0D0924), Color(0xFF360C40), Color(0xFF6B1B32), Color(0xFF180A1F)],
-      stops: [0.0, 0.38, 0.75, 1.0],
-    ),
-    surface: Color(0xFF1B102B),
-    surfaceElevated: Color(0xFF29183F),
-    border: Color(0xFF4C2754),
-    accent: Color(0xFFFF5E7E),
-    accentSecondary: Color(0xFFFFAE34),
-    textPrimary: Color(0xFFFFFFFF),
-    textSecondary: Color(0xFFDABED4),
-  );
-
-  // 3. Aurora Borealis (Arctic multi-chroma fade: Deep Polar Midnight -> Luminous Emerald -> Cyan -> Purple Aura)
-  static const auroraBorealis = AppThemePalette(
-    id: 'aurora_borealis',
-    name: 'Aurora Borealis',
-    description: 'Polar celestial fade: dark oceanic navy fading through vivid emerald, cyan, and violet aura',
-    background: Color(0xFF030C17),
+  // 2. Ameena (uiGradients: #0C0C6D -> #DE512B -> #98D0C1 -> #5BB226 -> #023C0D)
+  static const ameena = AppThemePalette(
+    id: 'ameena',
+    name: 'Ameena',
+    description: 'Rich multi-chroma fade: deep midnight indigo, warm flame, sage mint, and lush forest emerald',
+    background: Color(0xFF0C0C6D),
     backgroundGradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Color(0xFF030C17), Color(0xFF052B23), Color(0xFF073B45), Color(0xFF1B0E30)],
-      stops: [0.0, 0.32, 0.68, 1.0],
+      colors: [
+        Color(0xFF0C0C6D),
+        Color(0xFFDE512B),
+        Color(0xFF98D0C1),
+        Color(0xFF5BB226),
+        Color(0xFF023C0D),
+      ],
+      stops: [0.0, 0.25, 0.50, 0.75, 1.0],
     ),
-    surface: Color(0xFF0A1E24),
-    surfaceElevated: Color(0xFF102D37),
-    border: Color(0xFF1B4958),
-    accent: Color(0xFF00FFA3),
-    accentSecondary: Color(0xFFA78BFA),
+    surface: Color(0xFF14145A),
+    surfaceElevated: Color(0xFF1F1E74),
+    border: Color(0xFF38358E),
+    accent: Color(0xFF98D0C1),
+    accentSecondary: Color(0xFFFF6E40),
     textPrimary: Color(0xFFFFFFFF),
-    textSecondary: Color(0xFFA5CFD2),
+    textSecondary: Color(0xFFD4E6E1),
   );
 
-  // 4. Hyper Pop (Electric Duo-Chroma: Deep Indigo -> Electric Royal Blue -> Hot Neon Fuchsia)
-  static const hyperPop = AppThemePalette(
-    id: 'hyper_pop',
-    name: 'Hyper Pop',
-    description: 'High-voltage electric fade: deep royal blue fusing into hot neon fuchsia and laser cyan',
-    background: Color(0xFF09061C),
+  // 3. Winter Woods (uiGradients: #333333 -> #A2AB58 -> #A43931)
+  static const winterWoods = AppThemePalette(
+    id: 'winter_woods',
+    name: 'Winter Woods',
+    description: 'Rustic woodland fade: charcoal timber, mossy olive gold, and deep carmine amber',
+    background: Color(0xFF333333),
     backgroundGradient: LinearGradient(
-      begin: Alignment.topRight,
-      end: Alignment.bottomLeft,
-      colors: [Color(0xFF09061C), Color(0xFF15144F), Color(0xFF4F0D45), Color(0xFF070512)],
-      stops: [0.0, 0.35, 0.75, 1.0],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color(0xFF333333),
+        Color(0xFFA2AB58),
+        Color(0xFFA43931),
+      ],
+      stops: [0.0, 0.50, 1.0],
     ),
-    surface: Color(0xFF160F33),
-    surfaceElevated: Color(0xFF22174C),
-    border: Color(0xFF422877),
-    accent: Color(0xFFFF2A85),
-    accentSecondary: Color(0xFF00E5FF),
+    surface: Color(0xFF3B3B3B),
+    surfaceElevated: Color(0xFF4A4A4A),
+    border: Color(0xFF5E5E5E),
+    accent: Color(0xFFDCE775),
+    accentSecondary: Color(0xFFFF8A80),
     textPrimary: Color(0xFFFFFFFF),
-    textSecondary: Color(0xFFCDBBE6),
+    textSecondary: Color(0xFFE4E4D0),
   );
+
+  // 4. Yoda (uiGradients: #FF0099 -> #493240)
+  static const yoda = AppThemePalette(
+    id: 'yoda',
+    name: 'Yoda',
+    description: 'High-voltage electric duo-chroma: intense neon cerise pink melting into deep plum obsidian',
+    background: Color(0xFF493240),
+    backgroundGradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFFF0099), Color(0xFF493240)],
+      stops: [0.0, 1.0],
+    ),
+    surface: Color(0xFF3B2032),
+    surfaceElevated: Color(0xFF4E2842),
+    border: Color(0xFF6F355E),
+    accent: Color(0xFFFF40B4),
+    accentSecondary: Color(0xFFFF80DF),
+    textPrimary: Color(0xFFFFFFFF),
+    textSecondary: Color(0xFFF0CEE3),
+  );
+
+  // Legacy compatibility aliases for previously saved user preferences
+  static const prismRgb = moonwalker;
+  static const cyberSunset = ameena;
+  static const auroraBorealis = winterWoods;
+  static const hyperPop = yoda;
 
   // ==================== WHITE & BRIGHTISH GRADIENT PALETTES ====================
 
@@ -394,10 +410,10 @@ class AppThemes {
 
   /// Curated Multi-Color & Brightish Gradient Themes
   static List<AppThemePalette> get gradientThemes => [
-        prismRgb,
-        cyberSunset,
-        auroraBorealis,
-        hyperPop,
+        moonwalker,
+        ameena,
+        winterWoods,
+        yoda,
         etherealPearl,
         wabiParchment,
         solarisDawn,
@@ -427,6 +443,10 @@ class AppThemes {
       ];
 
   static AppThemePalette getTheme(String id) {
+    if (id == 'prism_rgb') return moonwalker;
+    if (id == 'cyber_sunset') return ameena;
+    if (id == 'aurora_borealis') return winterWoods;
+    if (id == 'hyper_pop') return yoda;
     return allThemes.firstWhere(
       (t) => t.id == id,
       orElse: () => amoled,

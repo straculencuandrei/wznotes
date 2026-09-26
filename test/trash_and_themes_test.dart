@@ -101,10 +101,10 @@ void main() {
 
       final gradientIds = AppThemes.gradientThemes.map((t) => t.id).toSet();
       expect(gradientIds, containsAll([
-        'prism_rgb',
-        'cyber_sunset',
-        'aurora_borealis',
-        'hyper_pop',
+        'moonwalker',
+        'ameena',
+        'winter_woods',
+        'yoda',
         'ethereal_pearl',
         'wabi_parchment',
         'solaris_dawn',
@@ -155,7 +155,10 @@ void main() {
 
     test('AppThemes.getTheme returns requested theme or falls back to amoled', () {
       expect(AppThemes.getTheme('cyber').name, 'Midnight Neon');
-      expect(AppThemes.getTheme('prism_rgb').name, 'Prism Spectrum');
+      expect(AppThemes.getTheme('moonwalker').name, 'Moonwalker');
+      expect(AppThemes.getTheme('ameena').name, 'Ameena');
+      expect(AppThemes.getTheme('winter_woods').name, 'Winter Woods');
+      expect(AppThemes.getTheme('yoda').name, 'Yoda');
       expect(AppThemes.getTheme('ethereal_pearl').name, 'Ethereal Pearl');
       expect(AppThemes.getTheme('wabi_parchment').name, 'Wabi Parchment');
       expect(AppThemes.getTheme('unknown_id').id, 'amoled');
